@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { getSql } from "@/lib/db";
-import { hashCode, hashesEqual, sendCodeEmail, sixDigit } from "@/lib/mail-code.server";
+import { hashCode, hashesEqual, mailErrorMessage, sendCodeEmail, sixDigit } from "@/lib/mail-code.server";
 import { isEmail, normalizeEmail } from "@/lib/school";
 import { ageFromBirthdate, newId } from "@/lib/utils";
 
@@ -54,7 +54,7 @@ export async function sendAccountCode(data: { email: string }) {
     await sendCodeEmail(email, code, "account");
   } catch (err) {
     console.error("account email failed", err);
-    return { ok: false as const, error: "Could not send the email. Check the address and try again." };
+    return { ok: false as const, error: mailErrorMessage(err) };
   }
   return { ok: true as const };
 }
