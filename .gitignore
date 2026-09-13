@@ -8,3 +8,5 @@ artifacts
 screenshots
 .grok
 .project_id
+.env
+.env.local

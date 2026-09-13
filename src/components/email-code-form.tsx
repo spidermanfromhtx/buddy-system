@@ -71,7 +71,7 @@ export function EmailCodeForm({
 
   return (
     <div className="flex max-w-md flex-col gap-4">
-      <p className={cn("text-base", "text-muted")}>{hint}</p>
+      <p className={cn("text-base", onDark ? "text-muted" : "text-muted")}>{hint}</p>
       <label className="text-base font-medium" htmlFor={emailId}>
         {label}
         <input
@@ -88,7 +88,13 @@ export function EmailCodeForm({
           }}
         />
       </label>
-      <Btn type="button" kind={onDark ? "paper" : "fill"} className="self-start" disabled={busy} onClick={() => void sendCode()}>
+      <Btn
+        type="button"
+        kind={onDark ? "paper" : "fill"}
+        className="self-start"
+        disabled={busy}
+        onClick={() => void sendCode()}
+      >
         {sent ? "Send new code" : sendLabel}
       </Btn>
       {sent ? (
@@ -107,7 +113,13 @@ export function EmailCodeForm({
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
             />
           </label>
-          <Btn type="button" kind={onDark ? "paper" : "fill"} className="self-start" disabled={busy} onClick={() => void check()}>
+          <Btn
+            type="button"
+            kind={onDark ? "paper" : "fill"}
+            className="self-start"
+            disabled={busy}
+            onClick={() => void check()}
+          >
             {verifyLabel}
           </Btn>
         </>

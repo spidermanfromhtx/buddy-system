@@ -38,6 +38,7 @@ export function isAcademicDomain(domain: string) {
   );
 }
 
+/** Verified campus domain only. Personal and non-school inboxes return null. */
 export function schoolFromEmail(raw: string) {
   const email = normalizeEmail(raw);
   if (!isEmail(email)) return null;
