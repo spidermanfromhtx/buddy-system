@@ -59,6 +59,42 @@ export const claimBooking = createServerFn({ method: "POST" }).validator((d: unk
   await ringMatchedIfDue(sql, a, b);
   return { ok: true as const, matched: { name: String(target.name) } };
 });
+export const dropBooking = createServerFn({ method: "POST" }).validator((d: unknown) => z.object({ listingId: ID, peerId: ID }).parse(d)).handler(async ({ data }) => {
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT * FROM listings WHERE id = $1 AND peer_id = $2 AND mode = 'scheduled' LIMIT 1`, [data.listingId, data.peerId]);
+  const row = rows[0];
+  if (!row) return { ok: false as const, error: "That window is gone." };
+  const matchId = row.match_id ? String(row.match_id) : null;
+  const callId = row.match_call_id ? String(row.match_call_id) : null;
+  if (matchId) {
+    await sql.query(
+      `UPDATE listings SET match_id = null, match_peer_id = null, match_peer_name = null, match_room = null, match_call_id = null WHERE match_id = $1 AND id <> $2`,
+      [matchId, row.id],
+    );
+  }
+  if (callId) {
+    await sql.query(`UPDATE call_sessions SET status = 'declined' WHERE id = $1 AND status = 'ringing'`, [callId]);
+  }
+  await sql.query(`DELETE FROM listings WHERE id = $1`, [row.id]);
+  return { ok: true as const };
+});
+export const unmatchBooking = createServerFn({ method: "POST" }).validator((d: unknown) => z.object({ listingId: ID, peerId: ID }).parse(d)).handler(async ({ data }) => {
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT * FROM listings WHERE id = $1 AND peer_id = $2 AND mode = 'scheduled' LIMIT 1`, [data.listingId, data.peerId]);
+  const row = rows[0];
+  if (!row) return { ok: false as const, error: "That window is gone." };
+  if (!row.match_id) return { ok: true as const };
+  const matchId = String(row.match_id);
+  const callId = row.match_call_id ? String(row.match_call_id) : null;
+  await sql.query(
+    `UPDATE listings SET match_id = null, match_peer_id = null, match_peer_name = null, match_room = null, match_call_id = null WHERE match_id = $1`,
+    [matchId],
+  );
+  if (callId) {
+    await sql.query(`UPDATE call_sessions SET status = 'declined' WHERE id = $1 AND status = 'ringing'`, [callId]);
+  }
+  return { ok: true as const };
+});
 export type CallRow = { id: string; room: string; callerId: string; calleeId: string; callerName: string; calleeName: string; callerColor: string; calleeColor: string; callerPhoto: string | null; calleePhoto: string | null; task: string; lengthMin: number; status: string; allowCamera: boolean; bothRing: boolean; startedAt: string | null };
 function mapCall(r: Record<string, unknown>): CallRow { return { id: String(r.id), room: String(r.room), callerId: String(r.caller_id), calleeId: String(r.callee_id), callerName: String(r.caller_name), calleeName: String(r.callee_name), callerColor: String(r.caller_color ?? "#c45c3e"), calleeColor: String(r.callee_color ?? "#2f6f5e"), callerPhoto: r.caller_photo ? String(r.caller_photo) : null, calleePhoto: r.callee_photo ? String(r.callee_photo) : null, task: String(r.task), lengthMin: Number(r.length_min ?? 25), status: String(r.status), allowCamera: Boolean(r.allow_camera), bothRing: Boolean(r.both_ring), startedAt: r.created_at && String(r.status) === "live" ? new Date(String(r.created_at)).toISOString() : null }; }
 export const startCall = createServerFn({ method: "POST" }).validator((d: unknown) => z.object({ id: ID, room: ID, callerId: ID, calleeId: ID, callerName: z.string().max(40), calleeName: z.string().max(40), callerColor: z.string().max(16), calleeColor: z.string().max(16), callerPhoto: PHOTO, calleePhoto: PHOTO, task: z.string().max(80), lengthMin: z.number().int().min(5).max(120), allowCamera: z.boolean(), bothRing: z.boolean().optional() }).parse(d)).handler(async ({ data }) => { if (data.callerId === data.calleeId) return { ok: false as const }; const sql = await getSql(); const gate = await takeSession(sql, data.callerId, data.lengthMin); if (!gate.ok) return gate; await sql.query(`INSERT INTO call_sessions (id, room, caller_id, callee_id, caller_name, callee_name, caller_color, callee_color, caller_photo, callee_photo, task, length_min, status, allow_camera, both_ring) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'ringing',$13,$14)`, [data.id, data.room, data.callerId, data.calleeId, data.callerName, data.calleeName, data.callerColor, data.calleeColor, data.callerPhoto ?? null, data.calleePhoto ?? null, data.task, data.lengthMin, data.allowCamera, data.bothRing ?? false]); return { ok: true }; });

@@ -18,10 +18,12 @@ import {
   bookWindow,
   claimBooking,
   closeLive,
+  dropBooking,
   incomingFor,
   listOpen,
   stampSchool,
   startCall,
+  unmatchBooking,
   upsertLive,
   type Listing,
 } from "@/lib/listings";
@@ -417,6 +419,32 @@ function Feed() {
     onError: (err) => setNote(err instanceof Error ? err.message : "could not join"),
   });
 
+  const dropWin = useMutation({
+    mutationFn: async (row: Listing) => {
+      if (!me) return;
+      const res = await dropBooking({ data: { listingId: row.id, peerId: me.id } });
+      if (res && "ok" in res && res.ok === false) throw new Error("error" in res ? String(res.error) : "could not remove");
+    },
+    onSuccess: () => {
+      setNote("window removed.");
+      void q.refetch();
+    },
+    onError: (err) => setNote(err instanceof Error ? err.message : "could not remove"),
+  });
+
+  const unmatchWin = useMutation({
+    mutationFn: async (row: Listing) => {
+      if (!me) return;
+      const res = await unmatchBooking({ data: { listingId: row.id, peerId: me.id } });
+      if (res && "ok" in res && res.ok === false) throw new Error("error" in res ? String(res.error) : "could not unmatch");
+    },
+    onSuccess: () => {
+      setNote("unmatched. you’re back in the queue.");
+      void q.refetch();
+    },
+    onError: (err) => setNote(err instanceof Error ? err.message : "could not unmatch"),
+  });
+
   const cap = maxSessionMin(me?.plan, me?.limitsOn);
   useEffect(() => {
     setLengthMin((n) => (n > cap ? cap : n));
@@ -663,7 +691,22 @@ function Feed() {
               extra={[row.windowLabel, row.matchPeerName ? `matched · ${row.matchPeerName}` : "match pending"]
                 .filter(Boolean)
                 .join(" · ")}
-              action={<span className="text-sm text-muted">{row.matchPeerName ? "matched" : "pending"}</span>}
+              action={
+                <div className="flex flex-col items-end gap-1">
+                  {row.matchPeerName ? (
+                    <Btn className="h-9 px-3 text-sm" disabled={unmatchWin.isPending} onClick={() => unmatchWin.mutate(row)}>
+                      Unmatch
+                    </Btn>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="text-[11px] text-muted underline"
+                    onClick={() => dropWin.mutate(row)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              }
             />
           ))
         )}
