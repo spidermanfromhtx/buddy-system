@@ -1,18 +1,24 @@
 {
   "name": "Buddy System",
   "short_name": "Buddy System",
-  "description": "18+ body-doubling calls. List a task. The call rings. You work. You hang up.",
+  "description": "18+ body-doubling calls. List a task description. The call rings. You work. You hang up.",
   "id": "/",
   "start_url": "/feed",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#14110e",
-  "theme_color": "#f7f2e9",
+  "background_color": "#f6f5f1",
+  "theme_color": "#f6f5f1",
   "icons": [
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     }

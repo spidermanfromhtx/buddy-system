@@ -8,6 +8,7 @@ import { LookFields } from "@/components/look-fields";
 import { Mark } from "@/components/mark";
 import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
+import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
 import { readAccount, saveAccount, startPlusCheckout } from "@/lib/account";
 import { categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
@@ -234,7 +235,7 @@ function Feed() {
           photo: me.photo ?? undefined,
           task: task.trim(),
           urgent,
-          lengthMin,
+          lengthMin: Math.min(lengthMin, cap),
           camera,
           dueDate: dueDate || undefined,
           school: me.school ?? undefined,
@@ -296,7 +297,7 @@ function Feed() {
           photo: me.photo ?? undefined,
           task: task.trim(),
           urgent,
-          lengthMin,
+          lengthMin: Math.min(lengthMin, cap),
           camera,
           similarPref: similar,
           windowLabel: formatWindow(windowDate, windowStart, windowEnd),
@@ -382,10 +383,14 @@ function Feed() {
     });
   }
 
+  const cap = maxSessionMin(me?.plan, me?.limitsOn);
+  useEffect(() => {
+    setLengthMin((n) => (n > cap ? cap : n));
+  }, [cap]);
+
   if (!me) return <JoinForm onJoined={setMe} />;
 
   const remain = minutesLeft(mine?.expiresAt ?? null);
-  const cap = maxSessionMin(me.plan, me.limitsOn);
   const left = sessionsLeft(me.plan, me.sessionsUsed, me.limitsOn);
   const plus = isPlus(me.plan);
   const limits = me.limitsOn;
@@ -504,7 +509,7 @@ function Feed() {
             type="range"
             min={5}
             max={cap}
-            value={lengthMin}
+            value={Math.min(lengthMin, cap)}
             className="mt-3 w-full"
             onChange={(e) => setLengthMin(Number(e.target.value))}
           />
@@ -730,6 +735,7 @@ function Feed() {
           <Btn className="h-10 text-sm" onClick={() => void share()}>
             Share
           </Btn>
+          <InstallApp />
           <Btn className="h-10 text-sm" onClick={() => void nav({ to: "/reviews" })}>
             Reviews
           </Btn>
@@ -900,7 +906,7 @@ function Feed() {
                   Session limits
                 </label>
                 <p className="text-sm text-muted">
-                  Off for R&D. On = {FREE_SESSIONS} free {FREE_MAX_MIN}-minute sessions a week.
+                  Off for R&D. On = {FREE_SESSIONS} free {FREE_MAX_MIN}-minute sessions a week. The length slider stops at 45 minutes.
                 </p>
                 {plus ? (
                   <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>

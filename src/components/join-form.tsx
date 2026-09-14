@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Btn } from "@/components/btn";
 import { CategoryPicker } from "@/components/category-picker";
 import { EmailCodeForm } from "@/components/email-code-form";
+import { InstallApp } from "@/components/install-app";
 import { LookFields } from "@/components/look-fields";
 import { Mark } from "@/components/mark";
 import { createAccount, requestAccountCode, verifyAccountCode } from "@/lib/account";
@@ -62,9 +63,12 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   return (
     <main className="min-h-dvh bg-paper text-ink md:grid md:grid-cols-2">
       <section className="px-6 py-6 md:flex md:min-h-dvh md:flex-col md:justify-center md:px-12 md:py-12">
-        <div className="flex items-center gap-3">
-          <Mark className="size-10" />
-          <p className="font-display text-xl tracking-tight">Buddy System</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Mark className="size-10" />
+            <p className="font-display text-xl tracking-tight">Buddy System</p>
+          </div>
+          <InstallApp />
         </div>
         <h1 className="mt-4 font-display text-3xl tracking-tight md:mt-10 md:text-6xl">
           The phone rings. You work. You hang up.
