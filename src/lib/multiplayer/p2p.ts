@@ -125,6 +125,7 @@ export class P2PRoom {
   }
   attachMedia(stream: MediaStream): void {
     this.opts.mediaStream = stream;
+    if (stream.getVideoTracks().some((t) => t.readyState === "live")) this.opts.allowVideo = true;
     for (const [peerId, slot] of this.peers) {
       this.wireLocal(slot, peerId);
       if (this.opts.selfId > peerId && slot.pc.signalingState === "stable") void this.kickOffer(slot, peerId);

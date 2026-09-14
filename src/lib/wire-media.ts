@@ -30,14 +30,17 @@ export function packJpeg(bytes: ArrayBuffer): ArrayBuffer {
 export function startJpegSend(
   video: HTMLVideoElement,
   send: (buf: ArrayBuffer) => void,
+  opts?: { wide?: number; quality?: number; ms?: number },
 ): () => void {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
+  const wide = opts?.wide ?? 200;
+  const quality = opts?.quality ?? 0.4;
   const tick = () => {
     if (!video.videoWidth) return;
-    canvas.width = 200;
-    canvas.height = Math.max(150, Math.round((200 * video.videoHeight) / video.videoWidth));
+    canvas.width = wide;
+    canvas.height = Math.max(Math.round(wide * 0.56), Math.round((wide * video.videoHeight) / video.videoWidth));
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
@@ -45,11 +48,11 @@ export function startJpegSend(
         void blob.arrayBuffer().then((buf) => send(packJpeg(buf)));
       },
       "image/jpeg",
-      0.4,
+      quality,
     );
   };
   tick();
-  const id = window.setInterval(tick, 90);
+  const id = window.setInterval(tick, opts?.ms ?? 90);
   return () => window.clearInterval(id);
 }
 

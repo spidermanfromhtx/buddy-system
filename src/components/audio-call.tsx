@@ -255,14 +255,17 @@ export function AudioCall({
   }, [wantCamera, allowCamera, loopback]);
 
   useEffect(() => {
-    if (!localCam || !allowCamera) return;
-    if (status === "connected") return;
+    if (!localCam) return;
     const el = localVideoRef.current;
     if (!el) return;
-    return startJpegSend(el, (buf) => p2pRef.current?.sendMedia(buf));
-  }, [localCam, allowCamera, status]);
+    return startJpegSend(
+      el,
+      (buf) => p2pRef.current?.sendMedia(buf),
+      sharing ? { wide: 640, quality: 0.55, ms: 120 } : undefined,
+    );
+  }, [localCam, sharing]);
 
-  const showStage = Boolean(allowCamera);
+  const showStage = Boolean(allowCamera || sharing || remoteJpeg || remoteVideo);
 
   return (
     <div className="flex flex-col items-center gap-4">

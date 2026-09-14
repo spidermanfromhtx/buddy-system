@@ -10,6 +10,10 @@ export function isPlus(plan: string | null | undefined) {
   return plan === "plus";
 }
 
+export function canScreenShare(plan: string | null | undefined, limitsOn = false) {
+  return isPlus(plan) || !limitsEnabled(limitsOn);
+}
+
 export function limitsEnabled(on: boolean | null | undefined) {
   return Boolean(on);
 }
