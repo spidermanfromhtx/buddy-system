@@ -70,6 +70,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           <p className="truncate text-xl font-semibold tracking-tight md:text-2xl">Buddy System</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <a href="/about" className="text-base font-medium text-ink underline-offset-4 hover:underline">
+            What is the Buddy System
+          </a>
           <a href="/reviews" className="text-base font-medium text-ink underline-offset-4 hover:underline">
             Reviews
           </a>
@@ -88,6 +91,13 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
               <p className="mt-4 max-w-md text-lg text-muted md:mt-5 md:text-xl">
                 Find a live buddy. Schedule a buddy. Be a buddy. 18+.
               </p>
+              <div className="mt-5">
+                <Link to="/about">
+                  <Btn kind="line" className="h-12 px-5 text-base">
+                    What is the Buddy System
+                  </Btn>
+                </Link>
+              </div>
               <div className="mt-6 max-w-md md:mt-8">
                 <EmailCodeForm
                   hero

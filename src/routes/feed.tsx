@@ -1131,7 +1131,7 @@ function Feed() {
                   </>
                 ) : null}
                 {plus ? (
-                  <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours. Screen share.</p>
+                  <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours. Share your entire window.</p>
                 ) : limits ? (
                   <>
                     <p className="text-base text-muted">

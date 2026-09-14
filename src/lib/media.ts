@@ -279,9 +279,18 @@ export async function startScreenShare(): Promise<MediaStream> {
   if (!stream || !hasLiveMic()) await getLocalStream(false);
   if (!navigator.mediaDevices?.getDisplayMedia) throw new Error("share");
   const display = await navigator.mediaDevices.getDisplayMedia({
-    video: { frameRate: 12 },
+    video: {
+      frameRate: { ideal: 15, max: 24 },
+      width: { ideal: 1920, max: 1920 },
+      height: { ideal: 1080, max: 1080 },
+      displaySurface: "window",
+    } as MediaTrackConstraints,
     audio: false,
-  });
+    preferCurrentTab: false,
+    selfBrowserSurface: "exclude",
+    surfaceSwitching: "include",
+    systemAudio: "exclude",
+  } as DisplayMediaStreamOptions);
   const track = display.getVideoTracks()[0];
   if (!track || !stream) throw new Error("share");
   for (const t of stream.getVideoTracks()) {

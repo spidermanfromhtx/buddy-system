@@ -356,12 +356,12 @@ export function AudioCall({
                 p2pRef.current?.attachMedia(media);
                 setSharing(true);
               } catch {
-                setErr("could not share the screen");
+                setErr("could not share the window");
               }
             })();
           }}
         >
-          {sharing ? "Stop sharing" : "Share screen"}
+          {sharing ? "Stop sharing" : "Share window"}
         </Btn>
       ) : null}
       <MicMeter active={!muted && !!local} />
