@@ -51,6 +51,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
   const p2pRef = useRef<P2PRoom | null>(null);
   const [local, setLocal] = useState<MediaStream | null>(currentStream());
   const [status, setStatus] = useState(hasLiveMic() ? "joining" : "need-mic");
@@ -87,29 +88,23 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
   }
 
   async function playRemoteAudio() {
-    const el = remoteAudioRef.current;
-    if (!el) return;
-    el.muted = false;
-    el.volume = 1;
-    el.autoplay = true;
-    el.playsInline = true;
-    try {
-      await el.play();
-      setAudioNeedsTap(false);
-      setRemoteAudioState("playing");
-      return;
-    } catch {
-      setAudioNeedsTap(true);
-    }
+    const audio = remoteAudioRef.current;
+    const stream = audio?.srcObject instanceof MediaStream ? audio.srcObject : null;
+    if (!stream || !stream.getAudioTracks().length) return;
 
     try {
-      const stream = el.srcObject instanceof MediaStream ? el.srcObject : null;
-      if (!stream || !stream.getAudioTracks().length) return;
       const ctx = await ensureAudioOutput();
       if (audioSourceRef.current) audioSourceRef.current.disconnect();
       const source = ctx.createMediaStreamSource(stream);
-      source.connect(ctx.destination);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
       audioSourceRef.current = source;
+      audioAnalyserRef.current = analyser;
+      audio.muted = true;
+      audio.volume = 1;
+      audio.autoplay = false;
       setAudioNeedsTap(false);
       setRemoteAudioState("playing");
     } catch {
@@ -138,7 +133,6 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       const audioStream = new MediaStream(audioTracks);
       audio.srcObject = audioStream;
       void playRemoteAudio();
-      audio.onloadedmetadata = () => void playRemoteAudio();
       for (const track of audioTracks) {
         track.onunmute = () => {
           setRemoteAudioState("track");
@@ -209,8 +203,10 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       p2pRef.current?.close(false);
       p2pRef.current = null;
       audioSourceRef.current?.disconnect();
+      audioAnalyserRef.current?.disconnect();
       void audioContextRef.current?.close();
       audioSourceRef.current = null;
+      audioAnalyserRef.current = null;
       audioContextRef.current = null;
       if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
     };
@@ -254,7 +250,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <audio ref={remoteAudioRef} autoPlay playsInline />
+      <audio ref={remoteAudioRef} playsInline />
       <div className={showStage ? "relative aspect-square w-full max-w-xs" : "contents"}>
         <video ref={remoteVideoRef} className={remoteVideo ? "size-full rounded-3xl bg-paper-2 object-cover" : "pointer-events-none fixed bottom-2 left-2 h-8 w-8 opacity-[0.04]"} autoPlay playsInline muted />
         {remoteJpeg && !remoteVideo ? <img ref={jpegRef} alt="" className="size-full rounded-3xl bg-paper-2 object-cover" /> : <img ref={jpegRef} alt="" className="pointer-events-none absolute h-px w-px opacity-0" />}
