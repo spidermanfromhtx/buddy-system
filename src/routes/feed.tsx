@@ -10,7 +10,7 @@ import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
 import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
-import { readAccount, saveAccount, startPlusCheckout } from "@/lib/account";
+import { inviteAdmin, listAdmins, readAccount, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
 import { categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
 import {
@@ -115,6 +115,8 @@ function Feed() {
   const [pane, setPane] = useState<"live" | "book">("live");
   const [reportFor, setReportFor] = useState<Listing | null>(null);
   const [reportBody, setReportBody] = useState("");
+  const [adminInvite, setAdminInvite] = useState("");
+  const [admins, setAdmins] = useState<string[]>([]);
 
   useEffect(() => {
     const p = loadProfile();
@@ -138,6 +140,13 @@ function Feed() {
       );
     });
   }, [me?.sessionToken]);
+
+  useEffect(() => {
+    if (sheet !== "settings" || !me?.admin || !me.sessionToken) return;
+    void listAdmins({ data: { token: me.sessionToken } }).then((res) => {
+      if (res.ok) setAdmins(res.admins);
+    });
+  }, [sheet, me?.admin, me?.sessionToken]);
 
   const q = useQuery({
     queryKey: ["listings", tab, me?.schoolVerified ? me.school : "none"],
@@ -894,22 +903,57 @@ function Feed() {
               </div>
               <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
                 <p className="font-display text-xl">Plan</p>
-                <label className="flex h-11 items-center gap-2 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    checked={limits}
-                    onChange={(e) => {
-                      const on = e.target.checked;
-                      const next = saveProfile({ ...me, limitsOn: on });
-                      setMe(next);
-                      void saveAccount({ data: { token: me.sessionToken, limitsOn: on } });
-                    }}
-                  />
-                  Session limits
-                </label>
-                <p className="text-sm text-muted">
-                  Off for R&D. On = {FREE_SESSIONS} free {FREE_MAX_MIN}-minute sessions a week. The length slider stops at 45 minutes.
-                </p>
+                {me.admin ? (
+                  <>
+                    <label className="flex h-11 items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        checked={limits}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setMe(saveProfile({ ...me, limitsOn: on }));
+                          void setRndMode({ data: { token: me.sessionToken, on } });
+                        }}
+                      />
+                      R&D limits
+                    </label>
+                    <p className="text-sm text-muted">
+                      Off for R&D. On turns on paywalls for everyone: {FREE_SESSIONS} free {FREE_MAX_MIN}-minute
+                      sessions a week.
+                    </p>
+                    <p className="text-sm font-medium">Admins</p>
+                    <ul className="text-sm text-muted">
+                      {admins.map((e) => (
+                        <li key={e}>{e}</li>
+                      ))}
+                    </ul>
+                    <div className="flex gap-2">
+                      <input
+                        className="h-11 min-w-0 flex-1 rounded-full border border-ink/10 bg-cream px-4 text-sm"
+                        placeholder="invite admin email"
+                        value={adminInvite}
+                        onChange={(e) => setAdminInvite(e.target.value)}
+                      />
+                      <Btn
+                        type="button"
+                        kind="ink"
+                        className="h-11"
+                        onClick={() => {
+                          const email = adminInvite.trim();
+                          if (!email) return;
+                          void inviteAdmin({ data: { token: me.sessionToken, email } }).then((res) => {
+                            if (res.ok) {
+                              setAdmins(res.admins);
+                              setAdminInvite("");
+                            } else setNote(res.error);
+                          });
+                        }}
+                      >
+                        Invite
+                      </Btn>
+                    </div>
+                  </>
+                ) : null}
                 {plus ? (
                   <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>
                 ) : limits ? (
@@ -933,7 +977,7 @@ function Feed() {
                     </Btn>
                   </>
                 ) : (
-                  <p className="text-sm text-muted">Plus stays off until limits are on.</p>
+                  <p className="text-sm text-muted">R&D. Session limits are off.</p>
                 )}
               </div>
               <Btn

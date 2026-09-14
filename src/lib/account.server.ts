@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { getSql } from "@/lib/db";
-import { hashCode, hashesEqual, mailErrorMessage, sendCodeEmail, sixDigit } from "@/lib/mail-code.server";
+import { getSql, type Sql } from "@/lib/db";
+import { inviteAdmin as addAdmin, isAdmin, listAdmins, rndLimitsOn, setRndLimits } from "@/lib/admin.server";
 import { parseCategories, serializeCategories } from "@/lib/categories";
+import { hashCode, hashesEqual, mailErrorMessage, sendCodeEmail, sixDigit } from "@/lib/mail-code.server";
 import { weeklyUsed } from "@/lib/plan";
 import { isEmail, normalizeEmail } from "@/lib/school";
 import { ageFromBirthdate, newId } from "@/lib/utils";
@@ -19,9 +20,10 @@ export type AccountRow = {
   plan: string;
   sessionsUsed: number;
   limitsOn: boolean;
+  admin: boolean;
 };
 
-function mapAccount(r: Record<string, unknown>): AccountRow {
+function mapAccount(r: Record<string, unknown>): Omit<AccountRow, "limitsOn" | "admin"> {
   return {
     id: String(r.id),
     email: String(r.email),
@@ -34,8 +36,12 @@ function mapAccount(r: Record<string, unknown>): AccountRow {
     categories: parseCategories(r.categories),
     plan: String(r.plan || "free"),
     sessionsUsed: weeklyUsed(r.sessions_used, r.sessions_week_start),
-    limitsOn: Boolean(r.limits_on),
   };
+}
+
+async function decorate(sql: Sql, account: Omit<AccountRow, "limitsOn" | "admin">): Promise<AccountRow> {
+  const [limitsOn, admin] = await Promise.all([rndLimitsOn(sql), isAdmin(sql, account.email)]);
+  return { ...account, limitsOn, admin };
 }
 
 export async function sendAccountCode(data: { email: string }) {
@@ -92,7 +98,12 @@ export async function checkAccountCode(data: { email: string; code: string }) {
   if (existing[0]) {
     if (existing[0].banned) return { ok: false as const, error: "This account was closed." };
     await sql.query(`UPDATE accounts SET session_token = $2 WHERE email = $1`, [email, token]);
-    return { ok: true as const, exists: true as const, token, account: { ...mapAccount(existing[0]), sessionToken: token } };
+    return {
+      ok: true as const,
+      exists: true as const,
+      token,
+      account: await decorate(sql, { ...mapAccount(existing[0]), sessionToken: token }),
+    };
   }
   await sql.query(
     `INSERT INTO account_pending (email, session_token, expires_at, created_at)
@@ -137,7 +148,7 @@ export async function createAccount(data: {
   await sql.query(`DELETE FROM account_pending WHERE email = $1`, [email]);
   return {
     ok: true as const,
-    account: {
+    account: await decorate(sql, {
       id,
       email,
       name: data.name.trim(),
@@ -149,8 +160,7 @@ export async function createAccount(data: {
       categories,
       plan: "free",
       sessionsUsed: 0,
-      limitsOn: false,
-    },
+    }),
   };
 }
 
@@ -161,7 +171,6 @@ export async function saveAccount(data: {
   photo?: string | null;
   breakEveryMin?: number;
   categories?: string[];
-  limitsOn?: boolean;
 }) {
   const sql = await getSql();
   const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [data.token]);
@@ -172,11 +181,10 @@ export async function saveAccount(data: {
   const photo = data.photo === undefined ? cur.photo : data.photo;
   const breakEveryMin = data.breakEveryMin ?? cur.breakEveryMin;
   const categories = data.categories ? parseCategories(data.categories) : cur.categories;
-  const limitsOn = data.limitsOn ?? cur.limitsOn;
   if (data.categories && !categories.length) return { ok: false as const, error: "Pick at least one category." };
   await sql.query(
-    `UPDATE accounts SET name = $2, color = $3, photo = $4, break_every_min = $5, categories = $6, limits_on = $7 WHERE session_token = $1`,
-    [data.token, name, color, photo, breakEveryMin, serializeCategories(categories), limitsOn],
+    `UPDATE accounts SET name = $2, color = $3, photo = $4, break_every_min = $5, categories = $6 WHERE session_token = $1`,
+    [data.token, name, color, photo, breakEveryMin, serializeCategories(categories)],
   );
   return { ok: true as const };
 }
@@ -185,5 +193,34 @@ export async function readAccount(token: string) {
   const sql = await getSql();
   const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
   if (!rows[0]) return { ok: false as const, error: "Sign in again." };
-  return { ok: true as const, account: mapAccount(rows[0]) };
+  return { ok: true as const, account: await decorate(sql, mapAccount(rows[0])) };
+}
+
+export async function setRndMode(token: string, on: boolean) {
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT email FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
+  if (!rows[0]) return { ok: false as const, error: "Sign in again." };
+  if (!(await isAdmin(sql, String(rows[0].email)))) {
+    return { ok: false as const, error: "Admins only." };
+  }
+  await setRndLimits(sql, on);
+  return { ok: true as const, limitsOn: on };
+}
+
+export async function inviteAdminEmail(token: string, email: string) {
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT email FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
+  if (!rows[0]) return { ok: false as const, error: "Sign in again." };
+  const by = String(rows[0].email);
+  if (!(await isAdmin(sql, by))) return { ok: false as const, error: "Admins only." };
+  if (!isEmail(email)) return { ok: false as const, error: "Enter a real email." };
+  return addAdmin(sql, email, by);
+}
+
+export async function readAdmins(token: string) {
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT email FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
+  if (!rows[0]) return { ok: false as const, error: "Sign in again." };
+  if (!(await isAdmin(sql, String(rows[0].email)))) return { ok: false as const, error: "Admins only." };
+  return { ok: true as const, admins: await listAdmins(sql) };
 }

@@ -1,3 +1,4 @@
+import { rndLimitsOn } from "@/lib/admin.server";
 import { getSql, type Sql } from "@/lib/db";
 import { FREE_MAX_MIN, FREE_SESSIONS, FREE_WEEK_MS, PLUS_MAX_MIN, PLUS_PRICE_LABEL, isPlus, weeklyUsed } from "@/lib/plan";
 
@@ -24,24 +25,25 @@ export async function takeSession(sql: Sql, peerId: string, lengthMin: number): 
   const found = await planForPeer(sql, peerId);
   if (!found) return { ok: false, error: "Sign in again.", code: "signin" };
   const plus = isPlus(found.plan);
-  const maxMin = plus || !found.limitsOn ? PLUS_MAX_MIN : FREE_MAX_MIN;
+  const limitsOn = await rndLimitsOn(sql);
+  const maxMin = plus || !limitsOn ? PLUS_MAX_MIN : FREE_MAX_MIN;
   if (lengthMin > maxMin) {
     return {
       ok: false,
       code: "length",
-      error: plus || !found.limitsOn
+      error: plus || !limitsOn
         ? `Calls can be up to ${PLUS_MAX_MIN} minutes.`
         : `Free sessions are ${FREE_MAX_MIN} minutes. ${PLUS_PRICE_LABEL} unlocks longer calls.`,
     };
   }
-  if (!plus && found.limitsOn && found.sessionsUsed >= FREE_SESSIONS) {
+  if (!plus && limitsOn && found.sessionsUsed >= FREE_SESSIONS) {
     return {
       ok: false,
       code: "paywall",
       error: `You've used this week's ${FREE_SESSIONS} free sessions. ${PLUS_PRICE_LABEL} for unlimited.`,
     };
   }
-  if (!plus && found.limitsOn) {
+  if (!plus && limitsOn) {
     const start = Date.parse(String(found.weekStart ?? ""));
     const freshWeek = !Number.isFinite(start) || Date.now() - start >= FREE_WEEK_MS;
     if (freshWeek) {

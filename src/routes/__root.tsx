@@ -2,7 +2,6 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
-import { loadProfile } from "@/lib/profile";
 import { applyColorTheme } from "@/lib/theme";
 import appCss from "../styles.css?url";
 import { useEffect, useState } from "react";
@@ -43,7 +42,7 @@ export const Route = createRootRoute({
 function Root() {
   const [client] = useState(() => new QueryClient());
   useEffect(() => {
-    applyColorTheme(loadProfile()?.color);
+    applyColorTheme();
   }, []);
   return (
     <html lang="en" data-theme="default" suppressHydrationWarning>

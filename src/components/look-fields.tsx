@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
 import { compressPhoto } from "@/lib/photo";
-import { COLOR_THEMES, NONE, applyColorTheme, swatchFill } from "@/lib/theme";
+import { COLOR_THEMES, HOUSE, NONE } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 function Swatch({
@@ -24,7 +24,7 @@ function Swatch({
       title={label}
       onClick={onPick}
       className={cn("size-11 rounded-full border-black", selected ? "border-[3px]" : "border")}
-      style={{ background: fill }}
+      style={{ backgroundColor: fill }}
     />
   );
 }
@@ -52,31 +52,20 @@ export function LookFields({
       <div className="flex items-center gap-4">
         <Face name={name || "you"} color={color} photo={photo} size="lg" />
         <p className="text-base text-muted">
-          House look is cream and purple. Each color is a three-color set: primary, secondary, tertiary. A photo sits on top.
+          The app stays cream and purple. Pick a color for your default picture. A photo sits on top.
         </p>
       </div>
       <fieldset>
         <legend className="text-base font-medium">Your color</legend>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Swatch
-            label="House colors"
-            selected={!color}
-            fill={swatchFill(NONE)}
-            onPick={() => {
-              applyColorTheme(NONE);
-              onColor(NONE);
-            }}
-          />
+          <Swatch label="House purple" selected={!color} fill={HOUSE} onPick={() => onColor(NONE)} />
           {COLOR_THEMES.map((t) => (
             <Swatch
               key={t.id}
               label={t.label}
               selected={color === t.color}
-              fill={swatchFill(t.color)}
-              onPick={() => {
-                applyColorTheme(t.color);
-                onColor(t.color);
-              }}
+              fill={t.color}
+              onPick={() => onColor(t.color)}
             />
           ))}
         </div>

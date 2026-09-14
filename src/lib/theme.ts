@@ -3,15 +3,14 @@ export const HOUSE = "#6b5cff";
 export const HOUSE_INK = "#1c1933";
 export const HOUSE_CREAM = "#f5f2ec";
 
-/** ROYGBIV primaries. Each is a 3-color set from the chart (Poppy, Paprika, Honey, Cedar, Lagoon, Aubergine, Fuchsia). */
 export const COLOR_THEMES = [
-  { id: "red", color: "#c44536", second: "#2f4a4c", third: "#e08a3c", label: "Red" },
-  { id: "orange", color: "#c45c2e", second: "#e8d5c4", third: "#3d2418", label: "Orange" },
-  { id: "yellow", color: "#e09b2d", second: "#d4c4b0", third: "#6b6a68", label: "Yellow" },
-  { id: "green", color: "#1a4a3a", second: "#c5d63a", third: "#eee6d8", label: "Green" },
-  { id: "blue", color: "#3aa8ac", second: "#e08a3c", third: "#e56b62", label: "Blue" },
-  { id: "indigo", color: "#4a2a6e", second: "#eee6d8", third: "#2a8a8a", label: "Indigo" },
-  { id: "violet", color: "#c42a72", second: "#eee6d8", third: "#6a5a8a", label: "Violet" },
+  { id: "red", color: "#c44536", label: "Red" },
+  { id: "orange", color: "#c45c2e", label: "Orange" },
+  { id: "yellow", color: "#e09b2d", label: "Yellow" },
+  { id: "green", color: "#1a4a3a", label: "Green" },
+  { id: "blue", color: "#3aa8ac", label: "Blue" },
+  { id: "indigo", color: "#4a2a6e", label: "Indigo" },
+  { id: "violet", color: "#c42a72", label: "Violet" },
 ] as const;
 
 export type ThemeId = (typeof COLOR_THEMES)[number]["id"];
@@ -64,27 +63,7 @@ export function normalizeColor(color: string | null | undefined) {
   return OLD[key] ?? NONE;
 }
 
-export function themeForColor(color: string | null | undefined) {
-  const hex = normalizeColor(color);
-  if (!hex) return { id: "default" as const, color: NONE, second: HOUSE_INK, third: HOUSE_CREAM, label: "Default" };
-  return (
-    COLOR_THEMES.find((t) => t.color === hex) ?? {
-      id: "default" as const,
-      color: NONE,
-      second: HOUSE_INK,
-      third: HOUSE_CREAM,
-      label: "Default",
-    }
-  );
-}
-
-export function swatchFill(color: string | null | undefined) {
-  const t = themeForColor(color);
-  const a = t.color || HOUSE;
-  return `conic-gradient(from 210deg, ${a} 0 40%, ${t.second} 40% 70%, ${t.third} 70% 100%)`;
-}
-
-export function applyColorTheme(color: string | null | undefined) {
+export function applyColorTheme(_color?: string | null) {
   if (typeof document === "undefined") return;
-  document.documentElement.setAttribute("data-theme", themeForColor(color).id);
+  document.documentElement.setAttribute("data-theme", "default");
 }

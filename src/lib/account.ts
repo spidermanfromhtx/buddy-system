@@ -50,7 +50,6 @@ export const saveAccount = createServerFn({ method: "POST" })
         photo: PHOTO,
         breakEveryMin: z.number().int().min(1).max(60).optional(),
         categories: z.array(z.string()).max(8).optional(),
-        limitsOn: z.boolean().optional(),
       })
       .parse(d),
   )
@@ -71,4 +70,25 @@ export const startPlusCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { startPlusCheckout: start } = await import("./stripe.server");
     return start(data.token);
+  });
+
+export const setRndMode = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ token: TOKEN, on: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const { setRndMode: set } = await import("./account.server");
+    return set(data.token, data.on);
+  });
+
+export const inviteAdmin = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ token: TOKEN, email: EMAIL }).parse(d))
+  .handler(async ({ data }) => {
+    const { inviteAdminEmail } = await import("./account.server");
+    return inviteAdminEmail(data.token, data.email);
+  });
+
+export const listAdmins = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ token: TOKEN }).parse(d))
+  .handler(async ({ data }) => {
+    const { readAdmins } = await import("./account.server");
+    return readAdmins(data.token);
   });
