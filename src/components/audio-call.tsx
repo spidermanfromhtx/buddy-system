@@ -4,11 +4,14 @@ import {
   currentStream,
   getLocalStream,
   hasLiveMic,
+  hearPcm,
   isMicMuted,
   isRealVideo,
   micHint,
   micLevel,
+  onPcmOut,
   setMicMuted,
+  unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
 import { startJpegSend } from "@/lib/wire-media";
@@ -48,16 +51,11 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
 }) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
   const p2pRef = useRef<P2PRoom | null>(null);
   const [local, setLocal] = useState<MediaStream | null>(currentStream());
   const [status, setStatus] = useState(hasLiveMic() ? "joining" : "need-mic");
   const [peers, setPeers] = useState<PeerInfo[]>([]);
   const [err, setErr] = useState("");
-  const [audioNeedsTap, setAudioNeedsTap] = useState(false);
   const [remoteAudioState, setRemoteAudioState] = useState<"none" | "track" | "playing">("none");
   const [remoteVideo, setRemoteVideo] = useState(false);
   const [remoteJpeg, setRemoteJpeg] = useState(false);
@@ -77,41 +75,6 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
     if (video) void el.play().catch(() => {});
   }
 
-  async function ensureAudioOutput() {
-    let ctx = audioContextRef.current;
-    if (!ctx) {
-      ctx = new AudioContext();
-      audioContextRef.current = ctx;
-    }
-    if (ctx.state !== "running") await ctx.resume();
-    return ctx;
-  }
-
-  async function playRemoteAudio() {
-    const audio = remoteAudioRef.current;
-    const stream = audio?.srcObject instanceof MediaStream ? audio.srcObject : null;
-    if (!stream || !stream.getAudioTracks().length) return;
-
-    try {
-      const ctx = await ensureAudioOutput();
-      if (audioSourceRef.current) audioSourceRef.current.disconnect();
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      audioSourceRef.current = source;
-      audioAnalyserRef.current = analyser;
-      audio.muted = true;
-      audio.volume = 1;
-      audio.autoplay = false;
-      setAudioNeedsTap(false);
-      setRemoteAudioState("playing");
-    } catch {
-      setAudioNeedsTap(true);
-    }
-  }
-
   function showRemote(remote: MediaStream) {
     const video = remoteVideoRef.current;
     if (video) {
@@ -125,23 +88,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
         if (video.videoWidth > 16) setRemoteVideo(true);
       };
     }
-
-    const audioTracks = remote.getAudioTracks();
-    setRemoteAudioState(audioTracks.length ? "track" : "none");
-    const audio = remoteAudioRef.current;
-    if (audio && audioTracks.length) {
-      const audioStream = new MediaStream(audioTracks);
-      audio.srcObject = audioStream;
-      void playRemoteAudio();
-      for (const track of audioTracks) {
-        track.onunmute = () => {
-          setRemoteAudioState("track");
-          void playRemoteAudio();
-        };
-        track.onmute = () => setRemoteAudioState("track");
-        track.onended = () => setRemoteAudioState("none");
-      }
-    }
+    if (remote.getAudioTracks().length) setRemoteAudioState("track");
   }
 
   async function start() {
@@ -151,6 +98,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       const media = await getLocalStream(Boolean(allowCamera && wantCamera), loopback);
       setLocal(media);
       showLocal(media);
+      await unlockOutput();
       if (loopback) {
         setStatus("demo");
         const el = remoteVideoRef.current;
@@ -178,7 +126,12 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
         onRemoteStream: (_id, remote) => showRemote(remote),
         onMediaData: (_id, data) => {
           const view = new DataView(data);
-          if (view.byteLength > 2 && view.getUint8(0) === 1) {
+          if (view.byteLength >= 2 && view.getUint8(0) === 0) {
+            hearPcm(data);
+            setRemoteAudioState("playing");
+            return;
+          }
+          if (view.byteLength > 0 && view.getUint8(0) === 1) {
             const blob = new Blob([data.slice(1)], { type: "image/jpeg" });
             const url = URL.createObjectURL(blob);
             if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
@@ -198,16 +151,16 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
   }
 
   useEffect(() => {
+    return onPcmOut((buf) => {
+      p2pRef.current?.sendMedia(buf);
+    });
+  }, []);
+
+  useEffect(() => {
     void start();
     return () => {
       p2pRef.current?.close(false);
       p2pRef.current = null;
-      audioSourceRef.current?.disconnect();
-      audioAnalyserRef.current?.disconnect();
-      void audioContextRef.current?.close();
-      audioSourceRef.current = null;
-      audioAnalyserRef.current = null;
-      audioContextRef.current = null;
       if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,7 +168,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
 
   useEffect(() => {
     const retry = () => {
-      if (remoteAudioState !== "none") void playRemoteAudio();
+      void unlockOutput();
     };
     window.addEventListener("pointerdown", retry, { passive: true });
     window.addEventListener("keydown", retry);
@@ -223,7 +176,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       window.removeEventListener("pointerdown", retry);
       window.removeEventListener("keydown", retry);
     };
-  }, [remoteAudioState]);
+  }, []);
 
   const lastCam = useRef(Boolean(allowCamera && wantCamera));
   useEffect(() => {
@@ -250,7 +203,6 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <audio ref={remoteAudioRef} playsInline />
       <div className={showStage ? "relative aspect-square w-full max-w-xs" : "contents"}>
         <video ref={remoteVideoRef} className={remoteVideo ? "size-full rounded-3xl bg-paper-2 object-cover" : "pointer-events-none fixed bottom-2 left-2 h-8 w-8 opacity-[0.04]"} autoPlay playsInline muted />
         {remoteJpeg && !remoteVideo ? <img ref={jpegRef} alt="" className="size-full rounded-3xl bg-paper-2 object-cover" /> : <img ref={jpegRef} alt="" className="pointer-events-none absolute h-px w-px opacity-0" />}
@@ -262,7 +214,6 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       <MicMeter active={!muted && !!local} />
       {remoteAudioState === "track" ? <p className="text-xs text-muted">remote mic connected · audio output starting</p> : null}
       {remoteAudioState === "playing" ? <p className="text-xs text-muted">hearing remote audio</p> : null}
-      {audioNeedsTap ? <button type="button" className="text-sm text-paper underline underline-offset-4" onClick={() => void playRemoteAudio()}>tap to enable sound</button> : null}
       <p className="text-sm text-muted">{err || (status === "connected" ? `live · ${peers.length} other` : status === "need-mic" ? "mic needed" : status)}</p>
       {status === "need-mic" ? <Btn kind="fill" className="mt-2" onClick={() => void start()}>Join the line</Btn> : <p className="text-xs text-muted">speak. the bars should move.</p>}
     </div>
