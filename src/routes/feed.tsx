@@ -23,7 +23,7 @@ import {
   type Listing,
 } from "@/lib/listings";
 import { clearProfile, loadProfile, profileFromAccount, saveProfile, type Profile } from "@/lib/profile";
-import { getLocalStream, unlockOutput } from "@/lib/media";
+import { getLocalStream, micHint, unlockOutput } from "@/lib/media";
 import { formatDue, formatWindow, newId, todayIso, windowRange } from "@/lib/utils";
 import { armRing } from "@/lib/ring";
 
@@ -198,7 +198,14 @@ function Feed() {
 
   const goOpen = useMutation({
     mutationFn: async () => {
-      if (!me || !task.trim()) return;
+      if (!me) return;
+      if (!task.trim()) throw new Error("Write a one-line task first.");
+      try {
+        await getLocalStream(camera);
+      } catch (e) {
+        throw new Error(micHint(e));
+      }
+      void unlockOutput();
       const id = liveId ?? newId("live");
       setLiveId(id);
       return upsertLive({
@@ -310,12 +317,13 @@ function Feed() {
     if (!me) return;
     if (row.peerId === me.id) return;
     try {
-      await unlockOutput();
-      await armRing();
       await getLocalStream(false);
-    } catch {
-      // Call screen shows Join the line if the mic is still blocked.
+    } catch (e) {
+      setNote(micHint(e));
+      return;
     }
+    void unlockOutput();
+    void armRing();
     const id = newId("call");
     const room = `r${id.replace(/-/g, "").slice(0, 20)}`;
     const started = await startCall({
@@ -663,7 +671,7 @@ function Feed() {
         </aside>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 flex justify-between gap-2 border-t border-ink/10 bg-paper/90 px-6 py-4 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-10 flex justify-between gap-2 border-t border-ink/10 bg-paper/90 px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
         {actions}
       </nav>
 
@@ -671,13 +679,13 @@ function Feed() {
         <div
           className={
             sheet === "book"
-              ? "fixed inset-0 z-20 flex items-end bg-night/50 md:hidden"
-              : "fixed inset-0 z-20 flex items-end bg-night/50 md:items-center md:justify-center"
+              ? "fixed inset-0 z-30 flex items-end bg-night/50 md:hidden"
+              : "fixed inset-0 z-30 flex items-end bg-night/50 md:items-center md:justify-center"
           }
           onClick={() => setSheet("none")}
         >
           <div
-            className="w-full max-h-dvh overflow-y-auto rounded-t-3xl bg-paper p-6 text-ink shadow-xl shadow-night/20 md:max-w-lg md:rounded-3xl md:p-10"
+            className="w-full max-h-dvh overflow-y-auto rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink shadow-xl shadow-night/20 md:max-w-lg md:rounded-3xl md:p-10"
             onClick={(e) => e.stopPropagation()}
           >
             {sheet === "settings" ? (
@@ -849,19 +857,25 @@ function Feed() {
                 </label>
                 <div>
                   <p className="text-sm font-medium">Due date</p>
-                  <p className="mt-1 text-xs text-muted">Optional. Only if this task has one. Tap a day, or leave it blank.</p>
-                  <div className="mt-2">
-                    <MonthCal value={dueDate} onChange={setDueDate} />
-                  </div>
+                  <p className="mt-1 text-xs text-muted">Optional. Only if this task has one.</p>
                   {dueDate ? (
-                    <Btn type="button" className="mt-2" onClick={() => setDueDate("")}>
-                      Clear due date
+                    <>
+                      <div className="mt-2">
+                        <MonthCal value={dueDate} onChange={setDueDate} />
+                      </div>
+                      <Btn type="button" className="mt-2" onClick={() => setDueDate("")}>
+                        Clear due date
+                      </Btn>
+                    </>
+                  ) : (
+                    <Btn type="button" className="mt-2" onClick={() => setDueDate(todayIso())}>
+                      Add due date
                     </Btn>
-                  ) : null}
+                  )}
                 </div>
                 <fieldset>
                   <legend className="text-sm font-medium">Camera</legend>
-                  <p className="mt-1 text-xs text-muted">On or off for this call.</p>
+                  <p className="mt-1 text-xs text-muted">On or off for this call. Phone will ask for mic when you go live.</p>
                   <div className="mt-2 flex gap-2">
                     <Btn
                       type="button"
@@ -881,8 +895,9 @@ function Feed() {
                     </Btn>
                   </div>
                 </fieldset>
-                <Btn kind="fill" className="h-12 w-full" onClick={() => goOpen.mutate()}>
-                  Go live
+                {note && sheet === "open" ? <p className="text-sm text-rust">{note}</p> : null}
+                <Btn kind="fill" className="h-12 w-full" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
+                  {goOpen.isPending ? "Going live…" : "Go live"}
                 </Btn>
               </div>
             )}

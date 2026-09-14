@@ -124,10 +124,10 @@ export function AudioCall({
     setErr("");
     setStatus("joining");
     try {
-      await unlockOutput();
       const media = await getLocalStream(wantCamera, loopback);
       setLocal(media);
       showLocal(media);
+      void unlockOutput();
       if (loopback) {
         setStatus("demo");
         return;

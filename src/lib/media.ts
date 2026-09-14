@@ -39,6 +39,23 @@ function getSpeaker() {
   return speaker;
 }
 
+let keep: HTMLVideoElement | null = null;
+
+function keepLocalAlive(media: MediaStream) {
+  if (typeof document === "undefined") return;
+  if (!keep) {
+    keep = document.createElement("video");
+    keep.muted = true;
+    keep.autoplay = true;
+    keep.setAttribute("playsinline", "true");
+    keep.setAttribute("webkit-playsinline", "true");
+    keep.style.cssText = "position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none";
+    document.body.appendChild(keep);
+  }
+  if (keep.srcObject !== media) keep.srcObject = media;
+  void keep.play().catch(() => {});
+}
+
 function addHoldVideo(media: MediaStream) {
   return media;
 }
@@ -48,7 +65,6 @@ export function getAudioContext() {
 }
 
 export async function unlockOutput() {
-  const el = getSpeaker();
   try {
     output ??= new AudioContext();
     if (output.state === "suspended") await output.resume();
@@ -58,16 +74,13 @@ export async function unlockOutput() {
     src.connect(output.destination);
     src.start();
   } catch {
-    // play() below is enough to unlock
+    // speaker play below is enough
   }
-  if (!el) return;
+  const el = getSpeaker();
+  if (!el || !el.srcObject) return;
   el.muted = false;
   el.volume = 1;
-  try {
-    await el.play();
-  } catch {
-    // Answer / Call already consumed the gesture.
-  }
+  void el.play().catch(() => {});
 }
 
 export async function getLocalStream(wantCamera: boolean, monitor = false): Promise<MediaStream> {
@@ -91,6 +104,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
       } catch {
         addHoldVideo(stream);
       }
+      keepLocalAlive(stream);
       return stream;
     }
     if (!wantCamera && liveVideo.length) {
@@ -99,13 +113,18 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
         stream.removeTrack(t);
       }
       addHoldVideo(stream);
+      keepLocalAlive(stream);
       return stream;
     }
     if (!wantCamera) {
       addHoldVideo(stream);
+      keepLocalAlive(stream);
       return stream;
     }
-    if (liveVideo.length) return stream;
+    if (liveVideo.length) {
+      keepLocalAlive(stream);
+      return stream;
+    }
   }
   const audio: boolean | MediaTrackConstraints = monitor
     ? { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
@@ -124,6 +143,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
         addHoldVideo(stream);
       }
       if (!wantCamera) addHoldVideo(stream);
+      keepLocalAlive(stream);
       return stream;
     } catch (e) {
       last = e;
@@ -138,6 +158,10 @@ export function stopLocalStream() {
     t.stop();
   });
   stream = null;
+  if (keep) {
+    keep.srcObject = null;
+    keep.pause();
+  }
   if (speaker) {
     speaker.srcObject = null;
     speaker.pause();

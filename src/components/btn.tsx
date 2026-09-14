@@ -13,10 +13,12 @@ const KIND = {
 export function Btn({
   kind = "line",
   className,
+  type = "button",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { kind?: keyof typeof KIND }) {
   return (
     <button
+      type={type}
       className={cn(
         "inline-flex h-12 shrink-0 items-center justify-center rounded-full px-6 text-base font-medium transition-transform duration-150 ease-out active:scale-[0.98] disabled:opacity-50",
         KIND[kind],
