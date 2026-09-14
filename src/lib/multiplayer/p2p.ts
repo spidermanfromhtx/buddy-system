@@ -56,6 +56,8 @@ export interface P2PRoomOptions {
   onConnected?: () => void;
   /** Optional local mic/cam. Added to every new peer connection. */
   mediaStream?: MediaStream;
+  /** When false, no video m-line. Audio-only listings stay audio-only. */
+  allowVideo?: boolean;
   onRemoteStream?: (peerId: string, stream: MediaStream) => void;
   onMediaData?: (peerId: string, data: ArrayBuffer) => void;
 }
@@ -259,26 +261,20 @@ export class P2PRoom {
   private wireLocal(slot: PeerSlot, peerId: string) {
     const stream = this.opts.mediaStream;
     if (!stream) return;
-    const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
-    const video = stream.getVideoTracks().find((t) => t.readyState === "live");
-    const aSender = senderFor(slot.pc, "audio");
-    if (aSender) void aSender.replaceTrack(this.sendAudio && audio ? audio : null);
-    else if (this.sendAudio && audio) slot.pc.addTrack(audio, stream);
-    const vSender = senderFor(slot.pc, "video");
-    if (video) {
-      if ("contentHint" in video) (video as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
-      if (vSender) {
-        const wasEmpty = !vSender.track;
-        void vSender.replaceTrack(video).then(() => {
-          bumpVideo(vSender, video);
-          if (wasEmpty) void this.kickOffer(slot, peerId);
-        });
-      } else {
-        slot.pc.addTrack(video, stream);
-        void this.kickOffer(slot, peerId);
+    for (const track of stream.getTracks()) {
+      if (track.readyState !== "live") continue;
+      if (track.kind === "audio") track.enabled = this.sendAudio;
+      const sender = senderFor(slot.pc, track.kind);
+      if (sender) {
+        if (sender.track !== track) void sender.replaceTrack(track).then(() => bumpVideo(sender, track));
+      } else if (track.kind !== "video" || this.opts.allowVideo) {
+        slot.pc.addTrack(track, stream);
+        if (track.kind === "video") void this.kickOffer(slot, peerId);
       }
-    } else if (vSender?.track) {
-      void vSender.replaceTrack(null);
+    }
+    if (this.opts.allowVideo && !stream.getVideoTracks().some((t) => t.readyState === "live")) {
+      const vSender = senderFor(slot.pc, "video");
+      if (vSender?.track) void vSender.replaceTrack(null);
     }
   }
 
@@ -454,7 +450,10 @@ export class P2PRoom {
       if (!initiator && !pc.currentRemoteDescription) return;
       try {
         slot.makingOffer = true;
-        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: Boolean(this.opts.allowVideo),
+        });
         if (this.closed || pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
         await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
@@ -503,7 +502,7 @@ export class P2PRoom {
       pc.getTransceivers().map((tr) => tr.receiver.track?.kind ?? tr.sender.track?.kind),
     );
     if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" });
-    if (!kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
+    if (this.opts.allowVideo && !kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
 
     if (initiator) void this.kickOffer(slot, peerId);
     return slot;
@@ -514,7 +513,10 @@ export class P2PRoom {
     if (slot.pc.signalingState !== "stable") return;
     try {
       slot.makingOffer = true;
-      const offer = await slot.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+      const offer = await slot.pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: Boolean(this.opts.allowVideo),
+      });
       if (this.closed || slot.pc.signalingState !== "stable") return;
       await slot.pc.setLocalDescription(offer);
       await this.sendSignal(peerId, "offer", slot.pc.localDescription!.toJSON());

@@ -41,7 +41,7 @@ function CallScreen() {
   const task = search.task ?? q.data?.task ?? "work";
   const lengthMin = search.lengthMin ?? q.data?.lengthMin ?? 25;
   const allowCamera = Boolean(search.allowCamera ?? q.data?.allowCamera);
-  const [useCam, setUseCam] = useState(Boolean(search.camera) && allowCamera);
+  const [useCam, setUseCam] = useState(allowCamera);
   const room = search.room ?? q.data?.room;
   const breakEvery = (me?.breakEveryMin ?? 30) * 60;
 

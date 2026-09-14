@@ -386,7 +386,7 @@ function Feed() {
         name: row.name,
         color: row.color,
         task: row.task,
-        camera: false,
+        camera: row.camera,
         allowCamera: row.camera,
         room,
         lengthMin: row.lengthMin,

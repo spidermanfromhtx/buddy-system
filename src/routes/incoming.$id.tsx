@@ -42,7 +42,7 @@ function Incoming() {
   const lengthMin = search.lengthMin ?? q.data?.lengthMin ?? 25;
   const urgent = search.urgent ?? false;
   const allowCamera = Boolean(search.allowCamera ?? q.data?.allowCamera);
-  const [useCam, setUseCam] = useState(false);
+  const [useCam, setUseCam] = useState(allowCamera);
   const ringingYou = bothRing || (!dummy && !!q.data && !!me && q.data.calleeId === me.id);
 
   useEffect(() => {
@@ -63,7 +63,7 @@ function Incoming() {
     stopRing();
     const camera = allowCamera && useCam;
     try {
-      await getLocalStream(false, dummy);
+      await getLocalStream(camera, dummy);
     } catch {
       // Call screen shows Join the line if the mic is still blocked.
     }
