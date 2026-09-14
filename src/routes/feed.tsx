@@ -605,7 +605,7 @@ function Feed() {
           disabled={goBook.isPending}
           onClick={() => goBook.mutate()}
         >
-          {goBook.isPending ? "…" : scheduled.some((r) => !r.matchPeerName) ? "In the queue" : "Book"}
+          {goBook.isPending ? "…" : "Add to queue"}
         </Btn>
       </div>
     </div>
