@@ -93,11 +93,13 @@ export function AudioCall({
   const [err, setErr] = useState("");
   const [remoteVideo, setRemoteVideo] = useState(false);
   const [remoteJpeg, setRemoteJpeg] = useState(false);
+  const [localCam, setLocalCam] = useState(false);
 
   function showLocal(media: MediaStream) {
     const el = localVideoRef.current;
     if (!el) return;
     const video = media.getVideoTracks().some((t) => t.readyState === "live" && !isHoldVideo(t));
+    setLocalCam(video);
     el.srcObject = video ? media : null;
     if (video) void el.play().catch(() => {});
   }
@@ -126,7 +128,7 @@ export function AudioCall({
     setErr("");
     setStatus("joining");
     try {
-      const media = await getLocalStream(wantCamera, loopback);
+      const media = await getLocalStream(false, loopback);
       setLocal(media);
       showLocal(media);
       void unlockOutput();
@@ -189,13 +191,15 @@ export function AudioCall({
 
   const camBoot = useRef(true);
   useEffect(() => {
+    const joined = loopback || status === "connected";
+    const on = wantCamera && joined;
     if (camBoot.current) {
       camBoot.current = false;
-      return;
+      if (!on) return;
     }
     void (async () => {
       try {
-        const media = await getLocalStream(wantCamera, loopback);
+        const media = await getLocalStream(on, loopback);
         setLocal(media);
         showLocal(media);
         p2pRef.current?.attachMedia(media);
@@ -203,7 +207,7 @@ export function AudioCall({
         // stay on current stream
       }
     })();
-  }, [wantCamera, loopback]);
+  }, [wantCamera, loopback, status]);
 
   useEffect(() => {
     if (loopback || status === "need-mic") return;
@@ -230,7 +234,7 @@ export function AudioCall({
     };
   }, [local, wantCamera, loopback]);
 
-  const showStage = wantCamera || remoteVideo || remoteJpeg;
+  const showStage = localCam || remoteVideo || remoteJpeg;
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -260,7 +264,7 @@ export function AudioCall({
               : "hidden"
           }
         />
-        {wantCamera && !remoteVideo && !remoteJpeg ? (
+        {localCam && !remoteVideo && !remoteJpeg ? (
           <p className="flex size-full items-center justify-center rounded-3xl bg-paper-2 text-sm text-muted">
             waiting for video
           </p>
@@ -268,7 +272,7 @@ export function AudioCall({
         <video
           ref={localVideoRef}
           className={
-            wantCamera
+            localCam
               ? "absolute bottom-3 right-3 h-24 w-24 rounded-2xl bg-night object-cover"
               : "pointer-events-none fixed bottom-0 left-0 h-px w-px"
           }

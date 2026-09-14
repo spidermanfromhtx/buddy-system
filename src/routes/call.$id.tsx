@@ -82,7 +82,7 @@ function CallScreen() {
     <main className="flex min-h-dvh flex-col bg-night text-paper">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-between px-6 py-10">
         <div className="flex w-full flex-col items-center text-center">
-          {useCam ? null : <Face name={name} color={color} photo={photo} size="lg" />}
+          <Face name={name} color={color} photo={photo} size="lg" />
           <p className="mt-6 text-xs uppercase tracking-[0.2em] text-paper/50">{task}</p>
           <h1 className="mt-2 font-display text-4xl tracking-tight">{name}</h1>
           <p className="mt-6 font-display text-5xl tabular-nums">

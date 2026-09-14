@@ -62,7 +62,7 @@ function Incoming() {
     stopRing();
     const camera = allowCamera && useCam;
     try {
-      await getLocalStream(camera, dummy);
+      await getLocalStream(false, dummy);
     } catch {
       // Call screen shows Join the line if the mic is still blocked.
     }

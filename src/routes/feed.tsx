@@ -25,7 +25,7 @@ import {
 } from "@/lib/listings";
 import { fileReport } from "@/lib/trust";
 import { clearProfile, loadProfile, profileFromAccount, saveProfile, type Profile } from "@/lib/profile";
-import { getLocalStream, micHint, unlockOutput } from "@/lib/media";
+import { getLocalStream, micHint, stopLocalStream, unlockOutput } from "@/lib/media";
 import { formatDue, formatWindow, newId, todayIso, windowRange } from "@/lib/utils";
 import { armRing } from "@/lib/ring";
 
@@ -219,7 +219,8 @@ function Feed() {
       if (!task.trim()) throw new Error("Write a task description first.");
       if (!category.length) throw new Error("Pick at least one category.");
       try {
-        await getLocalStream(camera);
+        await getLocalStream(false);
+        stopLocalStream();
       } catch (e) {
         throw new Error(micHint(e));
       }
