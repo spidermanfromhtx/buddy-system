@@ -11,12 +11,13 @@ const pcmSinks = new Set<(buf: ArrayBuffer) => void>();
 const heardSeq = new Set<number>();
 let micMuted = false;
 let meter = 0;
+let nativeEar = false;
 
 const WORKLET = `
 class BuddyCap extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.buf = new Float32Array(4096);
+    this.buf = new Float32Array(2048);
     this.i = 0;
   }
   process(inputs) {
@@ -149,7 +150,7 @@ async function startCapture() {
     return;
   }
 
-  const proc = output.createScriptProcessor(4096, 1, 1);
+  const proc = output.createScriptProcessor(2048, 1, 1);
   src.connect(proc);
   proc.connect(silent);
   silent.connect(output.destination);
@@ -201,7 +202,12 @@ export async function unlockOutput() {
   await startCapture();
 }
 
+export function setNativeEar(on: boolean) {
+  nativeEar = on;
+}
+
 export function hearPcm(buf: ArrayBuffer) {
+  if (nativeEar) return;
   if (!output) return;
   if (output.state === "suspended") void output.resume();
   const view = new DataView(buf);
@@ -260,6 +266,7 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
 
 export function stopLocalStream() {
   micMuted = false;
+  nativeEar = false;
   stopCapture();
   heardSeq.clear();
   if (stream) {

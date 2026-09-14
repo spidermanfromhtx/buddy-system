@@ -50,7 +50,7 @@ export function startJpegSend(
     );
   };
   tick();
-  const id = window.setInterval(tick, 150);
+  const id = window.setInterval(tick, 100);
   return () => window.clearInterval(id);
 }
 
@@ -95,8 +95,8 @@ export function playWire(
     node.buffer = buffer;
     node.connect(audio.ctx.destination);
     const now = audio.ctx.currentTime;
-    let start = Math.max(now + 0.05, audio.next);
-    if (start - now > 0.16) start = now + 0.05;
+    let start = Math.max(now + 0.02, audio.next);
+    if (start - now > 0.1) start = now + 0.02;
     node.start(start);
     return start + buffer.duration;
   } catch {

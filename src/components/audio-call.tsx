@@ -11,6 +11,7 @@ import {
   micLevel,
   onPcmOut,
   setMicMuted,
+  setNativeEar,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
@@ -89,8 +90,30 @@ export function AudioCall({
     if (video) void el.play().catch(() => {});
   }
 
-  function showRemote(_remote: MediaStream) {
-    // Stills on the wire are the picture. Live tracks flash then die.
+  function showRemote(remote: MediaStream) {
+    const el = remoteVideoRef.current;
+    if (el) {
+      if (el.srcObject !== remote) el.srcObject = remote;
+      el.muted = false;
+      el.volume = 1;
+      el.playsInline = true;
+      el.autoplay = true;
+      void el.play().catch(() => {});
+      el.onloadedmetadata = () => {
+        if (el.videoWidth > 16) setRemoteVideo(true);
+      };
+    }
+    for (const t of remote.getAudioTracks()) {
+      const live = () => setNativeEar(true);
+      t.onunmute = live;
+      if (t.readyState === "live" && !t.muted) live();
+    }
+    for (const t of remote.getVideoTracks()) {
+      t.onunmute = () => {
+        const v = remoteVideoRef.current;
+        if (v && v.videoWidth > 16) setRemoteVideo(true);
+      };
+    }
   }
 
   async function start() {
@@ -198,11 +221,10 @@ export function AudioCall({
           className={
             remoteVideo
               ? "size-full rounded-3xl bg-paper-2 object-cover"
-              : "pointer-events-none absolute left-0 top-0 h-40 w-40 opacity-0"
+              : "pointer-events-none fixed bottom-2 left-2 h-8 w-8 opacity-[0.04]"
           }
           autoPlay
           playsInline
-          muted
         />
         {remoteJpeg && !remoteVideo ? (
           <img

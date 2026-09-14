@@ -279,7 +279,7 @@ export class P2PRoom {
   }
 
   sendMedia(data: ArrayBuffer): void {
-    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1;
+    let viaDc = false;
     for (const slot of this.peers.values()) {
       const ch =
         slot.media?.readyState === "open"
@@ -287,19 +287,22 @@ export class P2PRoom {
           : slot.reliable?.readyState === "open"
             ? slot.reliable
             : null;
-      if (!ch || ch.bufferedAmount > 64_000) continue;
+      if (!ch || ch.bufferedAmount > 128_000) continue;
       try {
         ch.send(data);
+        viaDc = true;
       } catch {
         // closed
       }
     }
+    if (viaDc) return;
+    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1;
     const now = Date.now();
     if (jpeg) {
       if (now - this.lastJpegAt < 90) return;
       this.lastJpegAt = now;
     } else {
-      if (now - this.lastPcmAt < 70) return;
+      if (now - this.lastPcmAt < 60) return;
       this.lastPcmAt = now;
     }
     const payload = { a: bufToB64(data) };
@@ -346,7 +349,14 @@ export class P2PRoom {
   }
 
   private anyPairConnecting(): boolean {
-    return this.peers.size > 0;
+    if (!this.peers.size) return false;
+    for (const s of this.peers.values()) {
+      if (s.terminal) continue;
+      const dc = s.media?.readyState === "open" || s.reliable?.readyState === "open";
+      if (!dc) return true;
+      if (s.info.connectionState !== "connected") return true;
+    }
+    return false;
   }
 
   private async pollOnce(): Promise<void> {
@@ -412,6 +422,7 @@ export class P2PRoom {
     const pc = new RTCPeerConnection({
       iceServers: this.opts.iceServers ?? defaultIceServers(),
       bundlePolicy: "max-bundle",
+      iceCandidatePoolSize: 4,
     });
     const slot: PeerSlot = {
       pc,
