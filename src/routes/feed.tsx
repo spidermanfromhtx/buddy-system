@@ -12,7 +12,7 @@ import { CampusVerify } from "@/components/campus-verify";
 import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
 import { inviteAdmin, listAdmins, readAccount, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
-import { categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
+import { CATEGORIES, categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
@@ -42,6 +42,18 @@ function minutesLeft(iso: string | null) {
   return Math.max(0, Math.ceil(ms / 60_000));
 }
 
+function Chip({ children, hot = false }: { children: ReactNode; hot?: boolean }) {
+  return (
+    <span
+      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-xs leading-none ${
+        hot ? "bg-rust text-on-rust" : "border border-ink/10 bg-paper text-ink"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
 function Card({
   name,
   color,
@@ -53,8 +65,6 @@ function Card({
   extra,
   category,
   offerCamera,
-  ratingAvg,
-  ratingCount,
   action,
 }: {
   name: string;
@@ -72,27 +82,33 @@ function Card({
   action: ReactNode;
 }) {
   const due = formatDue(dueDate);
-  const bits = [
+  const chips = [
+    name,
+    urgent ? "urgent" : "not urgent",
     `${lengthMin} min`,
-    category ? categoryLabel(category) : "",
-    offerCamera ? "camera" : "",
+    offerCamera ? "camera on" : "camera off",
+    ...parseCategories(category).map((id) => CATEGORIES.find((c) => c.id === id)?.label ?? id),
     due,
-    extra,
+    ...(extra ?? "").split("·").map((s) => s.trim()).filter(Boolean),
   ].filter(Boolean);
   return (
-    <li className="flex items-center gap-3 rounded-2xl bg-paper-2 px-3 py-3">
-      <Face name={name} color={color} photo={photo} size="sm" />
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-lg leading-tight tracking-tight">{task}</p>
-        <p className="mt-0.5 truncate text-xs text-muted">
-          {name}
-          {bits.length ? ` · ${bits.join(" · ")}` : ""}
-        </p>
+    <li className="rounded-2xl bg-paper-2 p-4">
+      <div className="flex items-start gap-3">
+        <Face name={name} color={color} photo={photo} size="sm" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-tight">{task}</p>
+            <div className="shrink-0">{action}</div>
+          </div>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {chips.map((c, i) => (
+              <Chip key={`${c}-${i}`} hot={c === "urgent"}>
+                {c}
+              </Chip>
+            ))}
+          </div>
+        </div>
       </div>
-      {urgent ? (
-        <span className="shrink-0 rounded-full bg-rust px-2 py-0.5 text-[11px] font-medium text-on-rust">urgent</span>
-      ) : null}
-      <div className="shrink-0">{action}</div>
     </li>
   );
 }
