@@ -43,6 +43,32 @@ function Root() {
   const [client] = useState(() => new QueryClient());
   useEffect(() => {
     applyColorTheme();
+    const reloadOnce = () => {
+      try {
+        if (sessionStorage.getItem("bs-chunk") === "1") return;
+        sessionStorage.setItem("bs-chunk", "1");
+      } catch {
+        return;
+      }
+      window.location.reload();
+    };
+    const onPreload = (e: Event) => {
+      e.preventDefault();
+      reloadOnce();
+    };
+    const onError = (e: PromiseRejectionEvent) => {
+      const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? "");
+      if (msg.includes("dynamically imported module") || msg.includes("Importing a module script failed")) {
+        e.preventDefault();
+        reloadOnce();
+      }
+    };
+    window.addEventListener("vite:preloadError", onPreload);
+    window.addEventListener("unhandledrejection", onError);
+    return () => {
+      window.removeEventListener("vite:preloadError", onPreload);
+      window.removeEventListener("unhandledrejection", onError);
+    };
   }, []);
   return (
     <html lang="en" data-theme="default" suppressHydrationWarning>

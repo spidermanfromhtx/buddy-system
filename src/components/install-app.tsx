@@ -27,7 +27,7 @@ export function InstallApp({ className }: { className?: string }) {
   useEffect(() => {
     if (isStandalone()) setDone(true);
     if ("serviceWorker" in navigator) {
-      void navigator.serviceWorker.register("/sw.js").catch(() => {});
+      void navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {});
     }
     const onPrompt = (e: Event) => {
       e.preventDefault();
