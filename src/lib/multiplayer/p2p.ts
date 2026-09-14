@@ -123,12 +123,21 @@ export class P2PRoom {
     void fetch("/api/rtc", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "leave", room: this.opts.room, peer: this.opts.selfId }), keepalive: true }).catch(() => {});
   }
   attachMedia(stream: MediaStream): void { this.opts.mediaStream = stream; for (const [peerId, slot] of this.peers) this.wireLocal(slot, peerId); }
-  setSendAudio(on: boolean): void { this.sendAudio = on; for (const [peerId, slot] of this.peers) this.wireLocal(slot, peerId); }
+  setSendAudio(on: boolean): void {
+    this.sendAudio = on;
+    for (const slot of this.peers.values()) {
+      const sender = senderFor(slot.pc, "audio");
+      const track = this.sendAudio
+        ? this.opts.mediaStream?.getAudioTracks().find((t) => t.readyState === "live") ?? null
+        : null;
+      if (sender) void sender.replaceTrack(track);
+    }
+  }
   private wireLocal(slot: PeerSlot, peerId: string) {
     const stream = this.opts.mediaStream; if (!stream) return;
     for (const track of stream.getTracks()) {
       if (track.readyState !== "live") continue;
-      if (track.kind === "audio") track.enabled = this.sendAudio;
+      if (track.kind === "audio" && !this.sendAudio) continue;
       const sender = senderFor(slot.pc, track.kind);
       if (sender) { if (sender.track !== track) void sender.replaceTrack(track).then(() => bumpVideo(sender, track)); }
       else if (track.kind !== "video" || this.opts.allowVideo) { slot.pc.addTrack(track, stream); if (track.kind === "video") void this.kickOffer(slot, peerId); }
