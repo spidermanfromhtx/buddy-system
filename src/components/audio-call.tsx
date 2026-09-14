@@ -115,10 +115,13 @@ export function AudioCall({
       video.autoplay = true;
       void video.play().catch(() => {});
       const check = () => {
-        if (video.videoWidth > 16) setRemoteVideo(true);
+        if (video.videoWidth > 2) setRemoteVideo(true);
       };
       video.onloadedmetadata = check;
+      video.onresize = check;
       video.ontimeupdate = check;
+      const poll = window.setInterval(check, 200);
+      video.addEventListener("ended", () => window.clearInterval(poll), { once: true });
       for (const t of remote.getVideoTracks()) {
         t.enabled = true;
         t.onunmute = check;
@@ -243,10 +246,11 @@ export function AudioCall({
 
   useEffect(() => {
     if (!localCam || !allowCamera) return;
+    if (status === "connected") return;
     const el = localVideoRef.current;
     if (!el) return;
     return startJpegSend(el, (buf) => p2pRef.current?.sendMedia(buf));
-  }, [localCam, allowCamera]);
+  }, [localCam, allowCamera, status]);
 
   const showStage = Boolean(allowCamera);
 
@@ -255,23 +259,19 @@ export function AudioCall({
       <div className={showStage ? "relative aspect-square w-full max-w-sm" : "contents"}>
         <video
           ref={remoteVideoRef}
-          className={
-            remoteVideo
-              ? "size-full rounded-3xl bg-paper-2 object-cover"
-              : "pointer-events-none fixed bottom-2 left-2 h-8 w-8 opacity-[0.04]"
-          }
+          className="relative z-0 size-full rounded-3xl bg-paper-2 object-cover"
           autoPlay
           playsInline
           muted
         />
         <audio ref={remoteAudioRef} autoPlay playsInline className="pointer-events-none fixed bottom-2 left-12 h-8 w-8 opacity-[0.04]" />
         {remoteJpeg && !remoteVideo ? (
-          <img ref={jpegRef} alt="" className="size-full rounded-3xl bg-paper-2 object-cover" />
+          <img ref={jpegRef} alt="" className="absolute inset-0 z-10 size-full rounded-3xl bg-paper-2 object-cover" />
         ) : (
           <img ref={jpegRef} alt="" className="pointer-events-none absolute h-px w-px opacity-0" />
         )}
         {localCam && !remoteVideo && !remoteJpeg && showStage ? (
-          <p className="flex size-full items-center justify-center rounded-3xl bg-paper-2 text-base text-muted">
+          <p className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-paper-2 text-base text-muted">
             waiting for video
           </p>
         ) : null}
@@ -279,7 +279,7 @@ export function AudioCall({
           ref={localVideoRef}
           className={
             localCam
-              ? "absolute bottom-3 right-3 h-28 w-28 rounded-2xl bg-night object-cover"
+              ? "absolute bottom-3 right-3 z-20 h-28 w-28 rounded-2xl bg-night object-cover"
               : "pointer-events-none absolute h-px w-px opacity-0"
           }
           autoPlay

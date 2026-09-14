@@ -36,8 +36,8 @@ export function startJpegSend(
   if (!ctx) return () => {};
   const tick = () => {
     if (!video.videoWidth) return;
-    canvas.width = 160;
-    canvas.height = Math.max(120, Math.round((160 * video.videoHeight) / video.videoWidth));
+    canvas.width = 200;
+    canvas.height = Math.max(150, Math.round((200 * video.videoHeight) / video.videoWidth));
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
@@ -49,7 +49,7 @@ export function startJpegSend(
     );
   };
   tick();
-  const id = window.setInterval(tick, 250);
+  const id = window.setInterval(tick, 90);
   return () => window.clearInterval(id);
 }
 

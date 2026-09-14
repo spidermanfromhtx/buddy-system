@@ -248,7 +248,12 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
   if (wantCamera && liveVideo.length === 0) {
     try {
       const cam = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 640 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 480, max: 640 },
+          height: { ideal: 360, max: 480 },
+          frameRate: { ideal: 24, max: 30 },
+        },
         audio: false,
       });
       for (const t of cam.getVideoTracks()) {
