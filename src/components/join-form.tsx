@@ -205,11 +205,10 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
         <div className="relative hidden md:flex md:justify-end">
           <div className="relative w-72">
             <div className="absolute -right-8 -top-8 size-56 rounded-full bg-sage opacity-70 blur-2xl" />
-            <div className="relative rounded-[2.6rem] bg-ink p-3 shadow-[0_30px_60px_-20px_rgba(28,25,51,0.45)]">
-              <div className="rounded-[2.1rem] bg-paper px-8 pb-10 pt-16 text-center">
-                <Mark className="mx-auto h-24 w-[4.25rem]" />
-                <p className="mt-5 text-xl font-semibold tracking-tight">Buddy System</p>
-                <p className="mt-8 text-base text-muted">The call rings. You work. You hang up.</p>
+            <div className="relative rounded-[2.6rem] bg-ink p-3 shadow-[0_30px_60px_-20px_rgba(15,58,68,0.45)]">
+              <div className="flex flex-col items-center rounded-[2.1rem] bg-paper px-8 pb-12 pt-16 text-center">
+                <Mark className="h-36 w-[6.3rem]" />
+                <p className="mt-8 text-2xl font-semibold tracking-tight">Buddy System</p>
               </div>
             </div>
           </div>
