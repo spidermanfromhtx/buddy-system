@@ -17,7 +17,7 @@ function CallScreen() {
   const { id } = Route.useParams(); const search = Route.useSearch(); const nav = useNavigate();
   const dummy = Boolean(search.dummy) || id.startsWith("dummy-"); const me = typeof window !== "undefined" ? loadProfile() : null;
   const [sec, setSec] = useState(0); const [breakOn, setBreakOn] = useState(false); const lastBreak = useRef(0);
-  const liveStartedAtRef = useRef<number | null>(null);
+  const connectedAtRef = useRef<number | null>(null);
   const q = useQuery({ queryKey: ["call", id], queryFn: () => getCall({ data: { id } }), enabled: !dummy, refetchInterval: 500 });
   const name = search.name ?? (me && q.data?.callerId === me.id ? q.data?.calleeName : q.data?.callerName) ?? "Buddy";
   const color = search.color ?? (me && q.data?.callerId === me.id ? q.data?.calleeColor : q.data?.callerColor) ?? "#c45c3e";
@@ -31,11 +31,9 @@ function CallScreen() {
       const t = setInterval(() => setSec((n) => n + 1), 1000);
       return () => clearInterval(t);
     }
-    if (q.data?.status !== "live") { liveStartedAtRef.current = null; setSec(0); return; }
-    if (liveStartedAtRef.current == null) liveStartedAtRef.current = Date.now();
-    const tick = () => {
-      if (liveStartedAtRef.current != null) setSec(Math.max(0, Math.floor((Date.now() - liveStartedAtRef.current) / 1000)));
-    };
+    if (q.data?.status === "live" && connectedAtRef.current == null) connectedAtRef.current = Date.now();
+    if (connectedAtRef.current == null) { setSec(0); return; }
+    const tick = () => { if (connectedAtRef.current != null) setSec(Math.max(0, Math.floor((Date.now() - connectedAtRef.current) / 1000))); };
     tick();
     const t = setInterval(tick, 250);
     return () => clearInterval(t);
@@ -45,7 +43,11 @@ function CallScreen() {
   useEffect(() => { if (!breakOn) return; pingBreak(); const t = setInterval(pingBreak, 3500); return () => clearInterval(t); }, [breakOn]);
   useEffect(() => { if (!dummy && q.data?.status === "done") { stopLocalStream(); void nav({ to: "/rate/$id", params: { id } }); } }, [dummy, q.data?.status, nav, id]);
 
-  async function markConnected() { if (!dummy && q.data?.status !== "live") await setCallStatus({ data: { id, status: "live" } }); }
+  async function markConnected() {
+    if (connectedAtRef.current == null) connectedAtRef.current = Date.now();
+    setSec(0);
+    if (!dummy && q.data?.status !== "live") await setCallStatus({ data: { id, status: "live" } });
+  }
   async function hangup() {
     playHangup(); await new Promise((r) => setTimeout(r, 450)); stopLocalStream();
     if (room && me) void fetch("/api/rtc", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "leave", room, peer: me.id }), keepalive: true }).catch(() => {});
