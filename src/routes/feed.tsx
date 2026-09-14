@@ -559,7 +559,7 @@ function Feed() {
             value={task}
             onChange={(e) => setTask(e.target.value)}
           />
-          <span className="text-xs font-normal text-muted">A task description. Not an assignment.</span>
+          <span className="text-xs font-normal text-muted">A task description, big or small.</span>
         </label>
         <fieldset>
           <legend className="text-sm font-medium">Categories</legend>
