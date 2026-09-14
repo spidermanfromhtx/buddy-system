@@ -118,7 +118,7 @@ export function playWire(
     node.buffer = buffer;
     node.connect(audio.ctx.destination);
     const start = Math.max(audio.ctx.currentTime + 0.02, audio.next);
-    if (start - audio.ctx.currentTime > 0.09) {
+    if (start - audio.ctx.currentTime > 0.28) {
       node.start(audio.ctx.currentTime + 0.02);
       return audio.ctx.currentTime + 0.02 + buffer.duration;
     }

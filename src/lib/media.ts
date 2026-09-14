@@ -102,18 +102,16 @@ function startCapture() {
   stopCapture();
   const src = output.createMediaStreamSource(new MediaStream([audio]));
   const proc = output.createScriptProcessor(2048, 1, 1);
-  const mute = output.createGain();
-  mute.gain.value = 0;
+  const sink = output.createMediaStreamDestination();
   src.connect(proc);
-  proc.connect(mute);
-  mute.connect(output.destination);
+  proc.connect(sink);
   proc.onaudioprocess = (ev) => {
     if (!pcmSinks.size || micMuted) return;
     const input = ev.inputBuffer.getChannelData(0);
     const buf = packPcm(output?.sampleRate || 48000, input);
     for (const cb of pcmSinks) cb(buf);
   };
-  capture = { src, proc, mute };
+  capture = { src, proc, mute: output.createGain() };
 }
 
 function startKeepAlive() {

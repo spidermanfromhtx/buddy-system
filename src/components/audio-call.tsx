@@ -15,6 +15,7 @@ import {
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
+import { startJpegSend } from "@/lib/wire-media";
 
 function MicMeter({ stream }: { stream: MediaStream | null }) {
   const [level, setLevel] = useState(0);
@@ -96,8 +97,11 @@ export function AudioCall({
   const [peers, setPeers] = useState<PeerInfo[]>([]);
   const [err, setErr] = useState("");
   const [remoteVideo, setRemoteVideo] = useState(false);
+  const [remoteJpeg, setRemoteJpeg] = useState(false);
   const [localCam, setLocalCam] = useState(false);
   const [muted, setMuted] = useState(isMicMuted);
+  const jpegRef = useRef<HTMLImageElement>(null);
+  const jpegUrl = useRef<string | null>(null);
 
   function showLocal(media: MediaStream) {
     const video = media.getVideoTracks().some(isRealVideo);
@@ -156,13 +160,22 @@ export function AudioCall({
         iceServers,
         onPeersChanged: (list) => {
           setPeers(list);
-          const live = list.find((p) => p.connectionState === "connected" || p.voice);
-          setStatus(live ? "connected" : list.length ? "connecting" : "waiting");
+          setStatus(list.length ? "connected" : "waiting");
         },
         onRemoteStream: (_id, remote) => {
           showRemote(remote);
         },
         onMediaData: (_id, data) => {
+          const view = new DataView(data);
+          if (view.byteLength > 2 && view.getUint8(0) === 1) {
+            const blob = new Blob([data.slice(1)], { type: "image/jpeg" });
+            const url = URL.createObjectURL(blob);
+            if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
+            jpegUrl.current = url;
+            if (jpegRef.current) jpegRef.current.src = url;
+            setRemoteJpeg(true);
+            return;
+          }
           hearPcm(data);
         },
         onConnected: () => setStatus((s) => (s === "joining" ? "waiting" : s)),
@@ -205,6 +218,13 @@ export function AudioCall({
     })();
   }, [wantCamera, allowCamera, loopback]);
 
+  useEffect(() => {
+    if (!localCam || !allowCamera) return;
+    const el = localVideoRef.current;
+    if (!el) return;
+    return startJpegSend(el, (buf) => p2pRef.current?.sendMedia(buf));
+  }, [localCam, allowCamera]);
+
   const showStage = Boolean(allowCamera);
 
   return (
@@ -219,8 +239,18 @@ export function AudioCall({
           }
           autoPlay
           playsInline
+          muted
         />
-        {localCam && !remoteVideo && showStage ? (
+        {remoteJpeg && !remoteVideo ? (
+          <img
+            ref={jpegRef}
+            alt=""
+            className="size-full rounded-3xl bg-paper-2 object-cover"
+          />
+        ) : (
+          <img ref={jpegRef} alt="" className="pointer-events-none absolute h-px w-px opacity-0" />
+        )}
+        {localCam && !remoteVideo && !remoteJpeg && showStage ? (
           <p className="flex size-full items-center justify-center rounded-3xl bg-paper-2 text-sm text-muted">
             waiting for video
           </p>
@@ -237,7 +267,7 @@ export function AudioCall({
           muted
         />
       </div>
-      {allowCamera && status === "connected" ? (
+      {allowCamera && (status === "connected" || status === "waiting") ? (
         <div className="flex w-full gap-2">
           <Btn type="button" kind={!wantCamera ? "ink" : "line"} className="flex-1" onClick={() => onCamera?.(false)}>
             Camera off

@@ -84,8 +84,8 @@ interface PeerSlot {
   remote: MediaStream;
 }
 
-const FAST_POLL_MS = 250;
-const IDLE_POLL_MS = 2000;
+const FAST_POLL_MS = 80;
+const IDLE_POLL_MS = 400;
 const PING_INTERVAL_MS = 2000;
 const STALL_MS = 20_000;
 const MAX_RECOVERY_ATTEMPTS = 4;
@@ -279,33 +279,17 @@ export class P2PRoom {
   }
 
   sendMedia(data: ArrayBuffer): void {
-    let sent = false;
-    for (const slot of this.peers.values()) {
-      const ch =
-        slot.media?.readyState === "open"
-          ? slot.media
-          : slot.reliable?.readyState === "open"
-            ? slot.reliable
-            : null;
-      if (!ch) continue;
-      if (ch.bufferedAmount > 24_000) continue;
-      try {
-        ch.send(data);
-        sent = true;
-      } catch {
-        // channel closed mid-send
-      }
-    }
-    if (!sent) this.sendPcmFallback(data);
+    this.sendPcmFallback(data);
   }
 
   private lastPcmAt = 0;
   private sendPcmFallback(data: ArrayBuffer): void {
     const now = Date.now();
-    if (now - this.lastPcmAt < 70) return;
+    if (now - this.lastPcmAt < 40) return;
     this.lastPcmAt = now;
     const payload = { a: bufToB64(data) };
     for (const id of this.peers.keys()) {
+      if (id === this.opts.selfId) continue;
       void this.sendSignal(id, "pcm", payload);
     }
   }
@@ -344,13 +328,7 @@ export class P2PRoom {
   }
 
   private anyPairConnecting(): boolean {
-    for (const s of this.peers.values()) {
-      // Terminal pairs (NAT-blocked after all recovery attempts) must not pin
-      // the session at the 400ms fast-poll rate.
-      if (s.terminal) continue;
-      if (s.info.connectionState !== "connected") return true;
-    }
-    return false;
+    return this.peers.size > 0;
   }
 
   private async pollOnce(): Promise<void> {
