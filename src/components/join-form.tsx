@@ -79,7 +79,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           {!pending ? (
             <>
               <h1 className="max-w-xl text-[2rem] font-bold leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
-                The phone rings.
+                The call rings.
                 <br />
                 You work. You hang up.
               </h1>
@@ -207,7 +207,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
               <div className="rounded-[2.1rem] bg-paper px-8 pb-10 pt-16 text-center">
                 <Mark className="mx-auto h-20 w-14" />
                 <p className="mt-5 text-lg font-semibold tracking-tight">Buddy System</p>
-                <p className="mt-8 text-sm italic text-muted">The phone rings. You work. You hang up.</p>
+                <p className="mt-8 text-sm italic text-muted">The call rings. You work. You hang up.</p>
               </div>
             </div>
           </div>
