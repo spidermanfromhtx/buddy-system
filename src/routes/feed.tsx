@@ -237,6 +237,14 @@ function Feed() {
     () => scoped.filter((l) => l.mode === "scheduled" && l.peerId === me?.id),
     [scoped, me],
   );
+  const hosted = useMemo(
+    () => scheduled.filter((l) => (l.hostPeerId || l.peerId) === me?.id),
+    [scheduled, me],
+  );
+  const joined = useMemo(
+    () => scheduled.filter((l) => (l.hostPeerId || l.peerId) !== me?.id),
+    [scheduled, me],
+  );
   const queue = useMemo(
     () => scoped.filter((l) => l.mode === "scheduled" && l.peerId !== me?.id && !l.matchId),
     [scoped, me],
@@ -688,54 +696,81 @@ function Feed() {
   );
 
   const yourWindows = (
-    <div className="mt-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
-      <ul className="mt-2 flex flex-col gap-2">
-        {scheduled.length === 0 ? (
-          <li className="rounded-2xl bg-paper-2 px-4 py-3 text-sm text-muted">None yet.</li>
-        ) : (
-          scheduled.map((row) => {
-            const buddy = row.matchPeerName
-              ? {
-                  name: row.matchPeerName,
-                  color: row.matchPeerColor || row.color,
-                  photo: row.matchPeerPhoto,
+    <div className="mt-4 flex flex-col gap-5">
+      <div>
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Your bookings</p>
+        <p className="mt-1 text-sm text-muted">Windows you posted. Someone can match to you.</p>
+        <ul className="mt-2 flex flex-col gap-3">
+          {hosted.length === 0 ? (
+            <li className="rounded-3xl bg-paper-2 px-4 py-4 text-sm text-muted">You have not posted a window.</li>
+          ) : (
+            hosted.map((row) => (
+              <Card
+                key={row.id}
+                name={row.hostName || row.name}
+                color={row.hostColor || row.color}
+                photo={row.hostPhoto ?? row.photo}
+                task={row.task}
+                urgent={row.urgent}
+                dueDate={row.dueDate}
+                lengthMin={row.lengthMin}
+                category={row.category}
+                offerCamera={row.camera}
+                extra={[row.windowLabel, row.matchPeerName ? `matched · ${row.matchPeerName}` : "waiting for a buddy"]
+                  .filter(Boolean)
+                  .join(" · ")}
+                action={
+                  <div className="flex flex-col items-end gap-2">
+                    {row.matchPeerName ? (
+                      <Btn className="h-11 px-4 text-sm" disabled={unmatchWin.isPending} onClick={() => unmatchWin.mutate(row)}>
+                        Unmatch
+                      </Btn>
+                    ) : null}
+                    <button type="button" className="text-sm text-muted underline" onClick={() => dropWin.mutate(row)}>
+                      Remove
+                    </button>
+                  </div>
                 }
-              : { name: me.name, color: me.color, photo: me.photo };
-            return (
-            <Card
-              key={row.id}
-              name={buddy.name}
-              color={buddy.color}
-              photo={buddy.photo}
-              task={row.task}
-              urgent={row.urgent}
-              dueDate={row.dueDate}
-              lengthMin={row.lengthMin}
-              category={row.category}
-              offerCamera={row.camera}
-              extra={[row.windowLabel, row.matchPeerName ? "matched" : "waiting for a buddy"].filter(Boolean).join(" · ")}
-              action={
-                <div className="flex flex-col items-end gap-2">
-                  {row.matchPeerName ? (
+              />
+            ))
+          )}
+        </ul>
+      </div>
+      <div>
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">You matched</p>
+        <p className="mt-1 text-sm text-muted">Bookings you joined from the queue.</p>
+        <ul className="mt-2 flex flex-col gap-3">
+          {joined.length === 0 ? (
+            <li className="rounded-3xl bg-paper-2 px-4 py-4 text-sm text-muted">You have not joined a window.</li>
+          ) : (
+            joined.map((row) => (
+              <Card
+                key={row.id}
+                name={row.hostName || row.matchPeerName || row.name}
+                color={row.hostColor || row.matchPeerColor || row.color}
+                photo={row.hostPhoto ?? row.matchPeerPhoto ?? row.photo}
+                task={row.task}
+                urgent={row.urgent}
+                dueDate={row.dueDate}
+                lengthMin={row.lengthMin}
+                category={row.category}
+                offerCamera={row.camera}
+                extra={[row.windowLabel, "you matched"].filter(Boolean).join(" · ")}
+                action={
+                  <div className="flex flex-col items-end gap-2">
                     <Btn className="h-11 px-4 text-sm" disabled={unmatchWin.isPending} onClick={() => unmatchWin.mutate(row)}>
                       Unmatch
                     </Btn>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="text-sm text-muted underline"
-                    onClick={() => dropWin.mutate(row)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              }
-            />
-            );
-          })
-        )}
-      </ul>
+                    <button type="button" className="text-sm text-muted underline" onClick={() => dropWin.mutate(row)}>
+                      Remove
+                    </button>
+                  </div>
+                }
+              />
+            ))
+          )}
+        </ul>
+      </div>
     </div>
   );
 
