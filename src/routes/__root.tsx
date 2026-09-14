@@ -2,8 +2,9 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { applyTheme, loadTheme } from "@/lib/theme";
 import appCss from "../styles.css?url";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const APP_NAME = "Buddy System";
 
@@ -35,8 +36,11 @@ export const Route = createRootRoute({
 
 function Root() {
   const [client] = useState(() => new QueryClient());
+  useEffect(() => {
+    applyTheme(loadTheme());
+  }, []);
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme="ink" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

@@ -18,6 +18,7 @@ export type AccountRow = {
   categories: string[];
   plan: string;
   sessionsUsed: number;
+  limitsOn: boolean;
 };
 
 function mapAccount(r: Record<string, unknown>): AccountRow {
@@ -33,6 +34,7 @@ function mapAccount(r: Record<string, unknown>): AccountRow {
     categories: parseCategories(r.categories),
     plan: String(r.plan || "free"),
     sessionsUsed: weeklyUsed(r.sessions_used, r.sessions_week_start),
+    limitsOn: Boolean(r.limits_on),
   };
 }
 
@@ -146,6 +148,7 @@ export async function createAccount(data: {
       categories,
       plan: "free",
       sessionsUsed: 0,
+      limitsOn: false,
     },
   };
 }
@@ -157,6 +160,7 @@ export async function saveAccount(data: {
   photo?: string | null;
   breakEveryMin?: number;
   categories?: string[];
+  limitsOn?: boolean;
 }) {
   const sql = await getSql();
   const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [data.token]);
@@ -167,10 +171,11 @@ export async function saveAccount(data: {
   const photo = data.photo === undefined ? cur.photo : data.photo;
   const breakEveryMin = data.breakEveryMin ?? cur.breakEveryMin;
   const categories = data.categories ? parseCategories(data.categories) : cur.categories;
+  const limitsOn = data.limitsOn ?? cur.limitsOn;
   if (data.categories && !categories.length) return { ok: false as const, error: "Pick at least one category." };
   await sql.query(
-    `UPDATE accounts SET name = $2, color = $3, photo = $4, break_every_min = $5, categories = $6 WHERE session_token = $1`,
-    [data.token, name, color, photo, breakEveryMin, serializeCategories(categories)],
+    `UPDATE accounts SET name = $2, color = $3, photo = $4, break_every_min = $5, categories = $6, limits_on = $7 WHERE session_token = $1`,
+    [data.token, name, color, photo, breakEveryMin, serializeCategories(categories), limitsOn],
   );
   return { ok: true as const };
 }

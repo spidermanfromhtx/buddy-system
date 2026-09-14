@@ -1,20 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  --color-night: #14110e;
-  --color-ink: #2a241f;
-  --color-paper: #f7f2e9;
-  --color-paper-2: #f3ece0;
-  --color-muted: #7a7368;
-  --color-line: #e4dccf;
-  --color-rust: #c45c3e;
-  --color-sage: #2f6f5e;
-  --color-cream: #fbf7f0;
+  --color-night: var(--night);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-rust: var(--rust);
+  --color-sage: var(--sage);
+  --color-cream: var(--cream);
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Newsreader", ui-serif, Georgia, serif;
   --radius-sm: 0.5rem;
   --radius-md: 1rem;
   --radius-lg: 1.5rem;
+}
+
+:root,
+[data-theme="ink"] {
+  --night: #111110;
+  --ink: #1f1e1c;
+  --paper: #f3f0ea;
+  --paper-2: #eae6de;
+  --muted: #6e6b65;
+  --line: #ddd8ce;
+  --rust: #8f5b45;
+  --sage: #3d5c50;
+  --cream: #f7f5f0;
+}
+
+[data-theme="brown"] {
+  --night: #14110e;
+  --ink: #2a241f;
+  --paper: #f7f2e9;
+  --paper-2: #f3ece0;
+  --muted: #7a7368;
+  --line: #e4dccf;
+  --rust: #c45c3e;
+  --sage: #2f6f5e;
+  --cream: #fbf7f0;
+}
+
+[data-theme="olive"] {
+  --night: #141612;
+  --ink: #232820;
+  --paper: #f2efe4;
+  --paper-2: #e7e3d4;
+  --muted: #6e7168;
+  --line: #d8d3c4;
+  --rust: #a65b3a;
+  --sage: #3a5c45;
+  --cream: #f6f3e9;
 }
 
 @layer base {
@@ -33,12 +70,12 @@
   body,
   #app {
     min-height: 100%;
-    background: var(--color-paper);
-    color: var(--color-ink);
+    background: var(--paper);
+    color: var(--ink);
   }
 
   ::selection {
-    background: var(--color-ink);
-    color: var(--color-paper);
+    background: var(--ink);
+    color: var(--paper);
   }
 }

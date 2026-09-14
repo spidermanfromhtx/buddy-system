@@ -19,6 +19,7 @@ export type Profile = {
   categories: string[];
   plan: string;
   sessionsUsed: number;
+  limitsOn: boolean;
 };
 
 export const COLORS = [
@@ -61,6 +62,7 @@ export function loadProfile(): Profile | null {
       categories: parseCategories(p.categories),
       plan: p.plan === "plus" ? "plus" : "free",
       sessionsUsed: Number(p.sessionsUsed ?? 0),
+      limitsOn: Boolean(p.limitsOn),
     };
   } catch {
     return null;
@@ -87,6 +89,7 @@ export function saveProfile(partial: Omit<Profile, "id"> & { id?: string }): Pro
     categories: parseCategories(partial.categories ?? existing?.categories ?? []),
     plan: partial.plan ?? existing?.plan ?? "free",
     sessionsUsed: partial.sessionsUsed ?? existing?.sessionsUsed ?? 0,
+    limitsOn: partial.limitsOn ?? existing?.limitsOn ?? false,
   };
   localStorage.setItem(KEY, JSON.stringify(p));
   return p;
@@ -109,6 +112,7 @@ export function profileFromAccount(
     categories?: string[];
     plan?: string;
     sessionsUsed?: number;
+    limitsOn?: boolean;
   },
   extra?: Partial<Pick<Profile, "school" | "schoolEmail" | "schoolVerified" | "campusToken">>,
 ): Profile {
@@ -128,5 +132,6 @@ export function profileFromAccount(
     categories: parseCategories(account.categories),
     plan: account.plan ?? "free",
     sessionsUsed: account.sessionsUsed ?? 0,
+    limitsOn: account.limitsOn ?? false,
   });
 }

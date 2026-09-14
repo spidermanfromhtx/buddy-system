@@ -68,7 +68,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           <EmailCodeForm
             onDark
             label="Email"
-            hint="Log in or create an account. Gmail, Yahoo, school mail, whatever you use. We email a 6-digit code. You get 8 free 45-minute sessions every week."
+            hint="Log in or create an account. Gmail, Yahoo, school mail, whatever you use. We email a 6-digit code."
             placeholder="you@gmail.com"
             verifyLabel="Verify email"
             send={(email) => requestAccountCode({ data: { email } })}

@@ -9,6 +9,7 @@ import { Mark } from "@/components/mark";
 import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
 import { JoinForm } from "@/components/join-form";
+import { applyTheme, loadTheme, THEMES, type ThemeId } from "@/lib/theme";
 import { readAccount, saveAccount, startPlusCheckout } from "@/lib/account";
 import { categoryLabel } from "@/lib/categories";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
@@ -98,6 +99,7 @@ function Feed() {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
   const [feedCat, setFeedCat] = useState("");
+  const [theme, setTheme] = useState<ThemeId>("ink");
 
   useEffect(() => {
     const p = loadProfile();
@@ -105,6 +107,7 @@ function Feed() {
       setMe(p);
       if (p.categories[0]) setCategory(p.categories[0]);
     }
+    setTheme(loadTheme());
   }, []);
 
   useEffect(() => {
@@ -367,9 +370,10 @@ function Feed() {
   if (!me) return <JoinForm onJoined={setMe} />;
 
   const remain = minutesLeft(mine?.expiresAt ?? null);
-  const cap = maxSessionMin(me.plan);
-  const left = sessionsLeft(me.plan, me.sessionsUsed);
+  const cap = maxSessionMin(me.plan, me.limitsOn);
+  const left = sessionsLeft(me.plan, me.sessionsUsed, me.limitsOn);
   const plus = isPlus(me.plan);
+  const limits = me.limitsOn;
 
   function onCampusVerified(info: { school: string; email: string; token: string }) {
     if (!me) return;
@@ -546,7 +550,9 @@ function Feed() {
         <p className="mt-3 text-sm text-muted">
           {plus
             ? "Plus. Unlimited sessions. Calls up to 2 hours."
-            : `${left} of ${FREE_SESSIONS} free sessions left this week. Free calls are ${FREE_MAX_MIN} minutes.`}
+            : limits
+              ? `${left} of ${FREE_SESSIONS} free sessions left this week. Free calls are ${FREE_MAX_MIN} minutes.`
+              : "Limits are off while we test."}
         </p>
         <div className="mt-8 hidden flex-wrap gap-2 md:flex">{actions}</div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -783,10 +789,44 @@ function Feed() {
                 </label>
                 <p className="text-xs text-muted">Audio is the default. Camera is optional. In a car, keep camera off.</p>
                 <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
+                  <p className="font-display text-xl">Look</p>
+                  <p className="text-sm text-muted">Same type. Pick a palette.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {THEMES.map((t) => (
+                      <Btn
+                        key={t.id}
+                        kind={theme === t.id ? "ink" : "line"}
+                        onClick={() => {
+                          setTheme(t.id);
+                          applyTheme(t.id);
+                        }}
+                      >
+                        {t.label}
+                      </Btn>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
                   <p className="font-display text-xl">Plan</p>
+                  <label className="flex h-11 items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={limits}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        const next = saveProfile({ ...me, limitsOn: on });
+                        setMe(next);
+                        void saveAccount({ data: { token: me.sessionToken, limitsOn: on } });
+                      }}
+                    />
+                    Session limits
+                  </label>
+                  <p className="text-sm text-muted">
+                    Off for R&D. On = {FREE_SESSIONS} free {FREE_MAX_MIN}-minute sessions a week.
+                  </p>
                   {plus ? (
                     <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>
-                  ) : (
+                  ) : limits ? (
                     <>
                       <p className="text-base text-muted">
                         {left} of {FREE_SESSIONS} free 45-minute sessions left this week. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
@@ -806,6 +846,8 @@ function Feed() {
                         Get Plus · $5 a month
                       </Btn>
                     </>
+                  ) : (
+                    <p className="text-sm text-muted">Plus stays off until limits are on.</p>
                   )}
                 </div>
                 <Btn

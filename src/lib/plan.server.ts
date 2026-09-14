@@ -7,7 +7,7 @@ export type SessionGate =
 
 export async function planForPeer(sql: Sql, peerId: string) {
   const rows = await sql.query(
-    `SELECT plan, sessions_used, sessions_week_start FROM accounts WHERE id = $1 LIMIT 1`,
+    `SELECT plan, sessions_used, sessions_week_start, limits_on FROM accounts WHERE id = $1 LIMIT 1`,
     [peerId],
   );
   const row = rows[0];
@@ -16,6 +16,7 @@ export async function planForPeer(sql: Sql, peerId: string) {
     plan: String(row.plan || "free"),
     sessionsUsed: weeklyUsed(row.sessions_used, row.sessions_week_start),
     weekStart: row.sessions_week_start ? String(row.sessions_week_start) : null,
+    limitsOn: Boolean(row.limits_on),
   };
 }
 
@@ -23,24 +24,24 @@ export async function takeSession(sql: Sql, peerId: string, lengthMin: number): 
   const found = await planForPeer(sql, peerId);
   if (!found) return { ok: false, error: "Sign in again.", code: "signin" };
   const plus = isPlus(found.plan);
-  const maxMin = plus ? PLUS_MAX_MIN : FREE_MAX_MIN;
+  const maxMin = plus || !found.limitsOn ? PLUS_MAX_MIN : FREE_MAX_MIN;
   if (lengthMin > maxMin) {
     return {
       ok: false,
       code: "length",
-      error: plus
+      error: plus || !found.limitsOn
         ? `Calls can be up to ${PLUS_MAX_MIN} minutes.`
         : `Free sessions are ${FREE_MAX_MIN} minutes. ${PLUS_PRICE_LABEL} unlocks longer calls.`,
     };
   }
-  if (!plus && found.sessionsUsed >= FREE_SESSIONS) {
+  if (!plus && found.limitsOn && found.sessionsUsed >= FREE_SESSIONS) {
     return {
       ok: false,
       code: "paywall",
       error: `You've used this week's ${FREE_SESSIONS} free sessions. ${PLUS_PRICE_LABEL} for unlimited.`,
     };
   }
-  if (!plus) {
+  if (!plus && found.limitsOn) {
     const start = Date.parse(String(found.weekStart ?? ""));
     const freshWeek = !Number.isFinite(start) || Date.now() - start >= FREE_WEEK_MS;
     if (freshWeek) {

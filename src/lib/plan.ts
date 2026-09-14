@@ -10,8 +10,13 @@ export function isPlus(plan: string | null | undefined) {
   return plan === "plus";
 }
 
-export function maxSessionMin(plan: string | null | undefined) {
-  return isPlus(plan) ? PLUS_MAX_MIN : FREE_MAX_MIN;
+export function limitsEnabled(on: boolean | null | undefined) {
+  return Boolean(on);
+}
+
+export function maxSessionMin(plan: string | null | undefined, limitsOn = false) {
+  if (!limitsEnabled(limitsOn) || isPlus(plan)) return PLUS_MAX_MIN;
+  return FREE_MAX_MIN;
 }
 
 export function weeklyUsed(used: unknown, weekStart: unknown) {
@@ -21,7 +26,7 @@ export function weeklyUsed(used: unknown, weekStart: unknown) {
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
-export function sessionsLeft(plan: string | null | undefined, used: number) {
-  if (isPlus(plan)) return Infinity;
+export function sessionsLeft(plan: string | null | undefined, used: number, limitsOn = false) {
+  if (isPlus(plan) || !limitsEnabled(limitsOn)) return Infinity;
   return Math.max(0, FREE_SESSIONS - used);
 }

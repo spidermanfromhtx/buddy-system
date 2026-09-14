@@ -50,6 +50,7 @@ export const saveAccount = createServerFn({ method: "POST" })
         photo: PHOTO,
         breakEveryMin: z.number().int().min(1).max(60).optional(),
         categories: z.array(z.string()).max(8).optional(),
+        limitsOn: z.boolean().optional(),
       })
       .parse(d),
   )
