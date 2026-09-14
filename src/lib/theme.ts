@@ -1,6 +1,6 @@
 export const NONE = "";
-export const HOUSE = "#ff6b81";
-export const HOUSE_INK = "#0f3a44";
+export const HOUSE = "#8c1515";
+export const HOUSE_INK = "#2e2d29";
 export const HOUSE_CREAM = "#e8e1d8";
 
 export const COLOR_THEMES = [
@@ -39,6 +39,7 @@ const OLD: Record<string, string> = {
   "#a7c6ea": "#3aa8ac",
   "#b4b0e0": "#4a2a6e",
   "#d2b5d8": "#c42a72",
+  "#ff6b81": HOUSE,
   "#e56b5a": HOUSE,
   "#c45c3e": "#c44536",
   "#e05a84": "#c42a72",

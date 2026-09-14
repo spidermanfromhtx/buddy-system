@@ -114,7 +114,7 @@ function Feed() {
   const [sheet, setSheet] = useState<"none" | "open" | "book" | "settings">("none");
   const [task, setTask] = useState("");
   const [urgent, setUrgent] = useState(false);
-  const [lengthMin, setLengthMin] = useState(25);
+  const [lengthMin, setLengthMin] = useState(20);
   const [camera, setCamera] = useState(false);
   const [windowDate, setWindowDate] = useState(todayIso);
   const [windowStart, setWindowStart] = useState("20:00");
@@ -266,7 +266,7 @@ function Feed() {
           photo: me.photo ?? undefined,
           task: task.trim(),
           urgent,
-          lengthMin: Math.min(lengthMin, cap),
+          lengthMin: Math.min(lengthMin, capStep),
           camera,
           dueDate: dueDate || undefined,
           school: me.school ?? undefined,
@@ -328,7 +328,7 @@ function Feed() {
           photo: me.photo ?? undefined,
           task: task.trim(),
           urgent,
-          lengthMin: Math.min(lengthMin, cap),
+          lengthMin: Math.min(lengthMin, capStep),
           camera,
           similarPref: similar,
           windowLabel: formatWindow(windowDate, windowStart, windowEnd),
@@ -464,9 +464,13 @@ function Feed() {
   });
 
   const cap = maxSessionMin(me?.plan, me?.limitsOn);
+  const capStep = Math.floor(cap / 10) * 10;
   useEffect(() => {
-    setLengthMin((n) => (n > cap ? cap : n));
-  }, [cap]);
+    setLengthMin((n) => {
+      const snapped = Math.round(n / 10) * 10;
+      return Math.min(capStep, Math.max(0, snapped));
+    });
+  }, [capStep]);
 
   if (!me) return <JoinForm onJoined={setMe} />;
 
@@ -590,10 +594,11 @@ function Feed() {
           <input
             id={`${prefix}-length`}
             type="range"
-            min={5}
-            max={cap}
-            value={Math.min(lengthMin, cap)}
-            className="mt-3 w-full"
+            min={0}
+            max={capStep}
+            step={10}
+            value={Math.min(lengthMin, capStep)}
+            className="mt-3 w-full accent-[var(--rust)]"
             onChange={(e) => setLengthMin(Number(e.target.value))}
           />
         </label>
@@ -621,7 +626,7 @@ function Feed() {
               ? "border border-ink/10 shadow-inner"
               : "shadow-sm"
           }`}
-          disabled={goBook.isPending}
+          disabled={goBook.isPending || lengthMin < 10}
           onClick={() => goBook.mutate()}
         >
           {goBook.isPending ? "…" : "Add to queue"}
@@ -661,12 +666,13 @@ function Feed() {
         </button>
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <span className="w-12 shrink-0 whitespace-nowrap text-sm text-paper/70">{Math.min(lengthMin, cap)} min</span>
+        <span className="w-12 shrink-0 whitespace-nowrap text-sm text-paper/70">{Math.min(lengthMin, capStep)} min</span>
         <input
           type="range"
-          min={5}
-          max={cap}
-          value={Math.min(lengthMin, cap)}
+          min={0}
+          max={capStep}
+          step={10}
+          value={Math.min(lengthMin, capStep)}
           className="min-w-0 flex-1 accent-[var(--rust)]"
           onChange={(e) => setLengthMin(Number(e.target.value))}
         />
@@ -675,7 +681,7 @@ function Feed() {
             End live
           </Btn>
         ) : (
-          <Btn kind="fill" className="h-9 shrink-0 px-4 text-sm" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
+          <Btn kind="fill" className="h-9 shrink-0 px-4 text-sm" disabled={goOpen.isPending || lengthMin < 10} onClick={() => goOpen.mutate()}>
             {goOpen.isPending ? "…" : "Go live"}
           </Btn>
         )}
