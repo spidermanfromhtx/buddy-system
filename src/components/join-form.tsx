@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Btn } from "@/components/btn";
 import { CategoryPicker } from "@/components/category-picker";
 import { EmailCodeForm } from "@/components/email-code-form";
-import { InstallApp } from "@/components/install-app";
 import { LookFields } from "@/components/look-fields";
 import { PageWash } from "@/components/page-wash";
 import { Mark } from "@/components/mark";
@@ -66,15 +65,12 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
       <PageWash />
       <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <Mark className="h-12 w-8" />
-          <p className="truncate text-xl font-semibold tracking-tight md:text-2xl">Buddy System</p>
+          <Mark className="h-12 w-8 shrink-0" />
+          <p className="min-w-0 text-xl font-semibold tracking-tight md:text-2xl">Buddy System</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <a href="/reviews" className="text-base font-medium text-ink underline-offset-4 hover:underline">
-            Reviews
-          </a>
-          <InstallApp className="h-11 shrink-0 rounded-2xl px-4 text-base" />
-        </div>
+        <a href="/reviews" className="shrink-0 text-sm font-medium text-ink underline-offset-4 hover:underline md:text-base">
+          Reviews
+        </a>
       </header>
       <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:grid-cols-2 md:px-10 md:pt-16">
         <div>
