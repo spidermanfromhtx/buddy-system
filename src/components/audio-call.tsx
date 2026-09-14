@@ -107,7 +107,7 @@ export function AudioCall({
     const video = remoteVideoRef.current;
     if (video) {
       const videoStream = new MediaStream(remote.getVideoTracks());
-      if (video.srcObject !== videoStream) video.srcObject = videoStream;
+      video.srcObject = videoStream;
       video.muted = true;
       video.playsInline = true;
       video.autoplay = true;
@@ -122,12 +122,6 @@ export function AudioCall({
       audio.srcObject = audioStream;
       audio.onloadedmetadata = () => void playRemoteAudio();
       void playRemoteAudio();
-    }
-    for (const t of remote.getVideoTracks()) {
-      t.onunmute = () => {
-        const v = remoteVideoRef.current;
-        if (v && v.videoWidth > 16) setRemoteVideo(true);
-      };
     }
   }
 
@@ -164,6 +158,17 @@ export function AudioCall({
         },
         onRemoteStream: (_id, remote) => {
           showRemote(remote);
+        },
+        onMediaData: (_id, data) => {
+          const view = new DataView(data);
+          if (view.byteLength > 2 && view.getUint8(0) === 1) {
+            const blob = new Blob([data.slice(1)], { type: "image/jpeg" });
+            const url = URL.createObjectURL(blob);
+            if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
+            jpegUrl.current = url;
+            if (jpegRef.current) jpegRef.current.src = url;
+            setRemoteJpeg(true);
+          }
         },
         onConnected: () => setStatus((s) => (s === "joining" ? "waiting" : s)),
       });
@@ -276,6 +281,7 @@ export function AudioCall({
       <button
         type="button"
         aria-pressed={muted}
+        aria-label={muted ? "unmute microphone" : "mute microphone"}
         className={`h-12 w-full rounded-2xl border text-sm font-medium transition ${muted ? "border-paper/30 bg-paper/10 text-paper" : "border-paper/10 bg-paper text-ink"}`}
         onClick={() => {
           const next = !muted;
