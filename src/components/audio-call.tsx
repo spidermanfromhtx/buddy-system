@@ -89,15 +89,8 @@ export function AudioCall({
     if (video) void el.play().catch(() => {});
   }
 
-  function showRemote(remote: MediaStream) {
-    const el = remoteVideoRef.current;
-    if (!el) return;
-    if (el.srcObject !== remote) el.srcObject = remote;
-    el.muted = true;
-    el.playsInline = true;
-    el.onloadedmetadata = () => {
-      if (el.videoWidth > 16) setRemoteVideo(true);
-    };
+  function showRemote(_remote: MediaStream) {
+    // Stills on the wire are the picture. Live tracks flash then die.
   }
 
   async function start() {

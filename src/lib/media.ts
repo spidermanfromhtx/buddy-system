@@ -4,18 +4,36 @@ let stream: MediaStream | null = null;
 let output: AudioContext | null = null;
 let keep: HTMLVideoElement | null = null;
 let keepAliveOsc: OscillatorNode | null = null;
-let capture:
-  | {
-      src: MediaStreamAudioSourceNode;
-      analyser: AnalyserNode;
-      raf: number;
-    }
-  | null = null;
+let workletReady = false;
+let capture: { stop: () => void } | null = null;
 let playBag: { ctx: AudioContext; next: number } | null = null;
 const pcmSinks = new Set<(buf: ArrayBuffer) => void>();
+const heardSeq = new Set<number>();
 let micMuted = false;
 let meter = 0;
-let lastSend = 0;
+
+const WORKLET = `
+class BuddyCap extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.buf = new Float32Array(4096);
+    this.i = 0;
+  }
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (!ch) return true;
+    for (let n = 0; n < ch.length; n++) {
+      this.buf[this.i++] = ch[n];
+      if (this.i >= this.buf.length) {
+        this.port.postMessage(this.buf.slice());
+        this.i = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor("buddy-cap", BuddyCap);
+`;
 
 export function isMicMuted() {
   return micMuted;
@@ -72,45 +90,82 @@ function keepLocalAlive(media: MediaStream) {
   void keep.play().catch(() => {});
 }
 
+function emitPcm(samples: Float32Array) {
+  let sum = 0;
+  for (const v of samples) sum += v * v;
+  meter = Math.min(1, Math.sqrt(sum / samples.length) * 8);
+  if (!pcmSinks.size || micMuted || !output) return;
+  const buf = packPcm(output.sampleRate, samples);
+  for (const cb of pcmSinks) cb(buf);
+}
+
 function stopCapture() {
-  if (!capture) return;
-  cancelAnimationFrame(capture.raf);
-  try {
-    capture.src.disconnect();
-    capture.analyser.disconnect();
-  } catch {
-    // already gone
-  }
+  capture?.stop();
   capture = null;
   meter = 0;
 }
 
-function startCapture() {
+async function ensureWorklet(ctx: AudioContext) {
+  if (workletReady) return true;
+  try {
+    const url = URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" }));
+    await ctx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+    workletReady = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function startCapture() {
   if (!output || !stream) return;
-  const audio = stream.getAudioTracks().find((t) => t.readyState === "live" && t.enabled);
+  const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
   if (!audio) return;
   stopCapture();
+  audio.enabled = true;
   const src = output.createMediaStreamSource(new MediaStream([audio]));
-  const analyser = output.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0;
-  src.connect(analyser);
-  const data = new Float32Array(analyser.fftSize);
-  const tick = () => {
-    const handle = requestAnimationFrame(tick);
-    if (capture) capture.raf = handle;
-    analyser.getFloatTimeDomainData(data);
-    let sum = 0;
-    for (const v of data) sum += v * v;
-    meter = Math.min(1, Math.sqrt(sum / data.length) * 8);
-    if (!pcmSinks.size || micMuted) return;
-    const now = Date.now();
-    if (now - lastSend < 50) return;
-    lastSend = now;
-    const buf = packPcm(output?.sampleRate || 48000, data);
-    for (const cb of pcmSinks) cb(buf);
+  const silent = output.createGain();
+  silent.gain.value = 0;
+
+  if (await ensureWorklet(output)) {
+    const node = new AudioWorkletNode(output, "buddy-cap");
+    src.connect(node);
+    node.connect(silent);
+    silent.connect(output.destination);
+    node.port.onmessage = (e) => emitPcm(new Float32Array(e.data as ArrayBufferLike));
+    capture = {
+      stop: () => {
+        node.port.onmessage = null;
+        try {
+          src.disconnect();
+          node.disconnect();
+          silent.disconnect();
+        } catch {
+          // already gone
+        }
+      },
+    };
+    return;
+  }
+
+  const proc = output.createScriptProcessor(4096, 1, 1);
+  src.connect(proc);
+  proc.connect(silent);
+  silent.connect(output.destination);
+  proc.onaudioprocess = (ev) => emitPcm(ev.inputBuffer.getChannelData(0).slice());
+  capture = {
+    stop: () => {
+      proc.onaudioprocess = null;
+      try {
+        src.disconnect();
+        proc.disconnect();
+        silent.disconnect();
+      } catch {
+        // already gone
+      }
+    },
   };
-  capture = { src, analyser, raf: requestAnimationFrame(tick) };
 }
 
 function startKeepAlive() {
@@ -143,12 +198,19 @@ export async function unlockOutput() {
   } catch {
     // call tap already unlocked audio
   }
-  startCapture();
+  await startCapture();
 }
 
 export function hearPcm(buf: ArrayBuffer) {
   if (!output) return;
   if (output.state === "suspended") void output.resume();
+  const view = new DataView(buf);
+  if (view.byteLength >= 4 && view.getUint8(0) === 0) {
+    const seq = view.getUint16(1, true);
+    if (heardSeq.has(seq)) return;
+    heardSeq.add(seq);
+    if (heardSeq.size > 400) heardSeq.clear();
+  }
   playBag ??= { ctx: output, next: 0 };
   playBag.next = playWire(buf, playBag, () => {});
 }
@@ -192,13 +254,14 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
     }
   }
   keepLocalAlive(stream);
-  startCapture();
+  await startCapture();
   return stream;
 }
 
 export function stopLocalStream() {
   micMuted = false;
   stopCapture();
+  heardSeq.clear();
   if (stream) {
     for (const t of stream.getTracks()) t.stop();
   }

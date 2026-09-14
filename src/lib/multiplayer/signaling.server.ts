@@ -123,7 +123,7 @@ async function handleGet(url: URL): Promise<Response> {
   }>(
     `SELECT id, from_peer, kind, payload FROM webrtc_signals
      WHERE room = $1 AND to_peer = $2 AND id > $3
-     ORDER BY id LIMIT 200`,
+     ORDER BY id LIMIT 400`,
     [room, peer, since],
   );
   const body: RtcPollResponse = {

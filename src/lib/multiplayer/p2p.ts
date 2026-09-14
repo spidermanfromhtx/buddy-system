@@ -84,8 +84,8 @@ interface PeerSlot {
   remote: MediaStream;
 }
 
-const FAST_POLL_MS = 80;
-const IDLE_POLL_MS = 400;
+const FAST_POLL_MS = 50;
+const IDLE_POLL_MS = 250;
 const PING_INTERVAL_MS = 2000;
 const STALL_MS = 20_000;
 const MAX_RECOVERY_ATTEMPTS = 4;
@@ -279,20 +279,38 @@ export class P2PRoom {
   }
 
   sendMedia(data: ArrayBuffer): void {
-    this.sendPcmFallback(data);
-  }
-
-  private lastPcmAt = 0;
-  private sendPcmFallback(data: ArrayBuffer): void {
+    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1;
+    for (const slot of this.peers.values()) {
+      const ch =
+        slot.media?.readyState === "open"
+          ? slot.media
+          : slot.reliable?.readyState === "open"
+            ? slot.reliable
+            : null;
+      if (!ch || ch.bufferedAmount > 64_000) continue;
+      try {
+        ch.send(data);
+      } catch {
+        // closed
+      }
+    }
     const now = Date.now();
-    if (now - this.lastPcmAt < 40) return;
-    this.lastPcmAt = now;
+    if (jpeg) {
+      if (now - this.lastJpegAt < 90) return;
+      this.lastJpegAt = now;
+    } else {
+      if (now - this.lastPcmAt < 70) return;
+      this.lastPcmAt = now;
+    }
     const payload = { a: bufToB64(data) };
     for (const id of this.peers.keys()) {
       if (id === this.opts.selfId) continue;
       void this.sendSignal(id, "pcm", payload);
     }
   }
+
+  private lastPcmAt = 0;
+  private lastJpegAt = 0;
 
   private async pushLocalTracks(slot: PeerSlot): Promise<void> {
     this.wireLocal(slot, slot.info.id);

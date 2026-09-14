@@ -2,6 +2,7 @@
 
 const AUDIO = 0;
 const JPEG = 1;
+let pcmSeq = 1;
 
 export function packPcm(sampleRate: number, samples: Float32Array): ArrayBuffer {
   const target = 16000;
@@ -9,6 +10,8 @@ export function packPcm(sampleRate: number, samples: Float32Array): ArrayBuffer 
   const out = new ArrayBuffer(8 + data.length * 2);
   const view = new DataView(out);
   view.setUint8(0, AUDIO);
+  view.setUint16(1, pcmSeq & 0xffff, true);
+  pcmSeq += 1;
   view.setUint32(4, target, true);
   const pcm = new Int16Array(out, 8);
   for (let i = 0; i < data.length; i++) {
@@ -25,33 +28,6 @@ export function packJpeg(bytes: ArrayBuffer): ArrayBuffer {
   return out.buffer;
 }
 
-export function startPcmSend(
-  stream: MediaStream,
-  send: (buf: ArrayBuffer) => void,
-  ctx: AudioContext,
-): () => void {
-  const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
-  if (!audio) return () => {};
-  const src = ctx.createMediaStreamSource(new MediaStream([audio]));
-  const mute = ctx.createGain();
-  mute.gain.value = 0;
-  const proc = ctx.createScriptProcessor(2048, 1, 1);
-  src.connect(proc);
-  proc.connect(mute);
-  mute.connect(ctx.destination);
-  void ctx.resume();
-  proc.onaudioprocess = (ev) => {
-    const input = ev.inputBuffer.getChannelData(0);
-    send(packPcm(ctx.sampleRate, input));
-  };
-  return () => {
-    proc.onaudioprocess = null;
-    src.disconnect();
-    proc.disconnect();
-    mute.disconnect();
-  };
-}
-
 export function startJpegSend(
   video: HTMLVideoElement,
   send: (buf: ArrayBuffer) => void,
@@ -61,8 +37,8 @@ export function startJpegSend(
   if (!ctx) return () => {};
   const tick = () => {
     if (!video.videoWidth) return;
-    canvas.width = 160;
-    canvas.height = Math.max(120, Math.round((160 * video.videoHeight) / video.videoWidth));
+    canvas.width = 200;
+    canvas.height = Math.max(150, Math.round((200 * video.videoHeight) / video.videoWidth));
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
@@ -70,10 +46,11 @@ export function startJpegSend(
         void blob.arrayBuffer().then((buf) => send(packJpeg(buf)));
       },
       "image/jpeg",
-      0.35,
+      0.42,
     );
   };
-  const id = window.setInterval(tick, 400);
+  tick();
+  const id = window.setInterval(tick, 150);
   return () => window.clearInterval(id);
 }
 
@@ -106,7 +83,7 @@ export function playWire(
     return audio.next;
   }
   if (kind !== AUDIO || view.byteLength < 10) return audio.next;
-  const rate = view.getUint32(4, true) || 48000;
+  const rate = view.getUint32(4, true) || 16000;
   const pcm = new Int16Array(buf.slice(8));
   const f32 = new Float32Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) f32[i] = (pcm[i] ?? 0) / 0x8000;
@@ -117,11 +94,9 @@ export function playWire(
     buffer.getChannelData(0).set(samples);
     node.buffer = buffer;
     node.connect(audio.ctx.destination);
-    const start = Math.max(audio.ctx.currentTime + 0.02, audio.next);
-    if (start - audio.ctx.currentTime > 0.28) {
-      node.start(audio.ctx.currentTime + 0.02);
-      return audio.ctx.currentTime + 0.02 + buffer.duration;
-    }
+    const now = audio.ctx.currentTime;
+    let start = Math.max(now + 0.05, audio.next);
+    if (start - now > 0.16) start = now + 0.05;
     node.start(start);
     return start + buffer.duration;
   } catch {
