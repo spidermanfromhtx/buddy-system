@@ -707,14 +707,14 @@ function Feed() {
             hosted.map((row) => {
               const face = row.matchPeerName
                 ? {
-                    name: row.matchPeerName,
-                    color: row.matchPeerColor || row.hostColor || row.color,
-                    photo: row.matchPeerPhoto,
+                    name: row.otherName || row.matchPeerName,
+                    color: row.otherColor || row.matchPeerColor || "",
+                    photo: row.otherPhoto || row.matchPeerPhoto,
                   }
                 : {
                     name: row.hostName || row.name,
                     color: row.hostColor || row.color,
-                    photo: row.hostPhoto,
+                    photo: row.hostPhoto || row.photo,
                   };
               return (
               <Card
@@ -759,9 +759,9 @@ function Feed() {
             joined.map((row) => (
               <Card
                 key={row.id}
-                name={row.hostName || row.matchPeerName || row.name}
-                color={row.hostColor || row.matchPeerColor || row.color}
-                photo={row.hostPhoto || row.matchPeerPhoto}
+                name={row.otherName || row.matchPeerName || row.hostName || row.name}
+                color={row.otherColor || row.matchPeerColor || row.hostColor || ""}
+                photo={row.otherPhoto || row.matchPeerPhoto || row.hostPhoto}
                 task={row.task}
                 urgent={row.urgent}
                 dueDate={row.dueDate}
