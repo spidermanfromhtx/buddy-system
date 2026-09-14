@@ -90,6 +90,7 @@ export async function checkAccountCode(data: { email: string; code: string }) {
   const token = randomBytes(24).toString("hex");
   const existing = await sql.query(`SELECT * FROM accounts WHERE email = $1 LIMIT 1`, [email]);
   if (existing[0]) {
+    if (existing[0].banned) return { ok: false as const, error: "This account was closed." };
     await sql.query(`UPDATE accounts SET session_token = $2 WHERE email = $1`, [email, token]);
     return { ok: true as const, exists: true as const, token, account: { ...mapAccount(existing[0]), sessionToken: token } };
   }
@@ -129,8 +130,8 @@ export async function createAccount(data: {
   if (!pending[0]) return { ok: false as const, error: "Verify your email first." };
   const id = newId("p");
   await sql.query(
-    `INSERT INTO accounts (id, email, session_token, name, birthdate, color, photo, break_every_min, categories)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,30,$8)`,
+    `INSERT INTO accounts (id, email, session_token, name, birthdate, color, photo, break_every_min, categories, tos_accepted_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,30,$8, now())`,
     [id, email, data.token, data.name.trim(), data.birthdate, data.color, data.photo, serializeCategories(categories)],
   );
   await sql.query(`DELETE FROM account_pending WHERE email = $1`, [email]);

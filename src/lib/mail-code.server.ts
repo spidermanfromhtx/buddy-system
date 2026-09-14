@@ -24,11 +24,7 @@ export function mailErrorMessage(err: unknown) {
   return "Could not send the email. Check the address and try again.";
 }
 
-export async function sendCodeEmail(to: string, code: string, kind: "account" | "campus") {
-  const what = kind === "campus" ? "campus code" : "login code";
-  const subject = `Your Buddy System ${what}`;
-  const text = `Your Buddy System ${what} is ${code}.\n\nIt expires in 10 minutes.\n\nIf you did not ask for this, ignore the email.`;
-
+export async function sendMail(to: string, subject: string, text: string) {
   const brevo = process.env.BREVO_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();
   if (brevo && from) {
@@ -73,4 +69,13 @@ export async function sendCodeEmail(to: string, code: string, kind: "account" | 
   if (/own email/i.test(body)) throw new Error("resend-own-email");
   if (/not verified|verify your domain|resend\.dev/i.test(body)) throw new Error("resend-domain");
   throw new Error("email-failed");
+}
+
+export async function sendCodeEmail(to: string, code: string, kind: "account" | "campus") {
+  const what = kind === "campus" ? "campus code" : "login code";
+  await sendMail(
+    to,
+    `Your Buddy System ${what}`,
+    `Your Buddy System ${what} is ${code}.\n\nIt expires in 10 minutes.\n\nIf you did not ask for this, ignore the email.`,
+  );
 }

@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Btn } from "@/components/btn";
 import { CategoryPicker } from "@/components/category-picker";
@@ -17,6 +17,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   const [color, setColor] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
+  const [tos, setTos] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -31,6 +32,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
     if (!name.trim()) return setErr("name");
     if (ageFromBirthdate(birthdate) < 18) return setErr("18");
     if (!categories.length) return setErr("categories");
+    if (!tos) return setErr("tos");
     setBusy(true);
     setErr("");
     try {
@@ -138,7 +140,26 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
               ) : null}
             </fieldset>
             <LookFields name={name} color={color} photo={photo} onColor={setColor} onPhoto={setPhoto} />
-            {err && err !== "18" && err !== "categories" ? (
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={tos}
+                onChange={(e) => {
+                  setTos(e.target.checked);
+                  if (err === "tos") setErr("");
+                }}
+              />
+              <span>
+                I am 18 or older. I agree to the{" "}
+                <Link to="/terms" className="underline">
+                  terms
+                </Link>
+                : ratings are anonymous to the other person and public to users. Reports can warn or close an account based on the language used.
+              </span>
+            </label>
+            {err === "tos" ? <p className="text-sm text-rust">Agree to the terms to continue.</p> : null}
+            {err && err !== "18" && err !== "categories" && err !== "tos" ? (
               <p className="text-sm text-rust">{err === "name" ? "Name is required." : err}</p>
             ) : null}
             <Btn type="submit" kind="fill" className="h-12 w-full" disabled={busy}>

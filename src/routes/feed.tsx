@@ -22,6 +22,7 @@ import {
   upsertLive,
   type Listing,
 } from "@/lib/listings";
+import { fileReport } from "@/lib/trust";
 import { clearProfile, loadProfile, profileFromAccount, saveProfile, type Profile } from "@/lib/profile";
 import { getLocalStream, micHint, unlockOutput } from "@/lib/media";
 import { formatDue, formatWindow, newId, todayIso, windowRange } from "@/lib/utils";
@@ -47,6 +48,8 @@ function Card({
   extra,
   category,
   offerCamera,
+  ratingAvg,
+  ratingCount,
   action,
 }: {
   name: string;
@@ -59,10 +62,13 @@ function Card({
   extra?: string;
   category?: string | null;
   offerCamera?: boolean;
+  ratingAvg?: number | null;
+  ratingCount?: number;
   action: ReactNode;
 }) {
   const due = formatDue(dueDate);
   const bits = [
+    ratingCount ? `${ratingAvg?.toFixed(1)} (${ratingCount})` : "",
     `${lengthMin} min`,
     category ? categoryLabel(category) : "",
     offerCamera ? "camera" : "",
@@ -106,6 +112,8 @@ function Feed() {
   const [tab, setTab] = useState<"all" | "school">("all");
   const [feedCat, setFeedCat] = useState("");
   const [pane, setPane] = useState<"live" | "book">("live");
+  const [reportFor, setReportFor] = useState<Listing | null>(null);
+  const [reportBody, setReportBody] = useState("");
 
   useEffect(() => {
     const p = loadProfile();
@@ -527,43 +535,59 @@ function Feed() {
 
   const compose = (
     <div className="rounded-3xl bg-night p-4 text-paper">
-      <input
-        placeholder="finish the email"
-        className="h-12 w-full bg-transparent text-lg text-paper outline-none placeholder:text-paper/40"
-        value={task}
-        onChange={(e) => setTask(e.target.value)}
-      />
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className={urgent ? "rounded-full bg-rust px-3 py-1 text-sm text-on-rust" : "rounded-full bg-paper/10 px-3 py-1 text-sm"}
-          onClick={() => setUrgent((v) => !v)}
-        >
-          urgent
-        </button>
-        <button
-          type="button"
-          className={camera ? "rounded-full bg-rust px-3 py-1 text-sm text-on-rust" : "rounded-full bg-paper/10 px-3 py-1 text-sm"}
-          onClick={() => setCamera((v) => !v)}
-        >
-          camera
-        </button>
-        <span className="rounded-full bg-paper/10 px-3 py-1 text-sm">{lengthMin} min</span>
+      <label className="block text-sm font-medium text-paper">
+        Enter task here
+        <input
+          placeholder="finish the email"
+          className="mt-2 h-12 w-full bg-transparent text-lg font-normal text-paper outline-none placeholder:text-paper/40"
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+        />
+      </label>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <fieldset>
+          <legend className="text-sm font-medium">Urgent or not urgent</legend>
+          <div className="mt-2 flex gap-2">
+            <Btn type="button" kind={urgent ? "fill" : "night"} className="h-10 flex-1" onClick={() => setUrgent(true)}>
+              Urgent
+            </Btn>
+            <Btn type="button" kind={!urgent ? "fill" : "night"} className="h-10 flex-1" onClick={() => setUrgent(false)}>
+              Not urgent
+            </Btn>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend className="text-sm font-medium">Camera on and off</legend>
+          <div className="mt-2 flex gap-2">
+            <Btn type="button" kind={camera ? "fill" : "night"} className="h-10 flex-1" onClick={() => setCamera(true)}>
+              Camera on
+            </Btn>
+            <Btn type="button" kind={!camera ? "fill" : "night"} className="h-10 flex-1" onClick={() => setCamera(false)}>
+              Camera off
+            </Btn>
+          </div>
+        </fieldset>
+      </div>
+      <label className="mt-4 block text-sm font-medium">
+        Set session length
+        <p className="mt-1 text-xs font-normal text-paper/60">{lengthMin} minutes</p>
         <input
           type="range"
           min={5}
           max={cap}
           value={lengthMin}
-          className="min-w-24 flex-1"
+          className="mt-2 w-full"
           onChange={(e) => setLengthMin(Number(e.target.value))}
         />
+      </label>
+      <div className="mt-4">
         {liveOn ? (
-          <Btn kind="paper" className="ml-auto h-11" onClick={closeMe}>
+          <Btn kind="paper" className="h-11 w-full" onClick={closeMe}>
             End live
           </Btn>
         ) : (
-          <Btn kind="fill" className="ml-auto h-11" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
-            {goOpen.isPending ? "…" : "Go live"}
+          <Btn kind="fill" className="h-11 w-full" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
+            {goOpen.isPending ? "Going live…" : "Go live"}
           </Btn>
         )}
       </div>
@@ -633,15 +657,29 @@ function Feed() {
                         ? row.school
                         : undefined
                   }
+                  ratingAvg={row.ratingAvg}
+                  ratingCount={row.ratingCount}
                   action={
                     isYou ? (
                       <Btn className="h-10 px-4 text-sm" onClick={() => refreshLive.mutate()}>
                         still open
                       </Btn>
                     ) : (
-                      <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => void call(row)}>
-                        Call
-                      </Btn>
+                      <div className="flex flex-col gap-1">
+                        <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => void call(row)}>
+                          Call
+                        </Btn>
+                        <button
+                          type="button"
+                          className="text-[11px] text-muted underline"
+                          onClick={() => {
+                            setReportFor(row);
+                            setReportBody("");
+                          }}
+                        >
+                          Report
+                        </button>
+                      </div>
                     )
                   }
                 />
@@ -685,22 +723,21 @@ function Feed() {
           <Btn className="h-10 text-sm" onClick={() => void share()}>
             Share
           </Btn>
+          <Btn className="h-10 text-sm" onClick={() => void nav({ to: "/reviews" })}>
+            Reviews
+          </Btn>
           <button type="button" onClick={() => setSheet("settings")} aria-label="Settings">
             <Face name={me.name} color={me.color} photo={me.photo} size="sm" />
           </button>
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-start md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <section className={`flex min-h-0 flex-col px-4 md:px-6 ${pane === "book" ? "hidden md:flex" : "flex"}`}>
-          <div className="flex-1 pt-4">{liveBoard}</div>
-          <div className="sticky bottom-0 mt-4 bg-paper pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
-            {compose}
-          </div>
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-4 pt-4 md:grid-cols-2 md:px-6">
+        <section className={`md:col-span-2 ${pane === "book" ? "hidden md:block" : "block"}`}>{liveBoard}</section>
+        <section className={pane === "book" ? "hidden md:block" : "block"}>
+          <div className="pb-2">{compose}</div>
         </section>
-        <aside
-          className={`min-w-0 border-ink/10 px-4 py-4 md:border-l md:px-6 ${pane === "live" ? "hidden md:block" : "block"}`}
-        >
+        <aside className={`min-w-0 pb-8 ${pane === "live" ? "hidden md:block" : "block"}`}>
           {bookFields("side")}
           <div className="mt-8">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
@@ -884,6 +921,14 @@ function Feed() {
                   <p className="text-sm text-muted">Plus stays off until limits are on.</p>
                 )}
               </div>
+              <Btn
+                onClick={() => {
+                  setSheet("none");
+                  void nav({ to: "/terms" });
+                }}
+              >
+                Terms
+              </Btn>
               <Btn kind="fill" onClick={() => setSheet("none")}>
                 Close settings
               </Btn>
@@ -895,6 +940,51 @@ function Feed() {
               >
                 Sign out
               </Btn>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {reportFor ? (
+        <div
+          className="fixed inset-0 z-30 flex items-end bg-night/50 md:items-center md:justify-center"
+          onClick={() => setReportFor(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="font-display text-xl">Report {reportFor.name}</p>
+            <p className="mt-2 text-sm text-muted">
+              They will not see it was you. We read the language. Harm can close an account. Other reports can send a warning.
+            </p>
+            <textarea
+              className="mt-4 min-h-28 w-full rounded-xl border border-ink/10 bg-paper px-3 py-2 outline-none"
+              value={reportBody}
+              onChange={(e) => setReportBody(e.target.value)}
+              placeholder="What happened."
+              maxLength={800}
+            />
+            <div className="mt-4 flex flex-col gap-2">
+              <Btn
+                kind="fill"
+                onClick={() => {
+                  void fileReport({
+                    data: { token: me.sessionToken, subjectId: reportFor.peerId, body: reportBody },
+                  }).then((res) => {
+                    if (!res.ok) {
+                      setNote(res.error);
+                      return;
+                    }
+                    setNote(res.action === "closed" ? "Report in. That account was closed." : "Report in.");
+                    setReportFor(null);
+                    setReportBody("");
+                  });
+                }}
+              >
+                Send report
+              </Btn>
+              <Btn onClick={() => setReportFor(null)}>Close</Btn>
             </div>
           </div>
         </div>

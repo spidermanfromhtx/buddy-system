@@ -59,7 +59,7 @@ function CallScreen() {
   useEffect(() => {
     if (!dummy && q.data?.status === "done") {
       stopLocalStream();
-      void nav({ to: "/feed" });
+      void nav({ to: "/rate/$id", params: { id } });
     }
   }, [dummy, q.data?.status, nav]);
 
@@ -74,7 +74,8 @@ function CallScreen() {
       }).catch(() => {});
     }
     if (!dummy) await setCallStatus({ data: { id, status: "done" } });
-    void nav({ to: "/feed" });
+    if (dummy) void nav({ to: "/feed" });
+    else void nav({ to: "/rate/$id", params: { id } });
   }
 
   return (

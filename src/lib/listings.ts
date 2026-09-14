@@ -37,6 +37,8 @@ export type Listing = {
   matchRoom: string | null;
   matchCallId: string | null;
   category: string | null;
+  ratingAvg: number | null;
+  ratingCount: number;
 };
 
 function mapRow(r: Record<string, unknown>): Listing {
@@ -64,6 +66,8 @@ function mapRow(r: Record<string, unknown>): Listing {
     matchRoom: r.match_room ? String(r.match_room) : null,
     matchCallId: r.match_call_id ? String(r.match_call_id) : null,
     category: r.category ? String(r.category) : null,
+    ratingAvg: r.rating_avg != null ? Number(r.rating_avg) : null,
+    ratingCount: r.rating_n != null ? Number(r.rating_n) : 0,
   };
 }
 
@@ -90,10 +94,15 @@ export const listOpen = createServerFn({ method: "GET" })
         const school = member[0]?.school ? String(member[0].school) : null;
         if (!school) return [];
         const rows = await sql.query(
-          `SELECT * FROM listings
+          `SELECT l.*, s.avg as rating_avg, s.n as rating_n
+           FROM listings l
+           LEFT JOIN (
+             SELECT subject_id, avg(rating)::float as avg, count(*)::int as n FROM reviews GROUP BY subject_id
+           ) s ON s.subject_id = l.peer_id
            WHERE school = $1
              AND (expires_at IS NULL OR expires_at > now())
              AND peer_id NOT LIKE 'dummy-%'
+             AND peer_id NOT IN (SELECT id FROM accounts WHERE banned = true)
            ORDER BY urgent DESC, created_at DESC
            LIMIT 80`,
           [school],
@@ -101,10 +110,15 @@ export const listOpen = createServerFn({ method: "GET" })
         return rows.map(mapRow);
       }
       const rows = await sql.query(
-        `SELECT * FROM listings
+        `SELECT l.*, s.avg as rating_avg, s.n as rating_n
+         FROM listings l
+         LEFT JOIN (
+           SELECT subject_id, avg(rating)::float as avg, count(*)::int as n FROM reviews GROUP BY subject_id
+         ) s ON s.subject_id = l.peer_id
          WHERE (school IS NULL OR school = '')
            AND (expires_at IS NULL OR expires_at > now())
            AND peer_id NOT LIKE 'dummy-%'
+           AND peer_id NOT IN (SELECT id FROM accounts WHERE banned = true)
          ORDER BY urgent DESC, created_at DESC
          LIMIT 80`,
       );

@@ -12,9 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as JoinRouteImport } from './routes/join'
+import { Route as ReviewsRouteImport } from './routes/reviews'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiRtcRouteImport } from './routes/api/rtc'
+import { Route as ApiStripeRouteImport } from './routes/api/stripe'
 import { Route as CallIdRouteImport } from './routes/call.$id'
 import { Route as IncomingIdRouteImport } from './routes/incoming.$id'
+import { Route as RateIdRouteImport } from './routes/rate.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,9 +35,24 @@ const JoinRoute = JoinRouteImport.update({
   path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRtcRoute = ApiRtcRouteImport.update({
   id: '/api/rtc',
   path: '/api/rtc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStripeRoute = ApiStripeRouteImport.update({
+  id: '/api/stripe',
+  path: '/api/stripe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CallIdRoute = CallIdRouteImport.update({
@@ -46,55 +65,99 @@ const IncomingIdRoute = IncomingIdRouteImport.update({
   path: '/incoming/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RateIdRoute = RateIdRouteImport.update({
+  id: '/rate/$id',
+  path: '/rate/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/feed': typeof FeedRoute
   '/join': typeof JoinRoute
+  '/reviews': typeof ReviewsRoute
+  '/terms': typeof TermsRoute
   '/api/rtc': typeof ApiRtcRoute
+  '/api/stripe': typeof ApiStripeRoute
   '/call/$id': typeof CallIdRoute
   '/incoming/$id': typeof IncomingIdRoute
+  '/rate/$id': typeof RateIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/feed': typeof FeedRoute
   '/join': typeof JoinRoute
+  '/reviews': typeof ReviewsRoute
+  '/terms': typeof TermsRoute
   '/api/rtc': typeof ApiRtcRoute
+  '/api/stripe': typeof ApiStripeRoute
   '/call/$id': typeof CallIdRoute
   '/incoming/$id': typeof IncomingIdRoute
+  '/rate/$id': typeof RateIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/feed': typeof FeedRoute
   '/join': typeof JoinRoute
+  '/reviews': typeof ReviewsRoute
+  '/terms': typeof TermsRoute
   '/api/rtc': typeof ApiRtcRoute
+  '/api/stripe': typeof ApiStripeRoute
   '/call/$id': typeof CallIdRoute
   '/incoming/$id': typeof IncomingIdRoute
+  '/rate/$id': typeof RateIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/feed' | '/join' | '/api/rtc' | '/call/$id' | '/incoming/$id'
+    | '/'
+    | '/feed'
+    | '/join'
+    | '/reviews'
+    | '/terms'
+    | '/api/rtc'
+    | '/api/stripe'
+    | '/call/$id'
+    | '/incoming/$id'
+    | '/rate/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/feed' | '/join' | '/api/rtc' | '/call/$id' | '/incoming/$id'
+  to:
+    | '/'
+    | '/feed'
+    | '/join'
+    | '/reviews'
+    | '/terms'
+    | '/api/rtc'
+    | '/api/stripe'
+    | '/call/$id'
+    | '/incoming/$id'
+    | '/rate/$id'
   id:
     | '__root__'
     | '/'
     | '/feed'
     | '/join'
+    | '/reviews'
+    | '/terms'
     | '/api/rtc'
+    | '/api/stripe'
     | '/call/$id'
     | '/incoming/$id'
+    | '/rate/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FeedRoute: typeof FeedRoute
   JoinRoute: typeof JoinRoute
+  ReviewsRoute: typeof ReviewsRoute
+  TermsRoute: typeof TermsRoute
   ApiRtcRoute: typeof ApiRtcRoute
+  ApiStripeRoute: typeof ApiStripeRoute
   CallIdRoute: typeof CallIdRoute
   IncomingIdRoute: typeof IncomingIdRoute
+  RateIdRoute: typeof RateIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -120,11 +183,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rtc': {
       id: '/api/rtc'
       path: '/api/rtc'
       fullPath: '/api/rtc'
       preLoaderRoute: typeof ApiRtcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stripe': {
+      id: '/api/stripe'
+      path: '/api/stripe'
+      fullPath: '/api/stripe'
+      preLoaderRoute: typeof ApiStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/call/$id': {
@@ -141,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IncomingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rate/$id': {
+      id: '/rate/$id'
+      path: '/rate/$id'
+      fullPath: '/rate/$id'
+      preLoaderRoute: typeof RateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -148,9 +239,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FeedRoute: FeedRoute,
   JoinRoute: JoinRoute,
+  ReviewsRoute: ReviewsRoute,
+  TermsRoute: TermsRoute,
   ApiRtcRoute: ApiRtcRoute,
+  ApiStripeRoute: ApiStripeRoute,
   CallIdRoute: CallIdRoute,
   IncomingIdRoute: IncomingIdRoute,
+  RateIdRoute: RateIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
