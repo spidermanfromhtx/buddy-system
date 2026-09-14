@@ -19,28 +19,20 @@ import { startJpegSend } from "@/lib/wire-media";
 function MicMeter({ active }: { active: boolean }) {
   const [level, setLevel] = useState(0);
   useEffect(() => {
-    if (!active) {
-      setLevel(0);
-      return;
-    }
+    if (!active) { setLevel(0); return; }
     let raf = 0;
-    const tick = () => {
-      setLevel(micLevel());
-      raf = requestAnimationFrame(tick);
-    };
+    const tick = () => { setLevel(micLevel()); raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [active]);
   return (
     <div className="mt-3 flex h-8 items-end justify-center gap-1" aria-label="mic level">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span key={i} className="w-2 bg-rust" style={{ height: `${8 + Math.max(0, level - i * 0.16) * 24}px`, opacity: level > i * 0.14 ? 1 : 0.2 }} />
-      ))}
+      {[0, 1, 2, 3, 4].map((i) => <span key={i} className="w-2 bg-rust" style={{ height: `${8 + Math.max(0, level - i * 0.16) * 24}px`, opacity: level > i * 0.14 ? 1 : 0.2 }} />)}
     </div>
   );
 }
 
-export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false, onCamera, loopback = false }: {
+export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false, onCamera, loopback = false, onCallConnected }: {
   room: string;
   selfId: string;
   name: string;
@@ -48,10 +40,12 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
   allowCamera?: boolean;
   onCamera?: (on: boolean) => void;
   loopback?: boolean;
+  onCallConnected?: () => void;
 }) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const p2pRef = useRef<P2PRoom | null>(null);
+  const callConnectedRef = useRef(false);
   const [local, setLocal] = useState<MediaStream | null>(currentStream());
   const [status, setStatus] = useState(hasLiveMic() ? "joining" : "need-mic");
   const [peers, setPeers] = useState<PeerInfo[]>([]);
@@ -70,66 +64,50 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
     const el = localVideoRef.current;
     if (!el) return;
     if (el.srcObject !== media) el.srcObject = media;
-    el.muted = true;
-    el.playsInline = true;
+    el.muted = true; el.playsInline = true;
     if (video) void el.play().catch(() => {});
   }
 
   function showRemote(remote: MediaStream) {
     const video = remoteVideoRef.current;
     if (video) {
-      const videoStream = new MediaStream(remote.getVideoTracks());
-      video.srcObject = videoStream;
-      video.muted = true;
-      video.playsInline = true;
-      video.autoplay = true;
+      video.srcObject = new MediaStream(remote.getVideoTracks());
+      video.muted = true; video.playsInline = true; video.autoplay = true;
       void video.play().catch(() => {});
-      video.onloadedmetadata = () => {
-        if (video.videoWidth > 16) setRemoteVideo(true);
-      };
+      video.onloadedmetadata = () => { if (video.videoWidth > 16) setRemoteVideo(true); };
     }
     if (remote.getAudioTracks().length) setRemoteAudioState("track");
   }
 
   async function start() {
-    setErr("");
-    setStatus("joining");
+    setErr(""); setStatus("joining");
     try {
       const media = await getLocalStream(Boolean(allowCamera && wantCamera), loopback);
-      setLocal(media);
-      showLocal(media);
-      await unlockOutput();
+      setLocal(media); showLocal(media); await unlockOutput();
       if (loopback) {
         setStatus("demo");
         const el = remoteVideoRef.current;
-        if (el) {
-          el.srcObject = media;
-          el.muted = true;
-          void el.play().catch(() => {});
-        }
+        if (el) { el.srcObject = media; el.muted = true; void el.play().catch(() => {}); }
         setRemoteVideo(media.getVideoTracks().some(isRealVideo));
         return;
       }
       const iceServers = await loadIceServers();
       p2pRef.current?.close(false);
       const p2p = new P2PRoom({
-        room,
-        selfId,
-        name,
-        mediaStream: media,
-        allowVideo: allowCamera,
-        iceServers,
+        room, selfId, name, mediaStream: media, allowVideo: allowCamera, iceServers,
         onPeersChanged: (list) => {
           setPeers(list);
           setStatus(list.length ? "connected" : "waiting");
+          if (!callConnectedRef.current && list.some((p) => p.connectionState === "connected")) {
+            callConnectedRef.current = true;
+            onCallConnected?.();
+          }
         },
         onRemoteStream: (_id, remote) => showRemote(remote),
         onMediaData: (_id, data) => {
           const view = new DataView(data);
           if (view.byteLength >= 2 && view.getUint8(0) === 0) {
-            hearPcm(data);
-            setRemoteAudioState("playing");
-            return;
+            hearPcm(data); setRemoteAudioState("playing"); return;
           }
           if (view.byteLength > 0 && view.getUint8(0) === 1) {
             const blob = new Blob([data.slice(1)], { type: "image/jpeg" });
@@ -144,38 +122,22 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       });
       p2pRef.current = p2p;
       await p2p.join();
-    } catch (e) {
-      setErr(micHint(e));
-      setStatus("need-mic");
-    }
+    } catch (e) { setErr(micHint(e)); setStatus("need-mic"); }
   }
 
-  useEffect(() => {
-    return onPcmOut((buf) => {
-      p2pRef.current?.sendMedia(buf);
-    });
-  }, []);
+  useEffect(() => onPcmOut((buf) => p2pRef.current?.sendMedia(buf)), []);
 
   useEffect(() => {
     void start();
-    return () => {
-      p2pRef.current?.close(false);
-      p2pRef.current = null;
-      if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
-    };
+    return () => { p2pRef.current?.close(false); p2pRef.current = null; if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, selfId, loopback]);
 
   useEffect(() => {
-    const retry = () => {
-      void unlockOutput();
-    };
+    const retry = () => { void unlockOutput(); };
     window.addEventListener("pointerdown", retry, { passive: true });
     window.addEventListener("keydown", retry);
-    return () => {
-      window.removeEventListener("pointerdown", retry);
-      window.removeEventListener("keydown", retry);
-    };
+    return () => { window.removeEventListener("pointerdown", retry); window.removeEventListener("keydown", retry); };
   }, []);
 
   const lastCam = useRef(Boolean(allowCamera && wantCamera));
@@ -185,22 +147,18 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
     void (async () => {
       try {
         const media = await getLocalStream(wantCamera, loopback);
-        setLocal(media);
-        showLocal(media);
-        p2pRef.current?.attachMedia(media);
+        setLocal(media); showLocal(media); p2pRef.current?.attachMedia(media);
       } catch {}
     })();
   }, [wantCamera, allowCamera, loopback]);
 
   useEffect(() => {
     if (!localCam || !allowCamera) return;
-    const el = localVideoRef.current;
-    if (!el) return;
+    const el = localVideoRef.current; if (!el) return;
     return startJpegSend(el, (buf) => p2pRef.current?.sendMedia(buf));
   }, [localCam, allowCamera]);
 
   const showStage = Boolean(allowCamera);
-
   return (
     <div className="flex flex-col items-center gap-3">
       <div className={showStage ? "relative aspect-square w-full max-w-xs" : "contents"}>
