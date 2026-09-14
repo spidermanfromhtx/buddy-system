@@ -58,26 +58,20 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   }
 
   return (
-    <main className="min-h-dvh bg-night text-paper [color-scheme:dark] md:grid md:grid-cols-2">
-      <section className="flex flex-col justify-between px-8 py-12 md:min-h-dvh md:px-12">
+    <main className="min-h-dvh bg-paper text-ink md:grid md:grid-cols-2">
+      <section className="bg-night px-6 py-5 text-paper md:flex md:min-h-dvh md:flex-col md:justify-center md:px-12 md:py-12">
         <div className="flex items-center gap-3">
-          <Mark onDark className="size-12" />
-          <p className="font-display text-2xl tracking-tight">Buddy System</p>
+          <Mark onDark className="size-10" />
+          <p className="font-display text-xl tracking-tight">Buddy System</p>
         </div>
-        <div className="mt-16 md:mt-0">
-          <h1 className="font-display text-5xl tracking-tight md:text-7xl">
-            The phone rings.
-            <br />
-            You work.
-            <br />
-            You hang up.
-          </h1>
-          <p className="mt-6 max-w-sm text-base text-paper/60">
-            Find a live buddy. Schedule a buddy. Be a buddy. 18+.
-          </p>
-        </div>
+        <h1 className="mt-3 font-display text-2xl tracking-tight md:mt-10 md:text-6xl">
+          The phone rings. You work. You hang up.
+        </h1>
+        <p className="mt-2 hidden max-w-sm text-base text-paper/60 md:mt-5 md:block">
+          Find a live buddy. Schedule a buddy. Be a buddy. 18+.
+        </p>
       </section>
-      <section className="bg-paper px-6 py-12 text-ink md:flex md:min-h-dvh md:items-center md:px-12">
+      <section className="px-6 py-8 md:flex md:min-h-dvh md:items-start md:px-12 md:py-16">
         <div className="mx-auto w-full max-w-md">
         {!pending ? (
           <EmailCodeForm

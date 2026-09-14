@@ -31,7 +31,7 @@ export function CategoryPicker({
         <Btn
           type="button"
           kind={none ? (onDark ? "paper" : "ink") : onDark ? "night" : "line"}
-          className="text-sm"
+          className="h-10 text-sm"
           aria-pressed={none}
           onClick={() => onChange([])}
         >
@@ -45,7 +45,7 @@ export function CategoryPicker({
             key={c.id}
             type="button"
             kind={on ? (onDark ? "paper" : "ink") : onDark ? "night" : "line"}
-            className="text-sm"
+            className="h-10 text-sm"
             aria-pressed={on}
             onClick={(e) => {
               e.preventDefault();

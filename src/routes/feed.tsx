@@ -70,27 +70,19 @@ function Card({
     extra,
   ].filter(Boolean);
   return (
-    <li className="flex flex-col rounded-3xl bg-paper-2 p-5">
-      <div className="flex items-start gap-4">
-        <Face name={name} color={color} photo={photo} />
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-2xl leading-tight tracking-tight">{task}</p>
-          <p className="mt-1 text-sm text-muted">{name}</p>
-        </div>
-        {urgent ? (
-          <span className="shrink-0 rounded-full bg-rust px-2.5 py-1 text-xs font-medium text-on-rust">urgent</span>
-        ) : null}
-      </div>
-      {bits.length ? (
-        <p className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
-          {bits.map((b) => (
-            <span key={b} className="rounded-full bg-paper px-2.5 py-1">
-              {b}
-            </span>
-          ))}
+    <li className="flex items-center gap-3 rounded-2xl bg-paper-2 px-3 py-3">
+      <Face name={name} color={color} photo={photo} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-lg leading-tight tracking-tight">{task}</p>
+        <p className="mt-0.5 truncate text-xs text-muted">
+          {name}
+          {bits.length ? ` · ${bits.join(" · ")}` : ""}
         </p>
+      </div>
+      {urgent ? (
+        <span className="shrink-0 rounded-full bg-rust px-2 py-0.5 text-[11px] font-medium text-on-rust">urgent</span>
       ) : null}
-      <div className="mt-4">{action}</div>
+      <div className="shrink-0">{action}</div>
     </li>
   );
 }
@@ -425,9 +417,9 @@ function Feed() {
 
   const bookFields = (prefix: string) => (
     <div id={`book-${prefix}`} className="flex flex-col">
-      <p className="font-display text-3xl tracking-tight">Book</p>
-      <p className="mt-2 text-sm text-muted">Pick a day. We match you. The call rings.</p>
-      <div className="mt-6 flex flex-col gap-6">
+      <p className="font-display text-2xl tracking-tight">Book</p>
+      <p className="mt-1 text-sm text-muted">Pick a day. We match you. The call rings.</p>
+      <div className="mt-5 flex flex-col gap-4">
         <div>
           <p className="text-sm font-medium">Date</p>
           <p className="mt-1 text-xs text-muted">Tap a day. Past days are closed.</p>
@@ -580,44 +572,44 @@ function Feed() {
   );
 
   const liveBoard = (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex gap-6 border-b border-ink/10">
+    <div className="flex flex-col">
+      <div className="flex gap-5 border-b border-ink/10">
         <button
           type="button"
-          className={`border-b-2 pb-3 text-sm font-medium ${tab === "all" ? "border-rust text-ink" : "border-transparent text-muted"}`}
+          className={`border-b-2 pb-2 text-sm font-medium ${tab === "all" ? "border-rust text-ink" : "border-transparent text-muted"}`}
           onClick={() => setTab("all")}
         >
           Main
         </button>
         <button
           type="button"
-          className={`border-b-2 pb-3 text-sm font-medium ${tab === "school" ? "border-rust text-ink" : "border-transparent text-muted"}`}
+          className={`border-b-2 pb-2 text-sm font-medium ${tab === "school" ? "border-rust text-ink" : "border-transparent text-muted"}`}
           onClick={() => setTab("school")}
         >
           University
         </button>
       </div>
       {tab === "school" && !me.schoolVerified ? (
-        <div className="mt-8 max-w-md">
-          <p className="font-display text-3xl tracking-tight">Your campus</p>
-          <p className="mt-3 text-base text-muted">
+        <div className="mt-5 max-w-md">
+          <p className="font-display text-2xl tracking-tight">Your campus</p>
+          <p className="mt-2 text-sm text-muted">
             Add a school email in Settings. We send a 6-digit code. Then this only shows people from that campus.
           </p>
-          <Btn kind="fill" className="mt-6" onClick={() => setSheet("settings")}>
+          <Btn kind="fill" className="mt-4 h-10" onClick={() => setSheet("settings")}>
             Open settings
           </Btn>
         </div>
       ) : (
         <>
-          <div className="mt-5">
+          <div className="mt-3">
             <CategoryPicker allowAll value={feedCat ? [feedCat] : []} onChange={(ids) => setFeedCat(ids[0] ?? "")} />
           </div>
-          <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ul className="mt-3 flex flex-col gap-2">
             {live.length === 0 ? (
-              <li className="rounded-3xl bg-paper-2 p-8 text-base text-muted sm:col-span-2">
+              <li className="rounded-2xl bg-paper-2 px-4 py-5 text-sm text-muted">
                 {tab === "school"
                   ? `Nobody from ${me.school} is live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}.`
-                  : `Nobody live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Write a one-liner and go live.`}
+                  : `Nobody live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Write a one-liner below.`}
               </li>
             ) : null}
             {live.map((row) => {
@@ -643,11 +635,11 @@ function Feed() {
                   }
                   action={
                     isYou ? (
-                      <Btn className="w-full" onClick={() => refreshLive.mutate()}>
+                      <Btn className="h-10 px-4 text-sm" onClick={() => refreshLive.mutate()}>
                         still open
                       </Btn>
                     ) : (
-                      <Btn kind="fill" className="w-full" onClick={() => void call(row)}>
+                      <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => void call(row)}>
                         Call
                       </Btn>
                     )
@@ -663,12 +655,12 @@ function Feed() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-paper text-ink">
-      <header className="flex items-center justify-between gap-4 px-5 py-4 md:px-8">
-        <div className="flex items-center gap-3">
-          <Mark className="size-10" />
+      <header className="flex items-center justify-between gap-3 border-b border-ink/10 px-4 py-3 md:px-6">
+        <div className="flex items-center gap-2.5">
+          <Mark className="size-9" />
           <div>
-            <h1 className="font-display text-2xl tracking-tight">Buddy System</h1>
-            <p className="text-xs text-muted">
+            <h1 className="font-display text-xl leading-none tracking-tight">Buddy System</h1>
+            <p className="mt-1 text-[11px] text-muted">
               {plus ? "Plus" : limits ? `${left} left this week` : "R&D"}
             </p>
           </div>
@@ -699,18 +691,20 @@ function Feed() {
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-0 md:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
-        <section className={`flex min-h-0 flex-col px-5 pb-6 md:px-8 ${pane === "book" ? "hidden md:flex" : "flex"}`}>
-          {liveBoard}
-          <div className="mt-6">{compose}</div>
+      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-start md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <section className={`flex min-h-0 flex-col px-4 md:px-6 ${pane === "book" ? "hidden md:flex" : "flex"}`}>
+          <div className="flex-1 pt-4">{liveBoard}</div>
+          <div className="sticky bottom-0 mt-4 bg-paper pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+            {compose}
+          </div>
         </section>
         <aside
-          className={`min-w-0 overflow-y-auto bg-paper-2 px-5 py-6 md:px-8 ${pane === "live" ? "hidden md:block" : "block"}`}
+          className={`min-w-0 border-ink/10 px-4 py-4 md:border-l md:px-6 ${pane === "live" ? "hidden md:block" : "block"}`}
         >
           {bookFields("side")}
-          <div className="mt-10">
+          <div className="mt-8">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
-            <ul className="mt-4 flex flex-col gap-3">
+            <ul className="mt-3 flex flex-col gap-2">
               {scheduled.length === 0 ? (
                 <li className="text-sm text-muted">None yet.</li>
               ) : (
