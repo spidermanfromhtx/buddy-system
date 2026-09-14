@@ -101,7 +101,7 @@ function CallScreen() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-night text-paper">
+    <main className="relative z-10 flex min-h-dvh flex-col bg-transparent text-paper">
       <PageWash dark />
       <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-between px-5 py-8 sm:px-6 sm:py-10">
         <div className="flex w-full flex-col items-center text-center">

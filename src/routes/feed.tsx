@@ -729,7 +729,7 @@ function Feed() {
   );
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-paper text-ink">
+    <main className="relative z-10 flex min-h-dvh flex-col bg-transparent text-ink">
       <PageWash />
       <header className="relative z-10 flex items-center justify-between gap-2 border-b-2 border-sage px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
         <div className="flex min-w-0 items-center gap-2">
