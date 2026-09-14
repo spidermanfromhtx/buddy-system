@@ -222,15 +222,17 @@ export class P2PRoom {
 
   sendMedia(data: ArrayBuffer): void {
     for (const slot of this.peers.values()) {
-      const channels = [slot.media, slot.reliable];
-      for (const ch of channels) {
-        if (ch?.readyState !== "open") continue;
-        try {
-          ch.send(data);
-          break;
-        } catch {
-          // try the next channel
-        }
+      const ch =
+        slot.reliable?.readyState === "open"
+          ? slot.reliable
+          : slot.media?.readyState === "open"
+            ? slot.media
+            : null;
+      if (!ch) continue;
+      try {
+        ch.send(data);
+      } catch {
+        // channel closed mid-send
       }
     }
   }
@@ -420,13 +422,7 @@ export class P2PRoom {
       if (!initiator && !pc.currentRemoteDescription) return;
       try {
         slot.makingOffer = true;
-        const hasVideo = Boolean(
-          this.opts.mediaStream?.getVideoTracks().some((t) => t.readyState === "live" && t.enabled),
-        );
-        const offer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: hasVideo,
-        });
+        const offer = await pc.createOffer();
         if (this.closed || pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
         await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
@@ -497,6 +493,7 @@ export class P2PRoom {
   }
 
   private attachChannel(slot: PeerSlot, channel: RTCDataChannel): void {
+    channel.binaryType = "arraybuffer";
     if (channel.label === "state") slot.state = channel;
     else slot.reliable = channel;
     channel.onopen = () => {

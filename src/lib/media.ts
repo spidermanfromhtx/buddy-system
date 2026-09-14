@@ -1,7 +1,13 @@
+import { packPcm, playWire } from "@/lib/wire-media";
+
 let stream: MediaStream | null = null;
 let output: AudioContext | null = null;
 let speaker: HTMLVideoElement | null = null;
 let remoteNode: MediaStreamAudioSourceNode | null = null;
+let keepAliveOsc: OscillatorNode | null = null;
+let capture: { src: MediaStreamAudioSourceNode; proc: ScriptProcessorNode; mute: GainNode } | null = null;
+let playBag: { ctx: AudioContext; next: number } | null = null;
+const pcmSinks = new Set<(buf: ArrayBuffer) => void>();
 
 export function hasLiveMic() {
   return Boolean(stream?.getAudioTracks().some((t) => t.readyState === "live"));
@@ -38,21 +44,14 @@ function wireSpeaker(el: HTMLVideoElement) {
   el.setAttribute("autoplay", "true");
 }
 
-export function setSpeaker(el: HTMLVideoElement | null) {
-  speaker = el;
-  if (el) wireSpeaker(el);
-}
-
 function getSpeaker() {
   if (typeof document === "undefined") return null;
-  if (speaker && speaker.isConnected) return speaker;
-  if (!speaker) {
-    speaker = document.createElement("video");
-    wireSpeaker(speaker);
-    speaker.style.cssText =
-      "position:fixed;left:0;bottom:0;width:8px;height:8px;opacity:0.02;pointer-events:none";
-    document.body.appendChild(speaker);
-  }
+  if (speaker?.isConnected) return speaker;
+  speaker = document.createElement("video");
+  wireSpeaker(speaker);
+  speaker.style.cssText =
+    "position:fixed;left:4px;bottom:4px;width:12px;height:12px;opacity:0.04;pointer-events:none;z-index:99";
+  document.body.appendChild(speaker);
   return speaker;
 }
 
@@ -67,25 +66,80 @@ function keepLocalAlive(media: MediaStream) {
     keep.playsInline = true;
     keep.setAttribute("playsinline", "true");
     keep.setAttribute("webkit-playsinline", "true");
-    keep.style.cssText = "position:fixed;right:0;bottom:0;width:8px;height:8px;opacity:0.02;pointer-events:none";
+    keep.style.cssText = "position:fixed;right:4px;bottom:4px;width:12px;height:12px;opacity:0.04;pointer-events:none";
     document.body.appendChild(keep);
   }
   if (keep.srcObject !== media) keep.srcObject = media;
   void keep.play().catch(() => {});
 }
 
-function addHoldVideo(media: MediaStream) {
-  return media;
-}
-
 export function getAudioContext() {
   return output;
+}
+
+export function onPcmOut(cb: (buf: ArrayBuffer) => void) {
+  pcmSinks.add(cb);
+  return () => {
+    pcmSinks.delete(cb);
+  };
+}
+
+function stopCapture() {
+  if (!capture) return;
+  capture.proc.onaudioprocess = null;
+  try {
+    capture.src.disconnect();
+    capture.proc.disconnect();
+    capture.mute.disconnect();
+  } catch {
+    // already gone
+  }
+  capture = null;
+}
+
+function startCapture() {
+  if (!output || !stream) return;
+  const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
+  if (!audio) return;
+  stopCapture();
+  const src = output.createMediaStreamSource(new MediaStream([audio]));
+  const proc = output.createScriptProcessor(2048, 1, 1);
+  const mute = output.createGain();
+  mute.gain.value = 0;
+  src.connect(proc);
+  proc.connect(mute);
+  mute.connect(output.destination);
+  proc.onaudioprocess = (ev) => {
+    if (!pcmSinks.size) return;
+    const input = ev.inputBuffer.getChannelData(0);
+    const buf = packPcm(output?.sampleRate || 48000, input);
+    for (const cb of pcmSinks) cb(buf);
+  };
+  capture = { src, proc, mute };
+}
+
+function startKeepAlive() {
+  if (!output || keepAliveOsc) return;
+  try {
+    const osc = output.createOscillator();
+    const g = output.createGain();
+    g.gain.value = 0.00005;
+    osc.frequency.value = 30;
+    osc.connect(g);
+    g.connect(output.destination);
+    osc.start();
+    keepAliveOsc = osc;
+  } catch {
+    // optional
+  }
 }
 
 export async function unlockOutput() {
   try {
     output ??= new AudioContext();
     if (output.state === "suspended") await output.resume();
+    startKeepAlive();
+    playBag = { ctx: output, next: 0 };
     const buf = output.createBuffer(1, 8, output.sampleRate);
     const src = output.createBufferSource();
     src.buffer = buf;
@@ -95,16 +149,25 @@ export async function unlockOutput() {
     // speaker play below is enough
   }
   const el = getSpeaker();
-  if (!el) return;
-  wireSpeaker(el);
-  try {
-    if (!el.srcObject && output) {
-      el.srcObject = output.createMediaStreamDestination().stream;
+  if (el) {
+    wireSpeaker(el);
+    try {
+      if (!el.srcObject && output) {
+        el.srcObject = output.createMediaStreamDestination().stream;
+      }
+      void el.play().catch(() => {});
+    } catch {
+      // Call / Answer already used the gesture
     }
-    void el.play().catch(() => {});
-  } catch {
-    // Call / Answer already used the gesture
   }
+  startCapture();
+}
+
+export function hearPcm(buf: ArrayBuffer) {
+  if (!output) return;
+  if (output.state === "suspended") void output.resume();
+  playBag ??= { ctx: output, next: 0 };
+  playBag.next = playWire(buf, playBag, () => {});
 }
 
 function kickPlay(el: HTMLMediaElement) {
@@ -140,10 +203,11 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
           stream.addTrack(t);
         }
       } catch {
-        addHoldVideo(stream);
+        // audio-only is fine
       }
       for (const t of stream.getAudioTracks()) t.enabled = true;
       keepLocalAlive(stream);
+      startCapture();
       return stream;
     }
     if (!wantCamera && liveVideo.length) {
@@ -152,12 +216,10 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
         t.stop();
         stream.removeTrack(t);
       }
-      addHoldVideo(stream);
-      keepLocalAlive(stream);
-      return stream;
     }
     for (const t of stream.getAudioTracks()) t.enabled = true;
     keepLocalAlive(stream);
+    startCapture();
     return stream;
   }
   const audio: boolean | MediaTrackConstraints = monitor
@@ -174,10 +236,8 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
     try {
       stream = await navigator.mediaDevices.getUserMedia(c);
       for (const t of stream.getTracks()) t.enabled = true;
-      if (wantCamera && !stream.getVideoTracks().some((t) => !isHoldVideo(t))) {
-        addHoldVideo(stream);
-      }
       keepLocalAlive(stream);
+      startCapture();
       return stream;
     } catch (e) {
       last = e;
@@ -187,6 +247,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
 }
 
 export function stopLocalStream() {
+  stopCapture();
   const extra: MediaStream[] = [];
   if (stream) extra.push(stream);
   if (keep?.srcObject instanceof MediaStream) extra.push(keep.srcObject);
@@ -200,9 +261,6 @@ export function stopLocalStream() {
   if (keep) {
     keep.srcObject = null;
     keep.pause();
-  }
-  if (speaker) {
-    speaker.srcObject = null;
   }
   try {
     remoteNode?.disconnect();
@@ -221,13 +279,11 @@ export async function playRemote(remote: MediaStream) {
       ...audioTracks,
       ...remote.getVideoTracks().filter((t) => t.readyState === "live"),
     ]);
-    if (el.srcObject !== remote && el.srcObject !== mixed) {
-      el.srcObject = audioTracks.length ? mixed : remote;
-    }
+    el.srcObject = audioTracks.length || mixed.getTracks().length ? mixed : remote;
     kickPlay(el);
   }
   try {
-    output ??= new AudioContext();
+    if (!output) return;
     if (output.state === "suspended") await output.resume();
     if (remoteNode) {
       try {
@@ -237,11 +293,10 @@ export async function playRemote(remote: MediaStream) {
       }
     }
     if (!audioTracks.length) return;
-    const audioOnly = new MediaStream(audioTracks);
-    remoteNode = output.createMediaStreamSource(audioOnly);
+    remoteNode = output.createMediaStreamSource(new MediaStream(audioTracks));
     remoteNode.connect(output.destination);
   } catch {
-    // element path is enough on most browsers
+    // PCM path is enough
   }
 }
 

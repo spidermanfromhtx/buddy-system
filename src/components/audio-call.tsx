@@ -2,17 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { Btn } from "@/components/btn";
 import {
   currentStream,
-  getAudioContext,
   getLocalStream,
   hasLiveMic,
+  hearPcm,
   isRealVideo,
   micHint,
+  onPcmOut,
   playRemote,
-  setSpeaker,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
-import { playWire, startJpegSend, startPcmSend } from "@/lib/wire-media";
+import { startJpegSend } from "@/lib/wire-media";
 
 function MicMeter({ stream }: { stream: MediaStream | null }) {
   const [level, setLevel] = useState(0);
@@ -83,10 +83,8 @@ export function AudioCall({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const p2pRef = useRef<P2PRoom | null>(null);
-  const remoteRef = useRef<MediaStream | null>(null);
   const jpegRef = useRef<HTMLImageElement>(null);
   const jpegUrl = useRef<string | null>(null);
-  const wireAudio = useRef<{ ctx: AudioContext; next: number } | null>(null);
   const [local, setLocal] = useState<MediaStream | null>(currentStream());
   const [status, setStatus] = useState(hasLiveMic() ? "joining" : "need-mic");
   const [peers, setPeers] = useState<PeerInfo[]>([]);
@@ -94,11 +92,6 @@ export function AudioCall({
   const [remoteVideo, setRemoteVideo] = useState(false);
   const [remoteJpeg, setRemoteJpeg] = useState(false);
   const [localCam, setLocalCam] = useState(false);
-
-  function bindSpeaker(el: HTMLVideoElement | null) {
-    remoteVideoRef.current = el;
-    setSpeaker(el);
-  }
 
   function showLocal(media: MediaStream) {
     const el = localVideoRef.current;
@@ -109,19 +102,17 @@ export function AudioCall({
     if (video) void el.play().catch(() => {});
   }
 
-  function showRemote(stream: MediaStream) {
-    for (const t of stream.getTracks()) t.enabled = true;
-    const real = stream.getVideoTracks().some(isRealVideo);
+  function showRemote(remote: MediaStream) {
+    for (const t of remote.getTracks()) t.enabled = true;
+    const real = remote.getVideoTracks().some(isRealVideo);
     setRemoteVideo(real);
     const el = remoteVideoRef.current;
     if (el) {
-      el.srcObject = stream;
-      el.muted = false;
-      el.volume = 1;
-      el.playsInline = true;
-      void el.play().catch(() => {});
+      el.srcObject = real ? remote : null;
+      el.muted = true;
+      if (real) void el.play().catch(() => {});
     }
-    void playRemote(stream);
+    void playRemote(remote);
   }
 
   async function start() {
@@ -131,8 +122,7 @@ export function AudioCall({
       const media = await getLocalStream(false, loopback);
       setLocal(media);
       showLocal(media);
-      setSpeaker(remoteVideoRef.current);
-      void unlockOutput();
+      await unlockOutput();
       if (loopback) {
         setStatus("demo");
         return;
@@ -151,7 +141,6 @@ export function AudioCall({
           setStatus(live ? "connected" : list.length ? "connecting" : "waiting");
         },
         onRemoteStream: (_id, remote) => {
-          remoteRef.current = remote;
           showRemote(remote);
           for (const t of remote.getTracks()) {
             t.onunmute = () => showRemote(remote);
@@ -160,17 +149,16 @@ export function AudioCall({
           }
         },
         onMediaData: (_id, data) => {
-          const ctx = getAudioContext();
-          if (ctx) wireAudio.current ??= { ctx, next: 0 };
-          else wireAudio.current ??= { ctx: new AudioContext(), next: 0 };
-          const bag = wireAudio.current;
-          void bag.ctx.resume();
-          bag.next = playWire(data, bag, (url) => {
+          hearPcm(data);
+          const view = new DataView(data);
+          if (view.byteLength > 2 && view.getUint8(0) === 1) {
+            const blob = new Blob([data.slice(1)], { type: "image/jpeg" });
+            const url = URL.createObjectURL(blob);
             if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
             jpegUrl.current = url;
             if (jpegRef.current) jpegRef.current.src = url;
             setRemoteJpeg(true);
-          });
+          }
         },
         onConnected: () => setStatus((s) => (s === "joining" ? "waiting" : s)),
       });
@@ -187,19 +175,19 @@ export function AudioCall({
     return () => {
       p2pRef.current?.close(false);
       p2pRef.current = null;
-      setSpeaker(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, selfId, loopback]);
 
-  const liveCam = wantCamera && (loopback || status === "connected");
-  const camOnce = useRef(false);
   useEffect(() => {
-    if (!camOnce.current) {
-      camOnce.current = true;
-      if (!liveCam) return;
-    }
-    if (status === "need-mic" || status === "joining") return;
+    return onPcmOut((buf) => p2pRef.current?.sendMedia(buf));
+  }, []);
+
+  const liveCam = wantCamera && (loopback || status === "connected");
+  const lastCam = useRef(false);
+  useEffect(() => {
+    if (lastCam.current === liveCam) return;
+    lastCam.current = liveCam;
     void (async () => {
       try {
         const media = await getLocalStream(liveCam, loopback);
@@ -210,49 +198,34 @@ export function AudioCall({
         // stay on current stream
       }
     })();
-  }, [liveCam, loopback, status]);
+  }, [liveCam, loopback]);
 
   useEffect(() => {
-    if (loopback || status !== "connected") return;
-    if (!local) return;
+    if (!liveCam) return;
+    const el = localVideoRef.current;
+    if (!el) return;
     const send = (buf: ArrayBuffer) => p2pRef.current?.sendMedia(buf);
-    let cancelled = false;
-    let stopPcm = () => {};
-    let stopJpeg = () => {};
-    const boot = async () => {
-      await unlockOutput();
-      if (cancelled) return;
-      const ctx = getAudioContext() ?? new AudioContext();
-      if (ctx.state === "suspended") await ctx.resume();
-      if (cancelled) return;
-      stopPcm = startPcmSend(local, send, ctx);
-      const el = localVideoRef.current;
-      stopJpeg = liveCam && el ? startJpegSend(el, send) : () => {};
-    };
-    void boot();
-    return () => {
-      cancelled = true;
-      stopPcm();
-      stopJpeg();
-    };
-  }, [local, liveCam, loopback, status]);
+    const stop = startJpegSend(el, send);
+    return () => stop();
+  }, [liveCam, local]);
 
   const showStage = localCam || remoteVideo || remoteJpeg;
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <video
-        ref={bindSpeaker}
-        className={
-          remoteVideo
-            ? "aspect-square w-full max-w-xs rounded-3xl bg-paper-2 object-cover"
-            : "pointer-events-none fixed bottom-0 left-0 h-2 w-2 opacity-[0.02]"
-        }
-        autoPlay
-        playsInline
-      />
       {showStage ? (
         <div className="relative aspect-square w-full max-w-xs">
+          <video
+            ref={remoteVideoRef}
+            className={
+              remoteVideo
+                ? "size-full rounded-3xl bg-paper-2 object-cover"
+                : "pointer-events-none absolute h-px w-px"
+            }
+            autoPlay
+            playsInline
+            muted
+          />
           <img
             ref={jpegRef}
             alt=""
@@ -272,7 +245,7 @@ export function AudioCall({
             className={
               localCam
                 ? "absolute bottom-3 right-3 h-24 w-24 rounded-2xl bg-night object-cover"
-                : "pointer-events-none fixed bottom-0 left-0 h-px w-px"
+                : "pointer-events-none absolute h-px w-px"
             }
             autoPlay
             playsInline
@@ -280,7 +253,10 @@ export function AudioCall({
           />
         </div>
       ) : (
-        <video ref={localVideoRef} className="pointer-events-none fixed bottom-0 left-0 h-px w-px" autoPlay playsInline muted />
+        <>
+          <video ref={remoteVideoRef} className="pointer-events-none hidden" autoPlay playsInline muted />
+          <video ref={localVideoRef} className="pointer-events-none hidden" autoPlay playsInline muted />
+        </>
       )}
       {allowCamera && status === "connected" ? (
         <div className="flex w-full gap-2">
