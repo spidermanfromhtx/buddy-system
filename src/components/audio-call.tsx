@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Btn } from "@/components/btn";
-import { currentStream, getLocalStream, hasLiveMic, hearPcm, isMicMuted, isRealVideo, micHint, micLevel, onPcmOut, setMicMuted, unlockOutput } from "@/lib/media";
+import { currentStream, getLocalStream, hasLiveMic, isMicMuted, isRealVideo, micHint, micLevel, onPcmOut, setMicMuted, unlockOutput } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
-import { startJpegSend } from "@/lib/wire-media";
 
 function MicMeter({ active }: { active: boolean }) {
   const [level, setLevel] = useState(0);
@@ -31,11 +30,8 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
   const [err, setErr] = useState("");
   const [remoteAudioState, setRemoteAudioState] = useState<"none" | "track" | "playing">("none");
   const [remoteVideo, setRemoteVideo] = useState(false);
-  const [remoteJpeg, setRemoteJpeg] = useState(false);
   const [localCam, setLocalCam] = useState(false);
   const [muted, setMuted] = useState(isMicMuted);
-  const jpegRef = useRef<HTMLImageElement>(null);
-  const jpegUrl = useRef<string | null>(null);
 
   async function ensureAudioContext() {
     try {
@@ -83,7 +79,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       const tracks = remote.getVideoTracks();
       if (tracks.length) {
         const next = new MediaStream(tracks);
-        if (video.srcObject !== next) video.srcObject = next;
+        video.srcObject = next;
         video.muted = true; video.playsInline = true; video.autoplay = true;
         void video.play().catch(() => {});
         video.onloadedmetadata = () => { if (video.videoWidth > 16) setRemoteVideo(true); };
@@ -130,14 +126,6 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
         onMediaData: (_id, data) => {
           const view = new DataView(data);
           if (view.byteLength >= 10 && view.getUint8(0) === 0) { playPcm(data); return; }
-          if (view.byteLength > 0 && view.getUint8(0) === 1) {
-            const blob = new Blob([data.slice(1)], { type: "image/jpeg" });
-            const url = URL.createObjectURL(blob);
-            if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current);
-            jpegUrl.current = url;
-            if (jpegRef.current) jpegRef.current.src = url;
-            setRemoteJpeg(true);
-          }
         },
         onConnected: () => setStatus((s) => (s === "waiting" ? "waiting" : s)),
       });
@@ -159,7 +147,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
         } catch (e) { setErr(micHint(e)); setStatus("need-mic"); }
       })();
     } else void start();
-    return () => { p2pRef.current?.close(false); p2pRef.current = null; if (jpegUrl.current) URL.revokeObjectURL(jpegUrl.current); if (audioCtxRef.current) { void audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null; } };
+    return () => { p2pRef.current?.close(false); p2pRef.current = null; if (audioCtxRef.current) { void audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, selfId, loopback]);
 
@@ -179,14 +167,11 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
     })();
   }, [wantCamera, allowCamera, loopback]);
 
-  useEffect(() => { if (!localCam || !allowCamera) return; const el = localVideoRef.current; if (!el) return; return startJpegSend(el, (buf) => p2pRef.current?.sendMedia(buf)); }, [localCam, allowCamera]);
-
   const showStage = Boolean(allowCamera);
   return <div className="flex flex-col items-center gap-3">
     <div className={showStage ? "relative aspect-square w-full max-w-xs" : "contents"}>
       <video ref={remoteVideoRef} className={remoteVideo ? "size-full rounded-3xl bg-paper-2 object-cover" : "pointer-events-none fixed bottom-2 left-2 h-8 w-8 opacity-[0.04]"} autoPlay playsInline muted />
-      {remoteJpeg && !remoteVideo ? <img ref={jpegRef} alt="" className="size-full rounded-3xl bg-paper-2 object-cover" /> : <img ref={jpegRef} alt="" className="pointer-events-none absolute h-px w-px opacity-0" />}
-      {localCam && !remoteVideo && !remoteJpeg && showStage ? <p className="flex size-full items-center justify-center rounded-3xl bg-paper-2 text-sm text-muted">waiting for video</p> : null}
+      {localCam && !remoteVideo && showStage ? <p className="flex size-full items-center justify-center rounded-3xl bg-paper-2 text-sm text-muted">waiting for video</p> : null}
       <video ref={localVideoRef} className={localCam ? "absolute bottom-3 right-3 h-24 w-24 rounded-2xl bg-night object-cover" : "pointer-events-none absolute h-px w-px opacity-0"} autoPlay playsInline muted />
     </div>
     {allowCamera && (status === "connected" || status === "connecting") ? <div className="flex w-full gap-2"><Btn type="button" kind={!wantCamera ? "ink" : "line"} className="flex-1" onClick={() => onCamera?.(false)}>Camera off</Btn><Btn type="button" kind={wantCamera ? "ink" : "line"} className="flex-1" onClick={() => onCamera?.(true)}>Camera on</Btn></div> : null}
