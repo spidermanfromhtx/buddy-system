@@ -20,16 +20,16 @@
 
 :root,
 [data-theme="default"] {
-  --night: #2c2c2c;
-  --ink: #1a1a1a;
-  --paper: #f6f5f1;
-  --paper-2: #eceae4;
-  --muted: #6a6a6a;
-  --line: #e2e0da;
-  --rust: #1a1a1a;
-  --sage: #6a6a6a;
-  --cream: #faf9f6;
-  --on-rust: #f6f5f1;
+  --night: #2b2420;
+  --ink: #2b2420;
+  --paper: #f3efe8;
+  --paper-2: #eae4db;
+  --muted: #7a7168;
+  --line: #ddd6cc;
+  --rust: #d06b55;
+  --sage: #8a7168;
+  --cream: #faf7f2;
+  --on-rust: #fff7f4;
 }
 
 [data-theme="red"] {

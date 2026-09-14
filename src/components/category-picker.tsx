@@ -1,10 +1,10 @@
-import { Btn } from "@/components/btn";
 import { CATEGORIES, parseCategories, type CategoryId } from "@/lib/categories";
+import { cn } from "@/lib/utils";
 
 export function CategoryPicker({
   value,
   onChange,
-  multiple = false,
+  multiple = true,
   onDark = false,
   allowAll = false,
 }: {
@@ -18,43 +18,54 @@ export function CategoryPicker({
   const none = allowAll && selected.length === 0;
 
   function toggle(id: CategoryId) {
-    if (!multiple) {
-      onChange(allowAll && selected[0] === id ? [] : [id]);
+    if (multiple) {
+      onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
       return;
     }
-    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+    onChange(allowAll && selected[0] === id ? [] : [id]);
+  }
+
+  function chip(on: boolean) {
+    if (onDark) {
+      return on
+        ? "bg-paper text-night"
+        : "border border-paper/30 bg-transparent text-paper hover:bg-paper/10";
+    }
+    return on
+      ? "bg-rust text-on-rust"
+      : "border border-ink/15 bg-paper text-ink hover:bg-paper-2";
   }
 
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {allowAll ? (
-        <Btn
+        <button
           type="button"
-          kind={none ? (onDark ? "paper" : "ink") : onDark ? "night" : "line"}
-          className="h-10 text-sm"
           aria-pressed={none}
+          className={cn(
+            "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3 text-sm font-medium",
+            chip(none),
+          )}
           onClick={() => onChange([])}
         >
           All
-        </Btn>
+        </button>
       ) : null}
       {CATEGORIES.map((c) => {
         const on = selected.includes(c.id);
         return (
-          <Btn
+          <button
             key={c.id}
             type="button"
-            kind={on ? (onDark ? "paper" : "ink") : onDark ? "night" : "line"}
-            className="h-10 text-sm"
             aria-pressed={on}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggle(c.id);
-            }}
+            className={cn(
+              "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3 text-sm font-medium",
+              chip(on),
+            )}
+            onClick={() => toggle(c.id)}
           >
             {c.label}
-          </Btn>
+          </button>
         );
       })}
     </div>

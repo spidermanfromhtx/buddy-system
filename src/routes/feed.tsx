@@ -478,8 +478,10 @@ function Feed() {
         </label>
         <fieldset>
           <legend className="text-sm font-medium">Categories</legend>
-          <p className="mt-1 text-xs text-muted">Pick every one that fits. Some overlap.</p>
-          <CategoryPicker multiple value={category} onChange={setCategory} />
+          <p className="mt-1 text-xs text-muted">Pick every one that fits.</p>
+          <div className="mt-2">
+            <CategoryPicker value={category} onChange={setCategory} />
+          </div>
         </fieldset>
         <div className="grid grid-cols-2 gap-6">
           <fieldset>
@@ -541,69 +543,55 @@ function Feed() {
   const liveOn = Boolean(mine);
 
   const compose = (
-    <div className="rounded-2xl border border-ink/10 bg-paper-2 p-4">
-      <label className="block text-sm font-medium">
-        Task description
-        <input
-          placeholder="finish the email"
-          className="mt-2 h-12 w-full bg-transparent text-lg font-normal outline-none placeholder:text-muted"
-          value={task}
-          onChange={(e) => setTask(e.target.value)}
-        />
-      </label>
-      <fieldset className="mt-4">
-        <legend className="text-sm font-medium">Categories</legend>
-        <p className="mt-1 text-xs text-muted">Pick every one that fits.</p>
-        <CategoryPicker multiple value={category} onChange={setCategory} />
-      </fieldset>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <fieldset>
-          <legend className="text-sm font-medium">Urgent or not urgent</legend>
-          <div className="mt-2 flex gap-2">
-            <Btn type="button" kind={urgent ? "fill" : "line"} className="h-10 flex-1" onClick={() => setUrgent(true)}>
-              Urgent
-            </Btn>
-            <Btn type="button" kind={!urgent ? "fill" : "line"} className="h-10 flex-1" onClick={() => setUrgent(false)}>
-              Not urgent
-            </Btn>
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend className="text-sm font-medium">Camera on and off</legend>
-          <div className="mt-2 flex gap-2">
-            <Btn type="button" kind={camera ? "fill" : "line"} className="h-10 flex-1" onClick={() => setCamera(true)}>
-              Camera on
-            </Btn>
-            <Btn type="button" kind={!camera ? "fill" : "line"} className="h-10 flex-1" onClick={() => setCamera(false)}>
-              Camera off
-            </Btn>
-          </div>
-        </fieldset>
-      </div>
-      <label className="mt-4 block text-sm font-medium">
-        Set session length
-        <p className="mt-1 text-xs font-normal text-muted">{lengthMin} minutes</p>
+    <div className="rounded-2xl bg-night p-3 text-paper">
+      <input
+        placeholder="Task description"
+        className="h-10 w-full bg-transparent text-base text-paper outline-none placeholder:text-paper/40"
+        value={task}
+        onChange={(e) => setTask(e.target.value)}
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium ${
+            urgent ? "bg-rust text-on-rust" : "border border-paper/30 text-paper"
+          }`}
+          onClick={() => setUrgent((v) => !v)}
+        >
+          {urgent ? "Urgent" : "Not urgent"}
+        </button>
+        <button
+          type="button"
+          className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium ${
+            camera ? "bg-rust text-on-rust" : "border border-paper/30 text-paper"
+          }`}
+          onClick={() => setCamera((v) => !v)}
+        >
+          {camera ? "Camera on" : "Camera off"}
+        </button>
+        <span className="whitespace-nowrap text-sm text-paper/70">{Math.min(lengthMin, cap)} min</span>
         <input
           type="range"
           min={5}
           max={cap}
-          value={lengthMin}
-          className="mt-2 w-full"
+          value={Math.min(lengthMin, cap)}
+          className="min-w-20 flex-1 accent-[var(--rust)]"
           onChange={(e) => setLengthMin(Number(e.target.value))}
         />
-      </label>
-      <div className="mt-4">
         {liveOn ? (
-          <Btn kind="line" className="h-11 w-full" onClick={closeMe}>
+          <Btn kind="paper" className="ml-auto h-9 px-4 text-sm" onClick={closeMe}>
             End live
           </Btn>
         ) : (
-          <Btn kind="fill" className="h-11 w-full" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
-            {goOpen.isPending ? "Going live…" : "Go live"}
+          <Btn kind="fill" className="ml-auto h-9 px-4 text-sm" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
+            {goOpen.isPending ? "…" : "Go live"}
           </Btn>
         )}
       </div>
-      {note ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
+      <div className="mt-2">
+        <CategoryPicker onDark value={category} onChange={setCategory} />
+      </div>
+      {note ? <p className="mt-2 text-sm text-paper/70">{note}</p> : null}
     </div>
   );
 

@@ -7,7 +7,7 @@ const KIND = {
   rust: "bg-rust text-on-rust hover:opacity-90",
   ink: "bg-rust text-on-rust hover:opacity-90",
   line: "border border-ink/15 bg-paper text-ink hover:bg-paper-2",
-  night: "border border-ink/15 bg-transparent text-ink hover:bg-paper-2",
+  night: "border border-paper/25 bg-transparent text-paper hover:bg-paper/10",
 } as const;
 
 export function Btn({
