@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { AudioCall } from "@/components/audio-call";
 import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
+import { PageWash } from "@/components/page-wash";
 import { parseCallSearch } from "@/lib/call-search";
 import { getCall, setCallStatus } from "@/lib/listings";
 import { stopLocalStream } from "@/lib/media";
+import { isPlus } from "@/lib/plan";
 import { loadProfile } from "@/lib/profile";
 import { pingBreak, playHangup } from "@/lib/ring";
 import { formatMmSs } from "@/lib/utils";
@@ -25,6 +27,7 @@ function CallScreen() {
   const [sec, setSec] = useState(0);
   const [breakOn, setBreakOn] = useState(false);
   const lastBreak = useRef(0);
+  const pingRef = useRef<(() => void) | null>(null);
   const q = useQuery({
     queryKey: ["call", id],
     queryFn: () => getCall({ data: { id } }),
@@ -61,6 +64,7 @@ function CallScreen() {
   useEffect(() => {
     if (sec > 0 && breakEvery > 0 && sec - lastBreak.current >= breakEvery) {
       lastBreak.current = sec;
+      pingRef.current?.();
       setBreakOn(true);
     }
   }, [sec, breakEvery]);
@@ -97,8 +101,9 @@ function CallScreen() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col bg-night text-paper">
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-between px-5 py-8 sm:px-6 sm:py-10">
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-night text-paper">
+      <PageWash dark />
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-between px-5 py-8 sm:px-6 sm:py-10">
         <div className="flex w-full flex-col items-center text-center">
           <Face name={name} color={color} photo={photo} size="lg" />
           <p className="mt-5 text-sm uppercase tracking-[0.2em] text-paper/50">{task}</p>
@@ -115,6 +120,9 @@ function CallScreen() {
               wantCamera={allowCamera && useCam}
               allowCamera={allowCamera}
               onCamera={setUseCam}
+              pingRef={pingRef}
+              canShare={isPlus(me.plan)}
+              onNudge={() => setBreakOn(true)}
               loopback
             />
           ) : !dummy && room && me ? (
@@ -125,6 +133,9 @@ function CallScreen() {
               wantCamera={allowCamera && useCam}
               allowCamera={allowCamera}
               onCamera={setUseCam}
+              pingRef={pingRef}
+              canShare={isPlus(me.plan)}
+              onNudge={() => setBreakOn(true)}
               onCallConnected={() => void markConnected()}
             />
           ) : (
@@ -143,7 +154,14 @@ function CallScreen() {
             <Btn kind="fill" className="h-16 w-full text-xl" onClick={() => void hangup()}>
               Hang up
             </Btn>
-            <Btn kind="night" className="h-12 w-full text-base" onClick={() => setBreakOn(true)}>
+            <Btn
+              kind="night"
+              className="h-12 w-full text-base"
+              onClick={() => {
+                pingRef.current?.();
+                setBreakOn(true);
+              }}
+            >
               stretch ping
             </Btn>
           </div>

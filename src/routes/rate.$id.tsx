@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
+import { PageWash } from "@/components/page-wash";
 import { getCall } from "@/lib/listings";
 import { loadProfile } from "@/lib/profile";
 import { fileReport, leaveReview } from "@/lib/trust";
@@ -59,8 +60,9 @@ function Rate() {
   }
 
   return (
-    <main className="min-h-dvh bg-paper px-6 py-10 text-ink">
-      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
+    <main className="relative min-h-dvh overflow-hidden bg-paper px-6 py-10 text-ink">
+      <PageWash />
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6">
         <h1 className="font-display text-3xl tracking-tight">How was that?</h1>
         {other ? (
           <div className="flex items-center gap-3">

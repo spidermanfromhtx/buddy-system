@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Mark } from "@/components/mark";
+import { PageWash } from "@/components/page-wash";
 
 export const Route = createFileRoute("/terms")({ component: Terms });
 
 function Terms() {
   return (
-    <main className="min-h-dvh bg-paper px-6 py-10 text-ink">
-      <div className="mx-auto flex max-w-xl flex-col gap-5">
+    <main className="relative min-h-dvh overflow-hidden bg-paper px-6 py-10 text-ink">
+      <PageWash />
+      <div className="relative z-10 mx-auto flex max-w-xl flex-col gap-5">
         <div className="flex items-center gap-3">
           <Mark />
           <h1 className="font-display text-3xl tracking-tight">Terms</h1>

@@ -1,4 +1,4 @@
-export const FREE_SESSIONS = 8;
+export const FREE_SESSIONS = 5;
 export const FREE_MAX_MIN = 45;
 export const PLUS_MAX_MIN = 120;
 export const PLUS_PRICE_LABEL = "$5 a month";

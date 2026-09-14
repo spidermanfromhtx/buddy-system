@@ -275,6 +275,26 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
   return stream;
 }
 
+export async function startScreenShare(): Promise<MediaStream> {
+  if (!stream || !hasLiveMic()) await getLocalStream(false);
+  if (!navigator.mediaDevices?.getDisplayMedia) throw new Error("share");
+  const display = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: 12 },
+    audio: false,
+  });
+  const track = display.getVideoTracks()[0];
+  if (!track || !stream) throw new Error("share");
+  for (const t of stream.getVideoTracks()) {
+    t.stop();
+    stream.removeTrack(t);
+  }
+  if ("contentHint" in track) (track as MediaStreamTrack & { contentHint: string }).contentHint = "detail";
+  track.enabled = true;
+  stream.addTrack(track);
+  keepLocalAlive(stream);
+  return stream;
+}
+
 export function stopLocalStream() {
   micMuted = false;
   nativeEar = false;

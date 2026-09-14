@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { Btn } from "@/components/btn";
 import {
   currentStream,
@@ -12,6 +12,7 @@ import {
   onPcmOut,
   setMicMuted,
   setNativeEar,
+  startScreenShare,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
@@ -57,6 +58,9 @@ export function AudioCall({
   onCamera,
   loopback = false,
   onCallConnected,
+  pingRef,
+  canShare = false,
+  onNudge,
 }: {
   room: string;
   selfId: string;
@@ -66,6 +70,9 @@ export function AudioCall({
   onCamera?: (on: boolean) => void;
   loopback?: boolean;
   onCallConnected?: () => void;
+  pingRef?: MutableRefObject<(() => void) | null>;
+  canShare?: boolean;
+  onNudge?: () => void;
 }) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -82,6 +89,7 @@ export function AudioCall({
   const [remoteJpeg, setRemoteJpeg] = useState(false);
   const [localCam, setLocalCam] = useState(false);
   const [muted, setMuted] = useState(isMicMuted);
+  const [sharing, setSharing] = useState(false);
 
   function showLocal(media: MediaStream) {
     const video = media.getVideoTracks().some(isRealVideo);
@@ -182,6 +190,7 @@ export function AudioCall({
           noteLive(list);
         },
         onRemoteStream: (_id, remote) => showRemote(remote),
+        onNudge: () => onNudge?.(),
         onMediaData: (_id, data) => {
           const view = new DataView(data);
           if (view.byteLength > 2 && view.getUint8(0) === 1) {
@@ -197,6 +206,7 @@ export function AudioCall({
         },
       });
       p2pRef.current = p2p;
+      if (pingRef) pingRef.current = () => p2p.nudge();
       await p2p.join();
     } catch (e) {
       setErr(micHint(e));
@@ -313,6 +323,47 @@ export function AudioCall({
       >
         Mute
       </button>
+      {canShare ? (
+        <Btn
+          type="button"
+          kind={sharing ? "ink" : "line"}
+          className="h-12 w-full text-base"
+          onClick={() => {
+            void (async () => {
+              try {
+                if (sharing) {
+                  const media = await getLocalStream(wantCamera, loopback);
+                  setLocal(media);
+                  showLocal(media);
+                  p2pRef.current?.attachMedia(media);
+                  setSharing(false);
+                  return;
+                }
+                const media = await startScreenShare();
+                const track = media.getVideoTracks()[0];
+                if (track) {
+                  track.onended = () => {
+                    void getLocalStream(wantCamera, loopback).then((next) => {
+                      setLocal(next);
+                      showLocal(next);
+                      p2pRef.current?.attachMedia(next);
+                      setSharing(false);
+                    });
+                  };
+                }
+                setLocal(media);
+                showLocal(media);
+                p2pRef.current?.attachMedia(media);
+                setSharing(true);
+              } catch {
+                setErr("could not share the screen");
+              }
+            })();
+          }}
+        >
+          {sharing ? "Stop sharing" : "Share screen"}
+        </Btn>
+      ) : null}
       <MicMeter active={!muted && !!local} />
       <p className="text-base text-muted">
         {err ||

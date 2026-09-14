@@ -8,7 +8,7 @@ const signalSchema = z.object({
   room: ID,
   from: ID,
   to: ID,
-  kind: z.enum(["offer", "answer", "ice", "pcm"]),
+  kind: z.enum(["offer", "answer", "ice", "pcm", "nudge"]),
   payload: z.unknown().refine((v) => v !== undefined && JSON.stringify(v).length <= 131_072, {
     message: "payload too large",
   }),

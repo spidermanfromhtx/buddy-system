@@ -5,6 +5,7 @@ import { CategoryPicker } from "@/components/category-picker";
 import { EmailCodeForm } from "@/components/email-code-form";
 import { InstallApp } from "@/components/install-app";
 import { LookFields } from "@/components/look-fields";
+import { PageWash } from "@/components/page-wash";
 import { Mark } from "@/components/mark";
 import { createAccount, requestAccountCode, verifyAccountCode } from "@/lib/account";
 import { profileFromAccount, type Profile } from "@/lib/profile";
@@ -62,11 +63,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-paper text-ink">
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute -right-24 top-10 size-[28rem] rounded-full bg-sage opacity-80 blur-2xl" />
-        <div className="absolute -bottom-28 -right-16 size-[32rem] rounded-full bg-tri opacity-50 blur-2xl" />
-        <div className="absolute -bottom-8 left-[-6%] size-72 rounded-full bg-rust/25 opacity-80 blur-2xl" />
-      </div>
+      <PageWash />
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />

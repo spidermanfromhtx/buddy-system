@@ -9,7 +9,7 @@
  * rolls back and accepts, so pairs converge without wedging.
  */
 
-export type SignalKind = "offer" | "answer" | "ice" | "pcm";
+export type SignalKind = "offer" | "answer" | "ice" | "pcm" | "nudge";
 
 /**
  * Wire contract between this client and the signaling relay the app provides
@@ -40,6 +40,7 @@ export interface P2PRoomOptions {
   allowVideo?: boolean;
   onRemoteStream?: (peerId: string, stream: MediaStream) => void;
   onMediaData?: (peerId: string, data: ArrayBuffer) => void;
+  onNudge?: () => void;
 }
 
 interface PeerSlot {
@@ -194,6 +195,14 @@ export class P2PRoom {
     for (const id of this.peers.keys()) if (id !== this.opts.selfId) void this.sendSignal(id, "pcm", payload);
   }
   private lastPcmAt = 0; private lastJpegAt = 0;
+  nudge(): void {
+    this.broadcast({ t: "nudge" });
+    this.send({ t: "nudge" });
+    for (const id of this.peers.keys()) {
+      if (id === this.opts.selfId) continue;
+      void this.sendSignal(id, "nudge", { t: "nudge" });
+    }
+  }
   private async pushLocalTracks(slot: PeerSlot): Promise<void> {
     this.wireLocal(slot, slot.info.id);
     const stream = this.opts.mediaStream;
@@ -260,7 +269,7 @@ export class P2PRoom {
       if (e.data instanceof ArrayBuffer) { this.opts.onMediaData?.(slot.info.id, e.data); return; }
       if (e.data instanceof Blob) { void e.data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf)); return; }
       let msg: { t: string; d?: unknown }; try { msg = JSON.parse(e.data as string) as { t: string; d?: unknown }; } catch { return; }
-      if (msg.t === "ping") { if (slot.state?.readyState === "open") slot.state.send(JSON.stringify({ t: "pong" })); } else if (msg.t === "pong") { if (slot.pingSentAt) { slot.info.rttMs = Math.round(performance.now() - slot.pingSentAt); slot.pingSentAt = undefined; this.emitPeers(); } } else this.opts.onMessage?.(slot.info.id, msg.d, channel.label === "state" ? "state" : "reliable");
+      if (msg.t === "ping") { if (slot.state?.readyState === "open") slot.state.send(JSON.stringify({ t: "pong" })); } else if (msg.t === "pong") { if (slot.pingSentAt) { slot.info.rttMs = Math.round(performance.now() - slot.pingSentAt); slot.pingSentAt = undefined; this.emitPeers(); } } else if (msg.t === "nudge") this.opts.onNudge?.(); else this.opts.onMessage?.(slot.info.id, msg.d, channel.label === "state" ? "state" : "reliable");
     };
   }
   private async flushPendingCandidates(slot: PeerSlot): Promise<void> { while (slot.pendingCandidates.length > 0) { const candidate = slot.pendingCandidates.shift()!; try { await slot.pc.addIceCandidate(candidate); } catch (err) { if (!slot.ignoreOffer) console.warn("[p2p] addIceCandidate failed:", err); } if (this.closed) return; } }
@@ -269,6 +278,7 @@ export class P2PRoom {
     const polite = this.opts.selfId < from;
     try {
       if (kind === "pcm") { const raw = asSignalPayload(payload); const a = typeof raw.a === "string" ? raw.a : ""; if (a) { slot.info.voice = true; this.opts.onMediaData?.(from, b64ToBuf(a)); this.emitPeers(); } return; }
+      if (kind === "nudge") { this.opts.onNudge?.(); return; }
       if (kind === "offer" || kind === "answer") {
         const description = asSignalPayload(payload) as unknown as RTCSessionDescriptionInit; const collision = kind === "offer" && (slot.makingOffer || slot.pc.signalingState !== "stable"); slot.ignoreOffer = !polite && collision; if (slot.ignoreOffer) return;
         try { await slot.pc.setRemoteDescription(description); } catch (err) { if (kind !== "offer" || slot.recreatedForOffer) throw err; const attempts = slot.recoveryAttempts; const name = slot.info.name; slot.pc.close(); this.peers.delete(from); const fresh = this.connectTo(from, name, false); if (!fresh) return; fresh.recoveryAttempts = attempts; fresh.recreatedForOffer = true; slot = fresh; await slot.pc.setRemoteDescription(description); }

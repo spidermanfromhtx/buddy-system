@@ -7,6 +7,7 @@ import { Face } from "@/components/face";
 import { LookFields } from "@/components/look-fields";
 import { Mark } from "@/components/mark";
 import { MonthCal } from "@/components/month-cal";
+import { PageWash } from "@/components/page-wash";
 import { CampusVerify } from "@/components/campus-verify";
 import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
@@ -15,6 +16,7 @@ import { categoryLabel, parseCategories, serializeCategories } from "@/lib/categ
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
+  claimBooking,
   closeLive,
   incomingFor,
   listOpen,
@@ -215,6 +217,10 @@ function Feed() {
     () => scoped.filter((l) => l.mode === "scheduled" && l.peerId === me?.id),
     [scoped, me],
   );
+  const queue = useMemo(
+    () => scoped.filter((l) => l.mode === "scheduled" && l.peerId !== me?.id && !l.matchId),
+    [scoped, me],
+  );
 
   const mine = (q.data ?? []).find((l) => l.peerId === me?.id && l.mode === "live");
 
@@ -326,7 +332,7 @@ function Feed() {
       setNote(
         res?.matched
           ? `matched with ${res.matched.name}. rings ${when}.`
-          : `booked. waiting for a match. rings ${when} if someone overlaps.`,
+          : `in the queue. match pending. rings ${when} if someone takes the window.`,
       );
       if (me && !isPlus(me.plan)) setMe(saveProfile({ ...me, sessionsUsed: me.sessionsUsed + 1 }));
       setSheet("none");
@@ -387,6 +393,29 @@ function Feed() {
       },
     });
   }
+
+  const takeWindow = useMutation({
+    mutationFn: async (row: Listing) => {
+      if (!me) return;
+      const res = await claimBooking({
+        data: {
+          listingId: row.id,
+          peerId: me.id,
+          name: me.name,
+          color: me.color,
+          photo: me.photo ?? undefined,
+        },
+      });
+      if (res && "ok" in res && res.ok === false) throw new Error("error" in res ? String(res.error) : "could not join");
+      return res;
+    },
+    onSuccess: (res) => {
+      setNote(res && "matched" in res && res.matched ? `you’re their buddy · ${res.matched.name}` : "matched.");
+      if (me && !isPlus(me.plan)) setMe(saveProfile({ ...me, sessionsUsed: me.sessionsUsed + 1 }));
+      void q.refetch();
+    },
+    onError: (err) => setNote(err instanceof Error ? err.message : "could not join"),
+  });
 
   const cap = maxSessionMin(me?.plan, me?.limitsOn);
   useEffect(() => {
@@ -700,8 +729,9 @@ function Feed() {
   );
 
   return (
-    <main className="flex min-h-dvh flex-col bg-paper text-ink">
-      <header className="flex items-center justify-between gap-2 border-b-2 border-sage px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-paper text-ink">
+      <PageWash />
+      <header className="relative z-10 flex items-center justify-between gap-2 border-b-2 border-sage px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <div className="min-w-0">
@@ -741,12 +771,42 @@ function Feed() {
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-4 pt-4 md:grid-cols-2 md:px-6">
-        <section className={`md:col-span-2 ${pane === "book" ? "hidden md:block" : "block"}`}>{liveBoard}</section>
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-4 pt-4 md:grid-cols-2 md:px-6">
         <section className={pane === "book" ? "hidden md:block" : "block"}>
-          <div className="pb-2">{compose}</div>
+          {liveBoard}
+          <div className="pb-2 pt-4">{compose}</div>
         </section>
         <aside className={`min-w-0 pb-8 ${pane === "live" ? "hidden md:block" : "block"}`}>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted">Booking feed</p>
+          <p className="mt-1 text-sm text-muted">Open windows. Be someone’s buddy, or wait in the queue.</p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {queue.length === 0 ? (
+              <li className="rounded-2xl bg-paper-2 px-4 py-5 text-sm text-muted">Nobody in the queue yet.</li>
+            ) : (
+              queue.map((row) => (
+                <Card
+                  key={row.id}
+                  name={row.name}
+                  color={row.color}
+                  photo={row.photo}
+                  task={row.task}
+                  urgent={row.urgent}
+                  dueDate={row.dueDate}
+                  lengthMin={row.lengthMin}
+                  category={row.category}
+                  offerCamera={row.camera}
+                  extra={row.windowLabel ?? "window"}
+                  ratingAvg={row.ratingAvg}
+                  ratingCount={row.ratingCount}
+                  action={
+                    <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => takeWindow.mutate(row)}>
+                      Be a buddy
+                    </Btn>
+                  }
+                />
+              ))
+            )}
+          </ul>
           {bookFields("side")}
           <div className="mt-8">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
@@ -766,10 +826,15 @@ function Feed() {
                     lengthMin={row.lengthMin}
                     category={row.category}
                     offerCamera={row.camera}
-                    extra={[row.windowLabel, row.matchPeerName ? `matched · ${row.matchPeerName}` : "waiting"]
+                    extra={[
+                      row.windowLabel,
+                      row.matchPeerName ? `matched · ${row.matchPeerName}` : "match pending",
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
-                    action={<span className="text-sm text-muted">window</span>}
+                    action={
+                      <span className="text-sm text-muted">{row.matchPeerName ? "matched" : "pending"}</span>
+                    }
                   />
                 ))
               )}
@@ -949,7 +1014,7 @@ function Feed() {
                   </>
                 ) : null}
                 {plus ? (
-                  <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>
+                  <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours. Screen share.</p>
                 ) : limits ? (
                   <>
                     <p className="text-base text-muted">

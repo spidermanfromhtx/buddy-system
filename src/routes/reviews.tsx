@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Face } from "@/components/face";
 import { Mark } from "@/components/mark";
+import { PageWash } from "@/components/page-wash";
 import { listReviews } from "@/lib/trust";
 
 export const Route = createFileRoute("/reviews")({ component: Reviews });
@@ -14,8 +15,9 @@ function Reviews() {
   const q = useQuery({ queryKey: ["reviews"], queryFn: () => listReviews() });
   const rows = q.data ?? [];
   return (
-    <main className="min-h-dvh bg-paper px-6 py-8 text-ink">
-      <div className="mx-auto flex max-w-xl flex-col gap-6">
+    <main className="relative min-h-dvh overflow-hidden bg-paper px-6 py-8 text-ink">
+      <PageWash />
+      <div className="relative z-10 mx-auto flex max-w-xl flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Mark />
