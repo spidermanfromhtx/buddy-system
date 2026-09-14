@@ -24,8 +24,7 @@ export function isHoldVideo(track: MediaStreamTrack) {
 
 export function isRealVideo(track: MediaStreamTrack) {
   if (track.kind !== "video") return false;
-  if (track.readyState !== "live") return false;
-  if (track.muted) return false;
+  if (track.readyState === "ended") return false;
   if (isHoldVideo(track)) return false;
   return true;
 }

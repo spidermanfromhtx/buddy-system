@@ -27,7 +27,7 @@ import { fileReport } from "@/lib/trust";
 import { clearProfile, loadProfile, profileFromAccount, saveProfile, type Profile } from "@/lib/profile";
 import { getLocalStream, micHint, stopLocalStream, unlockOutput } from "@/lib/media";
 import { formatDue, formatWindow, newId, todayIso, windowRange } from "@/lib/utils";
-import { armRing } from "@/lib/ring";
+import { armRing, startRing } from "@/lib/ring";
 
 export const Route = createFileRoute("/feed")({ component: Feed });
 
@@ -159,7 +159,7 @@ function Feed() {
       void incomingFor({ data: { peerId: me.id } }).then((row) => {
         if (!row) return;
         const youAreCaller = row.callerId === me.id;
-        void armRing();
+        startRing();
         void nav({
           to: "/incoming/$id",
           params: { id: row.id },
@@ -175,7 +175,7 @@ function Feed() {
           },
         });
       });
-    }, 2500);
+    }, 800);
     return () => clearInterval(t);
   }, [me, nav]);
 
@@ -225,6 +225,7 @@ function Feed() {
         throw new Error(micHint(e));
       }
       void unlockOutput();
+      void armRing();
       const id = liveId ?? newId("live");
       setLiveId(id);
       return upsertLive({

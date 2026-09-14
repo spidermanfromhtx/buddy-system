@@ -224,7 +224,11 @@ export class P2PRoom {
       for (const track of stream.getTracks()) {
         if (track.readyState !== "live") continue;
         track.enabled = true;
-        const sender = slot.pc.getSenders().find((s) => s.track?.kind === track.kind);
+        const sender =
+          slot.pc.getSenders().find((s) => s.track?.kind === track.kind) ??
+          (track.kind === "video"
+            ? slot.pc.getSenders().find((s) => !s.track && s.getParameters().encodings?.length !== undefined)
+            : undefined);
         if (sender) void sender.replaceTrack(track);
         else slot.pc.addTrack(track, stream);
       }
