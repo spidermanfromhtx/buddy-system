@@ -1,7 +1,7 @@
 export const NONE = "";
-export const HOUSE = "#6b5cff";
-export const HOUSE_INK = "#1c1933";
-export const HOUSE_CREAM = "#f5f2ec";
+export const HOUSE = "#e56b5a";
+export const HOUSE_INK = "#1a3d3c";
+export const HOUSE_CREAM = "#f6f3ee";
 
 export const COLOR_THEMES = [
   { id: "red", color: "#c44536", label: "Red" },
@@ -54,6 +54,8 @@ const OLD: Record<string, string> = {
   "#4a7c8c": "#3aa8ac",
   "#5c6b3a": "#1a4a3a",
   "#e8875c": HOUSE,
+  "#6b5cff": HOUSE,
+  "#c8c4f0": HOUSE,
 };
 
 export function normalizeColor(color: string | null | undefined) {

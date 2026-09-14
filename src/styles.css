@@ -21,15 +21,15 @@
 
 :root,
 [data-theme="default"] {
-  --night: #1c1933;
-  --ink: #1c1933;
-  --paper: #f5f2ec;
-  --paper-2: #ebe4f2;
-  --muted: #6b6578;
-  --line: #d8d3c8;
-  --rust: #6b5cff;
-  --sage: #c8c4f0;
-  --tri: #c4b49a;
+  --night: #1a3d3c;
+  --ink: #1a3d3c;
+  --paper: #f6f3ee;
+  --paper-2: #e4f0ee;
+  --muted: #5d6f6c;
+  --line: #d5d0c8;
+  --rust: #e56b5a;
+  --sage: #9ed9d0;
+  --tri: #f0b8a8;
   --cream: #faf8f4;
   --on-rust: #ffffff;
 }

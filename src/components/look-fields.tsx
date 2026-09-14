@@ -58,7 +58,7 @@ export function LookFields({
       <fieldset>
         <legend className="text-base font-medium">Your color</legend>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Swatch label="House purple" selected={!color} fill={HOUSE} onPick={() => onColor(NONE)} />
+          <Swatch label="House coral" selected={!color} fill={HOUSE} onPick={() => onColor(NONE)} />
           {COLOR_THEMES.map((t) => (
             <Swatch
               key={t.id}
