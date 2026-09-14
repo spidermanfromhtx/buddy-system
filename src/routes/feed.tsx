@@ -745,7 +745,10 @@ function Feed() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-6">
-              <p className="font-display text-xl">Settings</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-display text-xl">Settings</p>
+                <Btn onClick={() => setSheet("none")}>Close</Btn>
+              </div>
               <LookFields
                 name={me.name}
                 color={me.color}
@@ -881,6 +884,9 @@ function Feed() {
                   <p className="text-sm text-muted">Plus stays off until limits are on.</p>
                 )}
               </div>
+              <Btn kind="fill" onClick={() => setSheet("none")}>
+                Close settings
+              </Btn>
               <Btn
                 onClick={() => {
                   clearProfile();
