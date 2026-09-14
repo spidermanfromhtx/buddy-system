@@ -19,6 +19,19 @@
 }
 
 :root,
+[data-theme="default"] {
+  --night: #151822;
+  --ink: #222736;
+  --paper: #f5f3ef;
+  --paper-2: #ebe8e2;
+  --muted: #6e7178;
+  --line: #ddd9d2;
+  --rust: #222736;
+  --sage: #6a6570;
+  --cream: #faf8f5;
+  --on-rust: #f5f3ef;
+}
+
 [data-theme="coral"] {
   --night: #151822;
   --ink: #222736;

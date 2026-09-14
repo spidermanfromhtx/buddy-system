@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
 import { compressPhoto } from "@/lib/photo";
-import { COLORS, applyColorTheme } from "@/lib/theme";
+import { COLORS, NONE, applyColorTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function LookFields({
@@ -28,12 +28,27 @@ export function LookFields({
       <div className="flex items-center gap-4">
         <Face name={name || "you"} color={color} photo={photo} size="lg" />
         <p className="text-base text-muted">
-          This color is your default picture and the colors of the app. A photo sits on top. The color stays.
+          None keeps the default look. A color is your picture and the app. A photo sits on top.
         </p>
       </div>
       <fieldset>
         <legend className="text-base font-medium">Your color</legend>
         <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-label="No color, default theme"
+            aria-pressed={!color}
+            onClick={() => {
+              applyColorTheme(NONE);
+              onColor(NONE);
+            }}
+            className={cn(
+              "flex size-11 items-center justify-center rounded-full border-2 text-[10px] font-medium",
+              !color ? (onDark ? "border-paper bg-paper/15 text-paper" : "border-ink bg-paper text-ink") : "border-transparent bg-paper-2 text-muted",
+            )}
+          >
+            None
+          </button>
           {COLORS.map((c) => (
             <button
               key={c}

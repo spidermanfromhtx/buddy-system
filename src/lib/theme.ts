@@ -1,3 +1,5 @@
+export const NONE = "";
+
 export const COLOR_THEMES = [
   { id: "coral", color: "#e56b5a", label: "Coral" },
   { id: "pink", color: "#e05a84", label: "Pink" },
@@ -35,14 +37,16 @@ const OLD: Record<string, string> = {
 };
 
 export function normalizeColor(color: string | null | undefined) {
-  const key = (color || "").toLowerCase();
+  const key = (color || "").toLowerCase().trim();
+  if (!key || key === "default" || key === "none") return NONE;
   if ((COLORS as string[]).includes(key)) return key;
-  return OLD[key] ?? COLORS[0];
+  return OLD[key] ?? NONE;
 }
 
 export function themeForColor(color: string | null | undefined) {
   const hex = normalizeColor(color);
-  return COLOR_THEMES.find((t) => t.color === hex) ?? COLOR_THEMES[0];
+  if (!hex) return { id: "default" as const, color: NONE, label: "Default" };
+  return COLOR_THEMES.find((t) => t.color === hex) ?? { id: "default" as const, color: NONE, label: "Default" };
 }
 
 export function applyColorTheme(color: string | null | undefined) {

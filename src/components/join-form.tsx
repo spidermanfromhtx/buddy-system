@@ -6,7 +6,7 @@ import { EmailCodeForm } from "@/components/email-code-form";
 import { LookFields } from "@/components/look-fields";
 import { Mark } from "@/components/mark";
 import { createAccount, requestAccountCode, verifyAccountCode } from "@/lib/account";
-import { COLORS, profileFromAccount, type Profile } from "@/lib/profile";
+import { profileFromAccount, type Profile } from "@/lib/profile";
 import { ageFromBirthdate } from "@/lib/utils";
 
 export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
@@ -14,7 +14,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   const [pending, setPending] = useState<{ email: string; token: string } | null>(null);
   const [name, setName] = useState("");
   const [birthdate, setBirthdate] = useState("2004-01-01");
-  const [color, setColor] = useState<string>(COLORS[0]);
+  const [color, setColor] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [err, setErr] = useState("");
