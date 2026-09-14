@@ -208,7 +208,13 @@ export function setNativeEar(on: boolean) {
 
 export function hearPcm(buf: ArrayBuffer) {
   if (nativeEar) return;
-  if (!output) return;
+  if (!output) {
+    try {
+      output = new AudioContext();
+    } catch {
+      return;
+    }
+  }
   if (output.state === "suspended") void output.resume();
   const view = new DataView(buf);
   if (view.byteLength >= 4 && view.getUint8(0) === 0) {

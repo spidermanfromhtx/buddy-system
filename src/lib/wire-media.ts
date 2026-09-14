@@ -49,7 +49,7 @@ export function startJpegSend(
     );
   };
   tick();
-  const id = window.setInterval(tick, 90);
+  const id = window.setInterval(tick, 250);
   return () => window.clearInterval(id);
 }
 

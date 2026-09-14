@@ -69,6 +69,7 @@ export function AudioCall({
 }) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const jpegRef = useRef<HTMLImageElement>(null);
   const jpegUrl = useRef<string | null>(null);
   const p2pRef = useRef<P2PRoom | null>(null);
@@ -93,32 +94,52 @@ export function AudioCall({
     if (video) void el.play().catch(() => {});
   }
 
+  function pumpSpeaker() {
+    void unlockOutput();
+    const audio = remoteAudioRef.current;
+    if (audio) {
+      audio.muted = false;
+      audio.volume = 1;
+      void audio.play().catch(() => {});
+    }
+    const video = remoteVideoRef.current;
+    if (video) void video.play().catch(() => {});
+  }
+
   function showRemote(remote: MediaStream) {
-    const el = remoteVideoRef.current;
-    if (!el) return;
-    if (el.srcObject !== remote) el.srcObject = remote;
-    el.muted = false;
-    el.volume = 1;
-    el.playsInline = true;
-    el.autoplay = true;
-    void el.play().catch(() => {});
-    const check = () => {
-      if (el.videoWidth > 16) setRemoteVideo(true);
-    };
-    el.onloadedmetadata = check;
-    el.ontimeupdate = check;
-    for (const t of remote.getAudioTracks()) {
-      t.enabled = true;
-      t.onunmute = () => {
-        void el.play().catch(() => {});
+    const video = remoteVideoRef.current;
+    if (video) {
+      if (video.srcObject !== remote) video.srcObject = remote;
+      video.muted = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      void video.play().catch(() => {});
+      const check = () => {
+        if (video.videoWidth > 16) setRemoteVideo(true);
+      };
+      video.onloadedmetadata = check;
+      video.ontimeupdate = check;
+      for (const t of remote.getVideoTracks()) {
+        t.enabled = true;
+        t.onunmute = check;
+      }
+    }
+    const audio = remoteAudioRef.current;
+    if (audio) {
+      if (audio.srcObject !== remote) audio.srcObject = remote;
+      audio.muted = false;
+      audio.volume = 1;
+      audio.autoplay = true;
+      void audio.play().catch(() => {});
+      audio.onplaying = () => {
         window.setTimeout(() => {
-          if (el.currentTime > 0.2) setNativeEar(true);
-        }, 400);
+          if (!audio.paused && audio.currentTime > 0.35) setNativeEar(true);
+        }, 700);
       };
     }
-    for (const t of remote.getVideoTracks()) {
+    for (const t of remote.getAudioTracks()) {
       t.enabled = true;
-      t.onunmute = check;
+      t.onunmute = () => pumpSpeaker();
     }
   }
 
@@ -193,6 +214,16 @@ export function AudioCall({
     return onPcmOut((buf) => p2pRef.current?.sendMedia(buf));
   }, []);
 
+  useEffect(() => {
+    const resume = () => pumpSpeaker();
+    window.addEventListener("pointerdown", resume);
+    window.addEventListener("keydown", resume);
+    return () => {
+      window.removeEventListener("pointerdown", resume);
+      window.removeEventListener("keydown", resume);
+    };
+  }, []);
+
   const lastCam = useRef(Boolean(allowCamera && wantCamera));
   useEffect(() => {
     if (!allowCamera) return;
@@ -231,7 +262,9 @@ export function AudioCall({
           }
           autoPlay
           playsInline
+          muted
         />
+        <audio ref={remoteAudioRef} autoPlay playsInline className="pointer-events-none fixed bottom-2 left-12 h-8 w-8 opacity-[0.04]" />
         {remoteJpeg && !remoteVideo ? (
           <img ref={jpegRef} alt="" className="size-full rounded-3xl bg-paper-2 object-cover" />
         ) : (
