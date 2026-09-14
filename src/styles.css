@@ -18,6 +18,18 @@
 }
 
 :root,
+[data-theme="stone"] {
+  --night: #17191d;
+  --ink: #24282e;
+  --paper: #f0eee8;
+  --paper-2: #e6e3db;
+  --muted: #6a6d72;
+  --line: #d5d2ca;
+  --rust: #c4785c;
+  --sage: #4a5e5a;
+  --cream: #f5f4f0;
+}
+
 [data-theme="brown"] {
   --night: #14110e;
   --ink: #2a241f;

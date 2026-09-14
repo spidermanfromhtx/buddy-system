@@ -9,7 +9,7 @@ import { Mark } from "@/components/mark";
 import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
 import { JoinForm } from "@/components/join-form";
-import { applyTheme, loadTheme, THEMES, type ThemeId } from "@/lib/theme";
+import { applyTheme, loadTheme, THEMES, triedThemes, type ThemeId } from "@/lib/theme";
 import { readAccount, saveAccount, startPlusCheckout } from "@/lib/account";
 import { categoryLabel } from "@/lib/categories";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
@@ -99,7 +99,7 @@ function Feed() {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
   const [feedCat, setFeedCat] = useState("");
-  const [theme, setTheme] = useState<ThemeId>("brown");
+  const [theme, setTheme] = useState<ThemeId>("stone");
 
   useEffect(() => {
     const p = loadProfile();
@@ -790,7 +790,9 @@ function Feed() {
                 <p className="text-xs text-muted">Audio is the default. Camera is optional. In a car, keep camera off.</p>
                 <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
                   <p className="font-display text-xl">Look</p>
-                  <p className="text-sm text-muted">Same type. Pick a palette.</p>
+                  <p className="text-sm text-muted">
+                    Showing {THEMES.find((t) => t.id === theme)?.label}. Same type. Tried: {triedThemes().join(", ")}.
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {THEMES.map((t) => (
                       <Btn
