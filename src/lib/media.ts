@@ -1,7 +1,13 @@
+import { packPcm, playWire } from "@/lib/wire-media";
+
 let stream: MediaStream | null = null;
 let output: AudioContext | null = null;
 let speaker: HTMLVideoElement | null = null;
 let keep: HTMLVideoElement | null = null;
+let keepAliveOsc: OscillatorNode | null = null;
+let capture: { src: MediaStreamAudioSourceNode; proc: ScriptProcessorNode; mute: GainNode } | null = null;
+let playBag: { ctx: AudioContext; next: number } | null = null;
+const pcmSinks = new Set<(buf: ArrayBuffer) => void>();
 let micMuted = false;
 
 export function isMicMuted() {
@@ -10,7 +16,6 @@ export function isMicMuted() {
 
 export function setMicMuted(muted: boolean) {
   micMuted = muted;
-  for (const t of stream?.getAudioTracks() ?? []) t.enabled = !muted;
 }
 
 export function hasLiveMic() {
@@ -33,8 +38,11 @@ export function getAudioContext() {
   return output;
 }
 
-function applyMute() {
-  for (const t of stream?.getAudioTracks() ?? []) t.enabled = !micMuted;
+export function onPcmOut(cb: (buf: ArrayBuffer) => void) {
+  pcmSinks.add(cb);
+  return () => {
+    pcmSinks.delete(cb);
+  };
 }
 
 function wireSpeaker(el: HTMLVideoElement) {
@@ -74,17 +82,69 @@ function keepLocalAlive(media: MediaStream) {
   void keep.play().catch(() => {});
 }
 
+function stopCapture() {
+  if (!capture) return;
+  capture.proc.onaudioprocess = null;
+  try {
+    capture.src.disconnect();
+    capture.proc.disconnect();
+    capture.mute.disconnect();
+  } catch {
+    // already gone
+  }
+  capture = null;
+}
+
+function startCapture() {
+  if (!output || !stream) return;
+  const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
+  if (!audio) return;
+  stopCapture();
+  const src = output.createMediaStreamSource(new MediaStream([audio]));
+  const proc = output.createScriptProcessor(2048, 1, 1);
+  const mute = output.createGain();
+  mute.gain.value = 0;
+  src.connect(proc);
+  proc.connect(mute);
+  mute.connect(output.destination);
+  proc.onaudioprocess = (ev) => {
+    if (!pcmSinks.size || micMuted) return;
+    const input = ev.inputBuffer.getChannelData(0);
+    const buf = packPcm(output?.sampleRate || 48000, input);
+    for (const cb of pcmSinks) cb(buf);
+  };
+  capture = { src, proc, mute };
+}
+
+function startKeepAlive() {
+  if (!output || keepAliveOsc) return;
+  try {
+    const osc = output.createOscillator();
+    const g = output.createGain();
+    g.gain.value = 0.00005;
+    osc.frequency.value = 30;
+    osc.connect(g);
+    g.connect(output.destination);
+    osc.start();
+    keepAliveOsc = osc;
+  } catch {
+    // optional
+  }
+}
+
 export async function unlockOutput() {
   try {
     output ??= new AudioContext();
     if (output.state === "suspended") await output.resume();
+    startKeepAlive();
+    playBag = { ctx: output, next: 0 };
     const buf = output.createBuffer(1, 8, output.sampleRate);
     const src = output.createBufferSource();
     src.buffer = buf;
     src.connect(output.destination);
     src.start();
   } catch {
-    // speaker play below is enough
+    // speaker play below
   }
   const el = getSpeaker();
   if (el) {
@@ -98,6 +158,14 @@ export async function unlockOutput() {
       // Answer / Call already used the gesture
     }
   }
+  startCapture();
+}
+
+export function hearPcm(buf: ArrayBuffer) {
+  if (!output) return;
+  if (output.state === "suspended") void output.resume();
+  playBag ??= { ctx: output, next: 0 };
+  playBag.next = playWire(buf, playBag, () => {});
 }
 
 export async function getLocalStream(wantCamera: boolean, _monitor = false): Promise<MediaStream> {
@@ -110,16 +178,10 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
       noiseSuppression: true,
       autoGainControl: true,
     };
-    let last: unknown;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
-    } catch (e) {
-      last = e;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } catch (e2) {
-        throw e2 instanceof Error ? e2 : last instanceof Error ? last : new Error("mic blocked");
-      }
+    } catch {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     }
     for (const t of stream.getAudioTracks()) t.enabled = true;
   }
@@ -144,29 +206,26 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
       stream.removeTrack(t);
     }
   }
-  applyMute();
   keepLocalAlive(stream);
+  startCapture();
   return stream;
 }
 
 export async function playRemote(remote: MediaStream) {
-  for (const t of remote.getAudioTracks()) t.enabled = true;
+  const video = remote.getVideoTracks().filter(isRealVideo);
   const el = getSpeaker();
-  if (el) {
+  if (el && video.length) {
     wireSpeaker(el);
+    el.muted = true;
     if (el.srcObject !== remote) el.srcObject = remote;
-    const go = () => {
-      void el.play().catch(() => {});
-    };
-    go();
-    el.onloadedmetadata = go;
-    el.oncanplay = go;
+    void el.play().catch(() => {});
   }
   if (output && output.state === "suspended") await output.resume();
 }
 
 export function stopLocalStream() {
   micMuted = false;
+  stopCapture();
   if (stream) {
     for (const t of stream.getTracks()) t.stop();
   }

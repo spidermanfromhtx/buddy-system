@@ -5,9 +5,11 @@ import {
   getAudioContext,
   getLocalStream,
   hasLiveMic,
+  hearPcm,
   isMicMuted,
   isRealVideo,
   micHint,
+  onPcmOut,
   playRemote,
   setMicMuted,
   unlockOutput,
@@ -160,6 +162,9 @@ export function AudioCall({
         onRemoteStream: (_id, remote) => {
           showRemote(remote);
         },
+        onMediaData: (_id, data) => {
+          hearPcm(data);
+        },
         onConnected: () => setStatus((s) => (s === "joining" ? "waiting" : s)),
       });
       p2pRef.current = p2p;
@@ -178,6 +183,10 @@ export function AudioCall({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, selfId, loopback]);
+
+  useEffect(() => {
+    return onPcmOut((buf) => p2pRef.current?.sendMedia(buf));
+  }, []);
 
   const lastCam = useRef(Boolean(allowCamera && wantCamera));
   useEffect(() => {
