@@ -8,7 +8,7 @@ import { parseCallSearch } from "@/lib/call-search";
 import { getCall, setCallStatus } from "@/lib/listings";
 import { stopLocalStream } from "@/lib/media";
 import { loadProfile } from "@/lib/profile";
-import { pingBreak } from "@/lib/ring";
+import { pingBreak, playHangup } from "@/lib/ring";
 import { formatMmSs } from "@/lib/utils";
 
 export const Route = createFileRoute("/call/$id")({
@@ -72,6 +72,8 @@ function CallScreen() {
   }, [dummy, q.data?.status, nav]);
 
   async function hangup() {
+    playHangup();
+    await new Promise((r) => setTimeout(r, 450));
     stopLocalStream();
     if (room && me) {
       void fetch("/api/rtc", {

@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Btn } from "@/components/btn";
 import {
   currentStream,
+  getAudioContext,
   getLocalStream,
   hasLiveMic,
   isMicMuted,
   isRealVideo,
   micHint,
+  playRemote,
   setMicMuted,
   unlockOutput,
 } from "@/lib/media";
@@ -16,13 +18,19 @@ function MicMeter({ stream }: { stream: MediaStream | null }) {
   const [level, setLevel] = useState(0);
   useEffect(() => {
     if (!stream) return;
+    const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
+    if (!audio) return;
     let raf = 0;
-    let ctx: AudioContext | null = null;
     let src: MediaStreamAudioSourceNode | null = null;
+    let own: AudioContext | null = null;
     (async () => {
-      ctx = new AudioContext();
+      let ctx = getAudioContext();
+      if (!ctx) {
+        own = new AudioContext();
+        ctx = own;
+      }
       if (ctx.state === "suspended") await ctx.resume();
-      src = ctx.createMediaStreamSource(stream);
+      src = ctx.createMediaStreamSource(new MediaStream([audio]));
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       src.connect(analyser);
@@ -42,7 +50,7 @@ function MicMeter({ stream }: { stream: MediaStream | null }) {
     return () => {
       cancelAnimationFrame(raf);
       src?.disconnect();
-      void ctx?.close();
+      void own?.close();
     };
   }, [stream]);
   return (
@@ -101,10 +109,11 @@ export function AudioCall({
   }
 
   function showRemote(remote: MediaStream) {
+    void playRemote(remote);
     const el = remoteVideoRef.current;
     if (el) {
       if (el.srcObject !== remote) el.srcObject = remote;
-      el.muted = false;
+      el.muted = true;
       el.playsInline = true;
       el.autoplay = true;
       void el.play().catch(() => {});
@@ -112,7 +121,7 @@ export function AudioCall({
         setRemoteVideo(el.videoWidth > 16);
       };
     }
-    setRemoteVideo(remote.getVideoTracks().some((t) => t.readyState !== "ended" && t.enabled));
+    setRemoteVideo(remote.getVideoTracks().some((t) => t.readyState !== "ended"));
   }
 
   async function start() {
