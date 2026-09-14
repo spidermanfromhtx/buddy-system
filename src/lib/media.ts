@@ -171,7 +171,9 @@ export async function playRemote(remote: MediaStream) {
         // already gone
       }
     }
-    remoteNode = output.createMediaStreamSource(remote);
+    const audioTracks = remote.getAudioTracks().filter((t) => t.readyState === "live");
+    if (!audioTracks.length) return;
+    remoteNode = output.createMediaStreamSource(new MediaStream(audioTracks));
     remoteNode.connect(output.destination);
   } catch {
     // element path is enough on most browsers

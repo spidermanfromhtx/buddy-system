@@ -74,6 +74,21 @@ export function startJpegSend(
   return () => window.clearInterval(id);
 }
 
+function resample(input: Float32Array, from: number, to: number) {
+  if (!from || from === to) return input;
+  const outLen = Math.max(1, Math.round((input.length * to) / from));
+  const out = new Float32Array(outLen);
+  const step = from / to;
+  for (let i = 0; i < outLen; i++) {
+    const x = i * step;
+    const i0 = Math.floor(x);
+    const i1 = Math.min(i0 + 1, input.length - 1);
+    const f = x - i0;
+    out[i] = (input[i0] ?? 0) * (1 - f) + (input[i1] ?? 0) * f;
+  }
+  return out;
+}
+
 export function playWire(
   buf: ArrayBuffer,
   audio: { ctx: AudioContext; next: number },
@@ -92,10 +107,11 @@ export function playWire(
   const pcm = new Int16Array(buf.slice(8));
   const f32 = new Float32Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) f32[i] = (pcm[i] ?? 0) / 0x8000;
+  const samples = resample(f32, rate, audio.ctx.sampleRate);
   try {
     const node = audio.ctx.createBufferSource();
-    const buffer = audio.ctx.createBuffer(1, Math.max(1, f32.length), rate);
-    buffer.getChannelData(0).set(f32);
+    const buffer = audio.ctx.createBuffer(1, Math.max(1, samples.length), audio.ctx.sampleRate);
+    buffer.getChannelData(0).set(samples);
     node.buffer = buffer;
     node.connect(audio.ctx.destination);
     const start = Math.max(audio.ctx.currentTime + 0.04, audio.next);

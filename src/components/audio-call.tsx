@@ -7,6 +7,7 @@ import {
   hasLiveMic,
   isHoldVideo,
   micHint,
+  playRemote,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
@@ -80,6 +81,7 @@ export function AudioCall({
 }) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const p2pRef = useRef<P2PRoom | null>(null);
   const remoteRef = useRef<MediaStream | null>(null);
   const jpegRef = useRef<HTMLImageElement>(null);
@@ -107,9 +109,16 @@ export function AudioCall({
     if (el) {
       if (el.srcObject !== stream) el.srcObject = stream;
       el.muted = true;
-      el.volume = 1;
       void el.play().catch(() => {});
     }
+    const speaker = remoteAudioRef.current;
+    if (speaker) {
+      if (speaker.srcObject !== stream) speaker.srcObject = stream;
+      speaker.muted = false;
+      speaker.volume = 1;
+      void speaker.play().catch(() => {});
+    }
+    void playRemote(stream);
   }
 
   async function start() {
@@ -198,14 +207,23 @@ export function AudioCall({
   useEffect(() => {
     if (loopback || status === "need-mic") return;
     if (!local) return;
-    const p2p = p2pRef.current;
-    if (!p2p) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const stopPcm = startPcmSend(local, (buf) => p2p.sendMedia(buf), ctx);
-    const el = localVideoRef.current;
-    const stopJpeg = wantCamera && el ? startJpegSend(el, (buf) => p2p.sendMedia(buf)) : () => {};
+    const send = (buf: ArrayBuffer) => p2pRef.current?.sendMedia(buf);
+    let cancelled = false;
+    let stopPcm = () => {};
+    let stopJpeg = () => {};
+    const boot = async () => {
+      await unlockOutput();
+      if (cancelled) return;
+      const ctx = getAudioContext() ?? new AudioContext();
+      if (ctx.state === "suspended") await ctx.resume();
+      if (cancelled) return;
+      stopPcm = startPcmSend(local, send, ctx);
+      const el = localVideoRef.current;
+      stopJpeg = wantCamera && el ? startJpegSend(el, send) : () => {};
+    };
+    void boot();
     return () => {
+      cancelled = true;
       stopPcm();
       stopJpeg();
     };
@@ -216,6 +234,12 @@ export function AudioCall({
   return (
     <div className="flex flex-col items-center gap-3">
       <div className={showStage ? "relative aspect-square w-full max-w-xs" : undefined}>
+        <audio
+          ref={remoteAudioRef}
+          className="pointer-events-none fixed bottom-0 left-0 h-px w-px"
+          autoPlay
+          playsInline
+        />
         <video
           ref={remoteVideoRef}
           className={
