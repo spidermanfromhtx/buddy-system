@@ -9,7 +9,10 @@ export const getCallElapsed = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sql = await getSql();
     const rows = await sql.query<{ elapsed_sec: number }>(
-      `SELECT GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (now() - created_at))))::int AS elapsed_sec
+      `SELECT CASE WHEN status = 'live'
+         THEN GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (now() - created_at))))::int
+         ELSE 0
+       END AS elapsed_sec
        FROM call_sessions
        WHERE id = $1
        LIMIT 1`,
