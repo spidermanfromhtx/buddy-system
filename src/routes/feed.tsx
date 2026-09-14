@@ -9,8 +9,9 @@ import { Mark } from "@/components/mark";
 import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
 import { JoinForm } from "@/components/join-form";
-import { saveAccount } from "@/lib/account";
+import { readAccount, saveAccount, startPlusCheckout } from "@/lib/account";
 import { categoryLabel } from "@/lib/categories";
+import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
   closeLive,
@@ -21,7 +22,7 @@ import {
   upsertLive,
   type Listing,
 } from "@/lib/listings";
-import { clearProfile, loadProfile, saveProfile, type Profile } from "@/lib/profile";
+import { clearProfile, loadProfile, profileFromAccount, saveProfile, type Profile } from "@/lib/profile";
 import { getLocalStream, unlockOutput } from "@/lib/media";
 import { formatDue, formatWindow, newId, todayIso, windowRange } from "@/lib/utils";
 import { armRing } from "@/lib/ring";
@@ -105,6 +106,21 @@ function Feed() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!me?.sessionToken) return;
+    void readAccount({ data: { token: me.sessionToken } }).then((res) => {
+      if (!res.ok) return;
+      setMe(
+        profileFromAccount(res.account, {
+          school: me.school,
+          schoolEmail: me.schoolEmail,
+          schoolVerified: me.schoolVerified,
+          campusToken: me.campusToken,
+        }),
+      );
+    });
+  }, [me?.sessionToken]);
+
   const q = useQuery({
     queryKey: ["listings", tab, me?.schoolVerified ? me.school : "none"],
     queryFn: () =>
@@ -179,7 +195,7 @@ function Feed() {
       if (!me || !task.trim()) return;
       const id = liveId ?? newId("live");
       setLiveId(id);
-      await upsertLive({
+      return upsertLive({
         data: {
           id,
           peerId: me.id,
@@ -194,9 +210,15 @@ function Feed() {
           school: me.school ?? undefined,
           category: category || undefined,
         },
+      }).then((res) => {
+        if (res && "ok" in res && res.ok === false) throw new Error(res.error);
+        return res;
       });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      if (res && "usedSession" in res && res.usedSession && me && !isPlus(me.plan)) {
+        setMe(saveProfile({ ...me, sessionsUsed: me.sessionsUsed + 1 }));
+      }
       setSheet("none");
       void q.refetch();
     },
@@ -253,6 +275,9 @@ function Feed() {
           school: me.school ?? undefined,
           category: category || undefined,
         },
+      }).then((res) => {
+        if (res && "ok" in res && res.ok === false) throw new Error(res.error);
+        return res;
       });
     },
     onSuccess: (res) => {
@@ -266,8 +291,12 @@ function Feed() {
           ? `matched with ${res.matched.name}. rings ${when}.`
           : `booked. waiting for a match. rings ${when} if someone overlaps.`,
       );
+      if (me && !isPlus(me.plan)) setMe(saveProfile({ ...me, sessionsUsed: me.sessionsUsed + 1 }));
       setSheet("none");
       void q.refetch();
+    },
+    onError: (err) => {
+      setNote(err instanceof Error ? err.message : "could not book");
     },
   });
 
@@ -283,7 +312,7 @@ function Feed() {
     }
     const id = newId("call");
     const room = `r${id.replace(/-/g, "").slice(0, 20)}`;
-    await startCall({
+    const started = await startCall({
       data: {
         id,
         room,
@@ -300,6 +329,11 @@ function Feed() {
         allowCamera: row.camera,
       },
     });
+    if (started && "ok" in started && started.ok === false) {
+      setNote("error" in started ? started.error : "Could not start the call.");
+      return;
+    }
+    if (me && !isPlus(me.plan)) setMe(saveProfile({ ...me, sessionsUsed: me.sessionsUsed + 1 }));
     void nav({
       to: "/call/$id",
       params: { id },
@@ -319,6 +353,9 @@ function Feed() {
   if (!me) return <JoinForm onJoined={setMe} />;
 
   const remain = minutesLeft(mine?.expiresAt ?? null);
+  const cap = maxSessionMin(me.plan);
+  const left = sessionsLeft(me.plan, me.sessionsUsed);
+  const plus = isPlus(me.plan);
 
   function onCampusVerified(info: { school: string; email: string; token: string }) {
     if (!me) return;
@@ -435,7 +472,7 @@ function Feed() {
             id={`${prefix}-length`}
             type="range"
             min={5}
-            max={120}
+            max={cap}
             value={lengthMin}
             className="mt-3 w-full"
             onChange={(e) => setLengthMin(Number(e.target.value))}
@@ -491,6 +528,11 @@ function Feed() {
         </div>
         <p className="mt-3 max-w-md text-base text-muted">
           Find a live buddy. Schedule a buddy. Be a buddy.
+        </p>
+        <p className="mt-3 text-sm text-muted">
+          {plus
+            ? "Plus. Unlimited sessions. Calls up to 2 hours."
+            : `${left} of ${FREE_SESSIONS} free sessions left. Free calls are ${FREE_MAX_MIN} minutes. ${PLUS_PRICE_LABEL} for unlimited.`}
         </p>
         <div className="mt-8 hidden flex-wrap gap-2 md:flex">{actions}</div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -720,6 +762,32 @@ function Feed() {
                   />
                 </label>
                 <p className="text-xs text-muted">Audio is the default. Camera is optional. In a car, keep camera off.</p>
+                <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
+                  <p className="font-display text-xl">Plan</p>
+                  {plus ? (
+                    <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>
+                  ) : (
+                    <>
+                      <p className="text-base text-muted">
+                        {left} of {FREE_SESSIONS} free 45-minute sessions left. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
+                      </p>
+                      <Btn
+                        kind="fill"
+                        onClick={() => {
+                          void startPlusCheckout({ data: { token: me.sessionToken } }).then((res) => {
+                            if (!res.ok) {
+                              setNote(res.error);
+                              return;
+                            }
+                            window.location.href = res.url;
+                          });
+                        }}
+                      >
+                        Get Plus · $5 a month
+                      </Btn>
+                    </>
+                  )}
+                </div>
                 <Btn
                   onClick={() => {
                     clearProfile();
@@ -761,7 +829,7 @@ function Feed() {
                     id="open-length"
                     type="range"
                     min={5}
-                    max={120}
+                    max={cap}
                     value={lengthMin}
                     className="w-full"
                     onChange={(e) => setLengthMin(Number(e.target.value))}

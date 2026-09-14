@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
 import { listingsSimilar, prefsFit, sid } from "@/lib/match";
+import { takeSession } from "@/lib/plan.server";
 
 const ID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 
@@ -135,6 +136,14 @@ export const upsertLive = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sql = await getSql();
     const school = await schoolForPeer(sql, data.peerId);
+    const existing = await sql.query(
+      `SELECT id FROM listings WHERE peer_id = $1 AND mode = 'live' LIMIT 1`,
+      [data.peerId],
+    );
+    if (!existing[0]) {
+      const gate = await takeSession(sql, data.peerId, data.lengthMin);
+      if (!gate.ok) return gate;
+    }
     await sql.query(
       `INSERT INTO listings (id, peer_id, name, color, photo, task, urgent, mode, length_min, camera, due_date, school, category, expires_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'live',$8,$9,$10,$11,$12, now() + interval '15 minutes')
@@ -165,7 +174,7 @@ export const upsertLive = createServerFn({ method: "POST" })
         data.category ?? null,
       ],
     );
-    return { ok: true };
+    return { ok: true as const, usedSession: !existing[0] };
   });
 
 export const bookWindow = createServerFn({ method: "POST" })
@@ -194,6 +203,8 @@ export const bookWindow = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sql = await getSql();
     const school = await schoolForPeer(sql, data.peerId);
+    const gate = await takeSession(sql, data.peerId, data.lengthMin);
+    if (!gate.ok) return gate;
     await sql.query(
       `INSERT INTO listings
         (id, peer_id, name, color, photo, task, urgent, mode, length_min, camera, similar_pref, window_label, window_start, window_end, due_date, school, category, expires_at)
@@ -310,6 +321,8 @@ export const startCall = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (data.callerId === data.calleeId) return { ok: false as const };
     const sql = await getSql();
+    const gate = await takeSession(sql, data.callerId, data.lengthMin);
+    if (!gate.ok) return gate;
     await sql.query(
       `INSERT INTO call_sessions
         (id, room, caller_id, callee_id, caller_name, callee_name, caller_color, callee_color, caller_photo, callee_photo, task, length_min, status, allow_camera, both_ring)

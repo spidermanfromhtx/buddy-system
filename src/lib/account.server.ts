@@ -15,6 +15,8 @@ export type AccountRow = {
   breakEveryMin: number;
   sessionToken: string;
   categories: string[];
+  plan: string;
+  sessionsUsed: number;
 };
 
 function mapAccount(r: Record<string, unknown>): AccountRow {
@@ -28,6 +30,8 @@ function mapAccount(r: Record<string, unknown>): AccountRow {
     breakEveryMin: Number(r.break_every_min ?? 30),
     sessionToken: String(r.session_token),
     categories: parseCategories(r.categories),
+    plan: String(r.plan || "free"),
+    sessionsUsed: Number(r.sessions_used ?? 0),
   };
 }
 
@@ -139,6 +143,8 @@ export async function createAccount(data: {
       breakEveryMin: 30,
       sessionToken: data.token,
       categories,
+      plan: "free",
+      sessionsUsed: 0,
     },
   };
 }
@@ -166,4 +172,11 @@ export async function saveAccount(data: {
     [data.token, name, color, photo, breakEveryMin, serializeCategories(categories)],
   );
   return { ok: true as const };
+}
+
+export async function readAccount(token: string) {
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
+  if (!rows[0]) return { ok: false as const, error: "Sign in again." };
+  return { ok: true as const, account: mapAccount(rows[0]) };
 }

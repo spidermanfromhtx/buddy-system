@@ -17,6 +17,8 @@ export type Profile = {
   schoolVerified: boolean;
   campusToken: string | null;
   categories: string[];
+  plan: string;
+  sessionsUsed: number;
 };
 
 export const COLORS = [
@@ -57,6 +59,8 @@ export function loadProfile(): Profile | null {
       schoolVerified: Boolean(p.schoolVerified && p.school && p.campusToken),
       campusToken: p.schoolVerified ? p.campusToken ?? null : null,
       categories: parseCategories(p.categories),
+      plan: p.plan === "plus" ? "plus" : "free",
+      sessionsUsed: Number(p.sessionsUsed ?? 0),
     };
   } catch {
     return null;
@@ -81,6 +85,8 @@ export function saveProfile(partial: Omit<Profile, "id"> & { id?: string }): Pro
     schoolVerified: Boolean(schoolVerified && school),
     campusToken: schoolVerified ? partial.campusToken ?? existing?.campusToken ?? null : null,
     categories: parseCategories(partial.categories ?? existing?.categories ?? []),
+    plan: partial.plan ?? existing?.plan ?? "free",
+    sessionsUsed: partial.sessionsUsed ?? existing?.sessionsUsed ?? 0,
   };
   localStorage.setItem(KEY, JSON.stringify(p));
   return p;
@@ -101,6 +107,8 @@ export function profileFromAccount(
     breakEveryMin: number;
     sessionToken: string;
     categories?: string[];
+    plan?: string;
+    sessionsUsed?: number;
   },
   extra?: Partial<Pick<Profile, "school" | "schoolEmail" | "schoolVerified" | "campusToken">>,
 ): Profile {
@@ -118,5 +126,7 @@ export function profileFromAccount(
     schoolVerified: extra?.schoolVerified ?? false,
     campusToken: extra?.campusToken ?? null,
     categories: parseCategories(account.categories),
+    plan: account.plan ?? "free",
+    sessionsUsed: account.sessionsUsed ?? 0,
   });
 }

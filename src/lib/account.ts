@@ -57,3 +57,17 @@ export const saveAccount = createServerFn({ method: "POST" })
     const { saveAccount: save } = await import("./account.server");
     return save(data);
   });
+
+export const readAccount = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ token: TOKEN }).parse(d))
+  .handler(async ({ data }) => {
+    const { readAccount: read } = await import("./account.server");
+    return read(data.token);
+  });
+
+export const startPlusCheckout = createServerFn({ method: "POST" })
+  .validator((d: unknown) => z.object({ token: TOKEN }).parse(d))
+  .handler(async ({ data }) => {
+    const { startPlusCheckout: start } = await import("./stripe.server");
+    return start(data.token);
+  });
