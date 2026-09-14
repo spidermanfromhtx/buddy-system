@@ -286,16 +286,12 @@ export function stopLocalStream() {
 }
 
 export async function playRemote(remote: MediaStream) {
-  for (const t of remote.getTracks()) t.enabled = true;
-  const audioTracks = remote.getAudioTracks().filter((t) => t.readyState === "live");
+  for (const t of remote.getAudioTracks()) t.enabled = true;
+  const audioTracks = remote.getAudioTracks().filter((t) => t.readyState !== "ended");
   const el = getSpeaker();
   if (el) {
-    const mixed = new MediaStream([
-      ...audioTracks,
-      ...remote.getVideoTracks().filter((t) => t.readyState === "live"),
-    ]);
-    el.srcObject = audioTracks.length || mixed.getTracks().length ? mixed : remote;
-    kickPlay(el);
+    el.srcObject = audioTracks.length ? new MediaStream(audioTracks) : null;
+    if (audioTracks.length) kickPlay(el);
   }
   try {
     if (!output) return;

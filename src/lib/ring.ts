@@ -2,11 +2,12 @@ let ctx: AudioContext | null = null;
 let pulse: ReturnType<typeof setInterval> | null = null;
 let keep: OscillatorNode | null = null;
 let bell: HTMLAudioElement | null = null;
+let tap: HTMLAudioElement | null = null;
 let ringing = false;
 
-function wavUri() {
+function wavUri(tone: boolean) {
   const rate = 8000;
-  const seconds = 2;
+  const seconds = tone ? 2 : 0.05;
   const n = rate * seconds;
   const bytes = new ArrayBuffer(44 + n * 2);
   const view = new DataView(bytes);
@@ -25,11 +26,13 @@ function wavUri() {
   view.setUint16(34, 16, true);
   str(36, "data");
   view.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const env = t < 1.5 ? 1 : Math.max(0, (2 - t) / 0.5);
-    const s = (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t)) * 0.32 * env;
-    view.setInt16(44 + i * 2, s * 0x7fff, true);
+  if (tone) {
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      const env = t < 1.5 ? 1 : Math.max(0, (2 - t) / 0.5);
+      const s = (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t)) * 0.38 * env;
+      view.setInt16(44 + i * 2, s * 0x7fff, true);
+    }
   }
   const blob = new Blob([bytes], { type: "audio/wav" });
   return URL.createObjectURL(blob);
@@ -60,26 +63,28 @@ export async function armRing() {
     // HTML audio below
   }
   if (typeof document === "undefined") return;
+  if (!tap) {
+    tap = new Audio(wavUri(false));
+    tap.volume = 0;
+  }
+  try {
+    await tap.play();
+    tap.pause();
+    tap.currentTime = 0;
+  } catch {
+    // next tap retries
+  }
   if (!bell) {
-    bell = new Audio(wavUri());
+    bell = new Audio(wavUri(true));
     bell.loop = true;
     bell.preload = "auto";
     bell.setAttribute("playsinline", "true");
-  }
-  try {
-    const prev = bell.volume;
-    bell.volume = 0.001;
-    await bell.play();
-    bell.pause();
-    bell.currentTime = 0;
-    bell.volume = prev || 1;
-  } catch {
-    // next user tap retries
   }
 }
 
 function burst() {
   if (!ctx) return;
+  if (ctx.state === "suspended") void ctx.resume();
   const now = ctx.currentTime;
   for (const freq of [440, 480]) {
     const o = ctx.createOscillator();
@@ -87,8 +92,8 @@ function burst() {
     o.type = "sine";
     o.frequency.value = freq;
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.28, now + 0.02);
-    g.gain.setValueAtTime(0.28, now + 1.7);
+    g.gain.exponentialRampToValueAtTime(0.32, now + 0.02);
+    g.gain.setValueAtTime(0.32, now + 1.7);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 2);
     o.connect(g);
     g.connect(ctx.destination);
@@ -146,4 +151,3 @@ export function pingBreak() {
     tone(1174, now + 0.4, 0.35);
   });
 }
-

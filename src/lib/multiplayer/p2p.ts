@@ -168,6 +168,29 @@ export async function loadIceServers(): Promise<RTCIceServer[]> {
   return base;
 }
 
+function senderFor(pc: RTCPeerConnection, kind: string) {
+  const live = pc.getSenders().find((s) => s.track?.kind === kind);
+  if (live) return live;
+  const tr = pc.getTransceivers().find((t) => (t.receiver.track?.kind ?? t.sender.track?.kind) === kind);
+  return tr?.sender;
+}
+
+function bumpVideo(sender: RTCRtpSender, track: MediaStreamTrack) {
+  if (track.kind !== "video") return;
+  if ("contentHint" in track) (track as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
+  try {
+    const params = sender.getParameters();
+    if (!params.encodings?.length) return;
+    for (const enc of params.encodings) {
+      enc.maxFramerate = 24;
+      enc.scaleResolutionDownBy = 1;
+    }
+    void sender.setParameters(params);
+  } catch {
+    // optional
+  }
+}
+
 export class P2PRoom {
   private readonly opts: P2PRoomOptions;
   private readonly peers = new Map<string, PeerSlot>();
@@ -224,19 +247,14 @@ export class P2PRoom {
       for (const track of stream.getTracks()) {
         if (track.readyState !== "live") continue;
         track.enabled = true;
-        const sender =
-          slot.pc.getSenders().find((s) => s.track?.kind === track.kind) ??
-          (track.kind === "video"
-            ? slot.pc.getSenders().find((s) => !s.track && s.getParameters().encodings?.length !== undefined)
-            : undefined);
-        if (sender) void sender.replaceTrack(track);
+        const sender = senderFor(slot.pc, track.kind);
+        if (sender) void sender.replaceTrack(track).then(() => bumpVideo(sender, track));
         else slot.pc.addTrack(track, stream);
       }
       const liveVideo = stream.getVideoTracks().some((t) => t.readyState === "live");
       if (!liveVideo) {
-        for (const sender of slot.pc.getSenders()) {
-          if (sender.track?.kind === "video") void sender.replaceTrack(null);
-        }
+        const videoSender = senderFor(slot.pc, "video");
+        if (videoSender?.track) void videoSender.replaceTrack(null);
       }
     }
   }
@@ -491,6 +509,7 @@ export class P2PRoom {
       pc.getTransceivers().map((tr) => tr.receiver.track?.kind ?? tr.sender.track?.kind),
     );
     if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" });
+    if (!kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
 
     if (initiator) void this.kickOffer(slot, peerId);
     return slot;

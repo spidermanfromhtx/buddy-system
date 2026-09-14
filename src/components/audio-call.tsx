@@ -102,16 +102,24 @@ export function AudioCall({
   }
 
   function showRemote(remote: MediaStream) {
-    for (const t of remote.getTracks()) t.enabled = true;
-    const real = remote.getVideoTracks().some(isRealVideo);
-    setRemoteVideo(real);
+    for (const t of remote.getVideoTracks()) t.enabled = true;
     const el = remoteVideoRef.current;
-    if (el) {
-      if (el.srcObject !== remote) el.srcObject = remote;
+    const videoOnly = new MediaStream(remote.getVideoTracks().filter(isRealVideo));
+    const hasVideo = videoOnly.getTracks().length > 0;
+    if (el && hasVideo) {
+      if (el.srcObject !== videoOnly && !(el.srcObject instanceof MediaStream && el.srcObject.getVideoTracks()[0]?.id === videoOnly.getVideoTracks()[0]?.id)) {
+        el.srcObject = videoOnly;
+      }
       el.muted = true;
       el.playsInline = true;
-      void el.play().catch(() => {});
+      el.onloadedmetadata = () => {
+        if (el.videoWidth > 16) setRemoteVideo(true);
+      };
+      void el.play().then(() => {
+        if (el.videoWidth > 16) setRemoteVideo(true);
+      }).catch(() => {});
     }
+    if (hasVideo) setRemoteVideo(true);
     void playRemote(remote);
   }
 

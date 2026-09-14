@@ -46,9 +46,10 @@ function Incoming() {
   const ringingYou = bothRing || (!dummy && !!q.data && !!me && q.data.calleeId === me.id);
 
   useEffect(() => {
+    if (!ringingYou && !bothRing && !dummy) return;
     void armRing().then(startRing);
     return () => stopRing();
-  }, []);
+  }, [ringingYou, bothRing, dummy]);
 
   useEffect(() => {
     if (dummy) return;

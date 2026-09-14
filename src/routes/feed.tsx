@@ -159,7 +159,7 @@ function Feed() {
       void incomingFor({ data: { peerId: me.id } }).then((row) => {
         if (!row) return;
         const youAreCaller = row.callerId === me.id;
-        startRing();
+        if (!youAreCaller || row.bothRing) startRing();
         void nav({
           to: "/incoming/$id",
           params: { id: row.id },
