@@ -63,7 +63,14 @@ function Rate() {
     <main className="relative z-10 min-h-dvh bg-transparent px-6 py-10 text-ink">
       <PageWash />
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6">
-        <h1 className="font-display text-3xl tracking-tight">How was that?</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">How was that call?</h1>
+        <p className="text-sm text-muted">
+          This is only about this person. To review Buddy System itself, use{" "}
+          <button type="button" className="underline" onClick={() => void nav({ to: "/reviews" })}>
+            Reviews of the app
+          </button>
+          .
+        </p>
         {other ? (
           <div className="flex items-center gap-3">
             <Face name={other.name} color={other.color} photo={other.photo} size="sm" />

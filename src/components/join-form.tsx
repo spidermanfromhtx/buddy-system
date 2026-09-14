@@ -69,7 +69,12 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           <Mark />
           <p className="truncate text-base font-semibold tracking-tight md:text-lg">Buddy System</p>
         </div>
-        <InstallApp className="h-9 shrink-0 rounded-full px-3 text-sm" />
+        <div className="flex shrink-0 items-center gap-2">
+          <a href="/reviews" className="text-sm font-medium text-ink underline-offset-4 hover:underline">
+            Reviews
+          </a>
+          <InstallApp className="h-9 shrink-0 rounded-full px-3 text-sm" />
+        </div>
       </header>
       <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:grid-cols-2 md:px-10 md:pt-16">
         <div>
