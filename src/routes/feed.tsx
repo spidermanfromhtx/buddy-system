@@ -11,7 +11,7 @@ import { PageWash } from "@/components/page-wash";
 import { CampusVerify } from "@/components/campus-verify";
 import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
-import { inviteAdmin, listAdmins, readAccount, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
+import { inviteAdmin, listAdmins, readAccount, readFlags, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
 import { CATEGORIES, categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, PRO_PRICE_LABEL, isPlus, maxSessionMin, planLabel, sessionsLeft } from "@/lib/plan";
 import {
@@ -154,6 +154,26 @@ function Feed() {
       );
     });
   }, [me?.sessionToken]);
+
+  useEffect(() => {
+    if (!me) return;
+    let stop = false;
+    const tick = () => {
+      void readFlags({ data: {} }).then((res) => {
+        if (stop || !res) return;
+        setMe((cur) => {
+          if (!cur || cur.limitsOn === res.limitsOn) return cur;
+          return saveProfile({ ...cur, limitsOn: res.limitsOn });
+        });
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 4000);
+    return () => {
+      stop = true;
+      window.clearInterval(id);
+    };
+  }, [me?.id]);
 
   useEffect(() => {
     if (sheet !== "settings" || !me?.admin || !me.sessionToken) return;
@@ -1094,14 +1114,19 @@ function Feed() {
                         onChange={(e) => {
                           const on = e.target.checked;
                           setMe(saveProfile({ ...me, limitsOn: on }));
-                          void setRndMode({ data: { token: me.sessionToken, on } });
+                          void setRndMode({ data: { token: me.sessionToken, on } }).then((res) => {
+                            if (!res.ok) {
+                              setMe(saveProfile({ ...me, limitsOn: !on }));
+                              setNote(res.error);
+                            }
+                          });
                         }}
                       />
-                      R&D limits
+                      Limits for everyone
                     </label>
                     <p className="text-sm text-muted">
-                      Off for R&D. On turns on paywalls for everyone: {FREE_SESSIONS} free {FREE_MAX_MIN}-minute
-                      sessions a week.
+                      Off = R&D, no paywall for any user. On = every non-paid account gets {FREE_SESSIONS} free{" "}
+                      {FREE_MAX_MIN}-minute sessions a week. Admins stay on Pro.
                     </p>
                     <p className="text-sm font-medium">Admins</p>
                     <ul className="text-sm text-muted">

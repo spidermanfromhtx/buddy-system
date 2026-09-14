@@ -65,6 +65,15 @@ export const readAccount = createServerFn({ method: "POST" })
     return read(data.token);
   });
 
+export const readFlags = createServerFn({ method: "POST" })
+  .validator(() => ({}))
+  .handler(async () => {
+    const { getSql } = await import("./db");
+    const { rndLimitsOn } = await import("./admin.server");
+    const sql = await getSql();
+    return { limitsOn: await rndLimitsOn(sql) };
+  });
+
 export const startPlusCheckout = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ token: TOKEN, plan: z.enum(["plus", "pro"]).optional() }).parse(d))
   .handler(async ({ data }) => {
