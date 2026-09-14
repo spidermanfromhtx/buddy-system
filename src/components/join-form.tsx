@@ -70,9 +70,6 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           <p className="truncate text-xl font-semibold tracking-tight md:text-2xl">Buddy System</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <a href="/about" className="text-base font-medium text-ink underline-offset-4 hover:underline">
-            What is the Buddy System
-          </a>
           <a href="/reviews" className="text-base font-medium text-ink underline-offset-4 hover:underline">
             Reviews
           </a>
