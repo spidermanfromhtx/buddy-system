@@ -9,7 +9,7 @@ const signalSchema = z.object({
   from: ID,
   to: ID,
   kind: z.enum(["offer", "answer", "ice"]),
-  payload: z.unknown().refine((v) => v !== undefined && JSON.stringify(v).length <= 32_768, {
+  payload: z.unknown().refine((v) => v !== undefined && JSON.stringify(v).length <= 131_072, {
     message: "payload too large",
   }),
 });
@@ -155,7 +155,7 @@ async function handlePost(request: Request): Promise<Response> {
     await sql.query(
       `INSERT INTO webrtc_signals (room, to_peer, from_peer, kind, payload)
        VALUES ($1, $2, $3, $4, $5)`,
-      [msg.room, msg.to, msg.from, msg.kind, JSON.stringify(msg.payload)],
+      [msg.room, msg.to, msg.from, msg.kind, msg.payload],
     );
   } else {
     await sql.query(`DELETE FROM webrtc_peers WHERE room = $1 AND peer_id = $2`, [msg.room, msg.peer]);

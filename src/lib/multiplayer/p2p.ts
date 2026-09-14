@@ -87,6 +87,18 @@ const STALL_MS = 10_000;
 const MAX_RECOVERY_ATTEMPTS = 3;
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];
 
+function asSignalPayload(payload: unknown) {
+  if (typeof payload === "string") {
+    try {
+      return JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  if (payload && typeof payload === "object") return payload as Record<string, unknown>;
+  return {};
+}
+
 export function defaultIceServers(): RTCIceServer[] {
   return [
     {
@@ -540,7 +552,7 @@ export class P2PRoom {
 
     try {
       if (kind === "offer" || kind === "answer") {
-        const description = payload as RTCSessionDescriptionInit;
+        const description = asSignalPayload(payload) as unknown as RTCSessionDescriptionInit;
         const collision =
           kind === "offer" && (slot.makingOffer || slot.pc.signalingState !== "stable");
         slot.ignoreOffer = !polite && collision;
@@ -574,7 +586,7 @@ export class P2PRoom {
           await this.sendSignal(from, "answer", slot.pc.localDescription!.toJSON());
         }
       } else if (kind === "ice") {
-        const candidate = payload as RTCIceCandidateInit;
+        const candidate = asSignalPayload(payload) as unknown as RTCIceCandidateInit;
         if (!slot.pc.remoteDescription) {
           // Candidate raced ahead of its SDP — hold it until the description
           // lands (flushed after every successful setRemoteDescription).

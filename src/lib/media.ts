@@ -52,6 +52,11 @@ export async function unlockOutput() {
   try {
     output ??= new AudioContext();
     if (output.state === "suspended") await output.resume();
+    const buf = output.createBuffer(1, 1, output.sampleRate);
+    const src = output.createBufferSource();
+    src.buffer = buf;
+    src.connect(output.destination);
+    src.start();
   } catch {
     // play() below is enough to unlock
   }
@@ -59,10 +64,6 @@ export async function unlockOutput() {
   el.muted = false;
   el.volume = 1;
   try {
-    if (!el.srcObject) {
-      const silent = output?.createMediaStreamDestination().stream;
-      if (silent) el.srcObject = silent;
-    }
     await el.play();
   } catch {
     // Answer / Call already consumed the gesture.
@@ -150,9 +151,11 @@ export function stopLocalStream() {
 }
 
 export async function playRemote(remote: MediaStream) {
+  const audioTracks = remote.getAudioTracks().filter((t) => t.readyState === "live");
+  const audioOnly = audioTracks.length ? new MediaStream(audioTracks) : remote;
   const el = getSpeaker();
   if (el) {
-    if (el.srcObject !== remote) el.srcObject = remote;
+    el.srcObject = audioOnly;
     el.muted = false;
     el.volume = 1;
     try {
@@ -171,9 +174,8 @@ export async function playRemote(remote: MediaStream) {
         // already gone
       }
     }
-    const audioTracks = remote.getAudioTracks().filter((t) => t.readyState === "live");
     if (!audioTracks.length) return;
-    remoteNode = output.createMediaStreamSource(new MediaStream(audioTracks));
+    remoteNode = output.createMediaStreamSource(audioOnly);
     remoteNode.connect(output.destination);
   } catch {
     // element path is enough on most browsers

@@ -94,6 +94,12 @@ export function AudioCall({
   const [remoteVideo, setRemoteVideo] = useState(false);
   const [remoteJpeg, setRemoteJpeg] = useState(false);
 
+  async function hearThem(stream?: MediaStream | null) {
+    await unlockOutput();
+    const remote = stream ?? remoteRef.current;
+    if (remote) await playRemote(remote);
+  }
+
   function showLocal(media: MediaStream) {
     const el = localVideoRef.current;
     if (!el) return;
@@ -111,14 +117,7 @@ export function AudioCall({
       el.muted = true;
       void el.play().catch(() => {});
     }
-    const speaker = remoteAudioRef.current;
-    if (speaker) {
-      if (speaker.srcObject !== stream) speaker.srcObject = stream;
-      speaker.muted = false;
-      speaker.volume = 1;
-      void speaker.play().catch(() => {});
-    }
-    void playRemote(stream);
+    void hearThem(stream);
   }
 
   async function start() {
@@ -300,7 +299,9 @@ export function AudioCall({
           Join the line
         </Btn>
       ) : (
-        <p className="text-xs text-muted">speak. the bars should move.</p>
+        <Btn className="mt-2" onClick={() => void hearThem()}>
+          Tap to hear them
+        </Btn>
       )}
     </div>
   );
