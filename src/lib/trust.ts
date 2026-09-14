@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-const TOKEN = z.string().min(16).max(80);
+const TOKEN = z.string().min(16).max(128);
 const ID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 
 export const leaveReview = createServerFn({ method: "POST" })

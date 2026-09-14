@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Btn } from "@/components/btn";
 import { Mark } from "@/components/mark";
 import { PageWash } from "@/components/page-wash";
@@ -9,27 +9,38 @@ import { loadProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/reviews")({ component: Reviews });
 
+type Sort = "new" | "high" | "low";
+
 function Reviews() {
   const nav = useNavigate();
   const me = typeof window !== "undefined" ? loadProfile() : null;
   const q = useQuery({ queryKey: ["app-reviews"], queryFn: () => listAppReviews() });
-  const rows = q.data ?? [];
   const [rating, setRating] = useState(5);
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
+  const [sort, setSort] = useState<Sort>("new");
   const save = useMutation({
     mutationFn: async () => {
       if (!me) throw new Error("Sign in first.");
       const res = await leaveAppReview({ data: { token: me.sessionToken, rating, body } });
-      if (!res.ok) throw new Error(res.error);
+      if (!res.ok) throw new Error("error" in res ? String(res.error) : "Could not save.");
+      return res;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setBody("");
-      setNote("Posted. You can update it anytime.");
-      void q.refetch();
+      setNote("Posted.");
+      await q.refetch();
     },
     onError: (err) => setNote(err instanceof Error ? err.message : "Could not save."),
   });
+
+  const rows = useMemo(() => {
+    const list = [...(q.data ?? [])];
+    if (sort === "high") list.sort((a, b) => b.rating - a.rating || b.createdAt.localeCompare(a.createdAt));
+    else if (sort === "low") list.sort((a, b) => a.rating - b.rating || b.createdAt.localeCompare(a.createdAt));
+    else list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return list;
+  }, [q.data, sort]);
 
   return (
     <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
@@ -47,7 +58,7 @@ function Reviews() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Reviews of the app</h1>
           <p className="mt-2 text-sm text-muted">
-            What people think of Buddy System. This is not a rating of a person or a call. Anyone signed in can leave one anytime.
+            What people think of Buddy System. Not a person. Not a call. Signed-in users can post anytime.
           </p>
         </div>
         {me ? (
@@ -75,8 +86,8 @@ function Reviews() {
               placeholder="How has the app been for you?"
             />
             {note ? <p className="mt-2 text-sm text-muted">{note}</p> : null}
-            <Btn kind="fill" className="mt-3 h-11 w-full" disabled={save.isPending}>
-              {save.isPending ? "Saving…" : "Post review"}
+            <Btn type="submit" kind="fill" className="mt-3 h-11 w-full" disabled={save.isPending}>
+              {save.isPending ? "Posting…" : "Post review"}
             </Btn>
           </form>
         ) : (
@@ -88,13 +99,35 @@ function Reviews() {
           </div>
         )}
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted">From other users</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">All reviews · {rows.length}</p>
+            <div className="flex rounded-full bg-paper-2 p-0.5">
+              {(
+                [
+                  ["new", "Newest"],
+                  ["high", "Highest"],
+                  ["low", "Lowest"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`rounded-full px-3 py-1.5 text-sm ${sort === id ? "bg-rust text-on-rust" : "text-muted"}`}
+                  onClick={() => setSort(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <ul className="mt-2 flex flex-col gap-2">
-            {rows.length === 0 ? (
+            {q.isLoading ? (
+              <li className="rounded-2xl bg-paper-2 px-4 py-6 text-sm text-muted">Loading reviews…</li>
+            ) : rows.length === 0 ? (
               <li className="rounded-2xl bg-paper-2 px-4 py-6 text-sm text-muted">Nobody has reviewed the app yet. Be the first.</li>
             ) : (
               rows.map((r, i) => (
-                <li key={`${r.createdAt}-${i}`} className="rounded-2xl bg-paper-2 px-4 py-3">
+                <li key={`${r.createdAt}-${r.name}-${i}`} className="rounded-2xl bg-paper-2 px-4 py-3">
                   <p className="font-medium">
                     {r.name} · {r.rating}/5
                   </p>

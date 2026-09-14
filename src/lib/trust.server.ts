@@ -75,13 +75,27 @@ export async function listReviews() {
   }));
 }
 
+async function ensureAppReviews() {
+  const sql = await getSql();
+  await sql.query(`
+    create table if not exists app_reviews (
+      id text primary key,
+      reviewer_id text not null unique,
+      rating integer not null,
+      body text not null default '',
+      created_at timestamptz not null default now()
+    )
+  `);
+  return sql;
+}
+
 export async function leaveAppReview(data: { token: string; rating: number; body: string }) {
   const me = await accountByToken(data.token);
   if (!me) return { ok: false as const, error: "Sign in again." };
   const rating = Math.min(5, Math.max(1, Math.round(data.rating)));
   const body = data.body.trim().slice(0, 280);
   if (!body) return { ok: false as const, error: "Write a few words." };
-  const sql = await getSql();
+  const sql = await ensureAppReviews();
   const had = await sql.query(`SELECT id FROM app_reviews WHERE reviewer_id = $1 LIMIT 1`, [me.id]);
   if (had[0]) {
     await sql.query(`UPDATE app_reviews SET rating = $2, body = $3, created_at = now() WHERE reviewer_id = $1`, [
@@ -97,27 +111,28 @@ export async function leaveAppReview(data: { token: string; rating: number; body
       body,
     ]);
   }
-  return { ok: true as const };
+  return { ok: true as const, review: { name: String(me.name), rating, body, createdAt: new Date().toISOString() } };
 }
 
 export async function listAppReviews() {
   try {
-    const sql = await getSql();
+    const sql = await ensureAppReviews();
     const rows = await sql.query(
       `SELECT r.rating, r.body, r.created_at, a.name
      FROM app_reviews r
-     JOIN accounts a ON a.id = r.reviewer_id
-     WHERE a.banned = false
+     LEFT JOIN accounts a ON a.id = r.reviewer_id
+     WHERE COALESCE(a.banned, false) = false
      ORDER BY r.created_at DESC
-     LIMIT 60`,
+     LIMIT 500`,
     );
     return rows.map((r) => ({
-      name: String(r.name),
+      name: String(r.name || "Buddy"),
       rating: Number(r.rating),
       body: String(r.body || ""),
       createdAt: String(r.created_at),
     }));
-  } catch {
+  } catch (err) {
+    console.error("listAppReviews", err);
     return [];
   }
 }
