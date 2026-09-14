@@ -144,6 +144,7 @@
     text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
   }
 
   @media (min-width: 768px) {
@@ -159,13 +160,24 @@
     overflow-x: hidden;
     background: var(--paper);
     color: var(--ink);
+    font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  button,
+  input,
+  select,
+  textarea,
+  optgroup,
+  ::placeholder {
+    font-family: inherit;
   }
 
   h1,
   h2,
   h3,
+  h4,
   .font-display {
-    font-family: var(--font-display);
+    font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.035em;
     text-wrap: balance;
   }
