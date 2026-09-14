@@ -1,0 +1,20 @@
+{
+  "name": "Buddy System",
+  "short_name": "Buddy System",
+  "description": "18+ body-doubling calls. List a task. The call rings. You work. You hang up.",
+  "id": "/",
+  "start_url": "/feed",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#14110e",
+  "theme_color": "#f7f2e9",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

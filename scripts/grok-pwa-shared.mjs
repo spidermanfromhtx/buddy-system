@@ -158,20 +158,21 @@ export function renderInstallPageHtml(template, { host, url } = {}) {
 }
 
 export function renderWebManifest(hostHeader) {
-  const name = appNameFromHost(hostHeader);
+  const fromHost = appNameFromHost(hostHeader);
+  const name = fromHost === DEFAULT_APP_NAME ? "Buddy System" : fromHost;
   return JSON.stringify(
     {
       name,
       short_name: name,
       id: "/",
-      start_url: "/",
+      start_url: "/feed",
       scope: "/",
       display: "standalone",
-      background_color: "#000000",
-      theme_color: "#000000",
+      background_color: "#14110e",
+      theme_color: "#f7f2e9",
       icons: [
         {
-          src: "/__grok/icon-180.png",
+          src: "/apple-touch-icon.png",
           sizes: "180x180",
           type: "image/png",
         },
