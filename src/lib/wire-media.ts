@@ -37,8 +37,8 @@ export function startJpegSend(
   if (!ctx) return () => {};
   const tick = () => {
     if (!video.videoWidth) return;
-    canvas.width = 240;
-    canvas.height = Math.max(180, Math.round((240 * video.videoHeight) / video.videoWidth));
+    canvas.width = 160;
+    canvas.height = Math.max(120, Math.round((160 * video.videoHeight) / video.videoWidth));
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
@@ -46,11 +46,11 @@ export function startJpegSend(
         void blob.arrayBuffer().then((buf) => send(packJpeg(buf)));
       },
       "image/jpeg",
-      0.42,
+      0.4,
     );
   };
   tick();
-  const id = window.setInterval(tick, 180);
+  const id = window.setInterval(tick, 90);
   return () => window.clearInterval(id);
 }
 
@@ -95,8 +95,8 @@ export function playWire(
     node.buffer = buffer;
     node.connect(audio.ctx.destination);
     const now = audio.ctx.currentTime;
-    let start = Math.max(now + 0.08, audio.next);
-    if (start - now > 0.22) start = now + 0.08;
+    let start = Math.max(now + 0.02, audio.next);
+    if (start - now > 0.08) start = now + 0.02;
     node.start(start);
     return start + buffer.duration;
   } catch {

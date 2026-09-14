@@ -11,6 +11,7 @@ import {
   micLevel,
   onPcmOut,
   setMicMuted,
+  setNativeEar,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
@@ -96,13 +97,28 @@ export function AudioCall({
     const el = remoteVideoRef.current;
     if (!el) return;
     if (el.srcObject !== remote) el.srcObject = remote;
-    el.muted = true;
+    el.muted = false;
+    el.volume = 1;
     el.playsInline = true;
     el.autoplay = true;
     void el.play().catch(() => {});
-    el.onloadedmetadata = () => {
+    const check = () => {
       if (el.videoWidth > 16) setRemoteVideo(true);
+      if (el.currentTime > 0.08) setNativeEar(true);
     };
+    el.onloadedmetadata = check;
+    el.ontimeupdate = check;
+    for (const t of remote.getAudioTracks()) {
+      t.enabled = true;
+      t.onunmute = () => {
+        void el.play().catch(() => {});
+        window.setTimeout(check, 300);
+      };
+    }
+    for (const t of remote.getVideoTracks()) {
+      t.enabled = true;
+      t.onunmute = check;
+    }
   }
 
   function noteLive(list: PeerInfo[]) {
@@ -214,7 +230,6 @@ export function AudioCall({
           }
           autoPlay
           playsInline
-          muted
         />
         {remoteJpeg && !remoteVideo ? (
           <img ref={jpegRef} alt="" className="size-full rounded-3xl bg-paper-2 object-cover" />

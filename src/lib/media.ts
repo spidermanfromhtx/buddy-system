@@ -17,7 +17,7 @@ const WORKLET = `
 class BuddyCap extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.buf = new Float32Array(2048);
+    this.buf = new Float32Array(1024);
     this.i = 0;
   }
   process(inputs) {
@@ -150,7 +150,7 @@ async function startCapture() {
     return;
   }
 
-  const proc = output.createScriptProcessor(2048, 1, 1);
+  const proc = output.createScriptProcessor(1024, 1, 1);
   src.connect(proc);
   proc.connect(silent);
   silent.connect(output.destination);

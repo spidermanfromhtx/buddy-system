@@ -145,16 +145,34 @@ export class P2PRoom {
     if (this.opts.allowVideo && !stream.getVideoTracks().some((t) => t.readyState === "live")) { const vSender = senderFor(slot.pc, "video"); if (vSender?.track) void vSender.replaceTrack(null); }
   }
   sendMedia(data: ArrayBuffer): void {
+    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1;
     let viaDc = false;
     for (const slot of this.peers.values()) {
-      const ch = slot.media?.readyState === "open" ? slot.media : slot.reliable?.readyState === "open" ? slot.reliable : null;
-      if (!ch || ch.bufferedAmount > 128_000) continue;
-      try { ch.send(data); viaDc = true; } catch {}
+      const ch = jpeg
+        ? slot.reliable?.readyState === "open"
+          ? slot.reliable
+          : slot.media?.readyState === "open"
+            ? slot.media
+            : null
+        : slot.media?.readyState === "open"
+          ? slot.media
+          : slot.reliable?.readyState === "open"
+            ? slot.reliable
+            : null;
+      if (!ch || ch.bufferedAmount > (jpeg ? 80_000 : 16_000)) continue;
+      try {
+        ch.send(data);
+        viaDc = true;
+      } catch {
+        // closed
+      }
     }
-    if (viaDc) return;
-    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1; const now = Date.now();
-    if (jpeg) { if (now - this.lastJpegAt < 90) return; this.lastJpegAt = now; } else { if (now - this.lastPcmAt < 60) return; this.lastPcmAt = now; }
-    const payload = { a: bufToB64(data) }; for (const id of this.peers.keys()) if (id !== this.opts.selfId) void this.sendSignal(id, "pcm", payload);
+    if (viaDc || jpeg) return;
+    const now = Date.now();
+    if (now - this.lastPcmAt < 80) return;
+    this.lastPcmAt = now;
+    const payload = { a: bufToB64(data) };
+    for (const id of this.peers.keys()) if (id !== this.opts.selfId) void this.sendSignal(id, "pcm", payload);
   }
   private lastPcmAt = 0; private lastJpegAt = 0;
   private async pushLocalTracks(slot: PeerSlot): Promise<void> { this.wireLocal(slot, slot.info.id); }
