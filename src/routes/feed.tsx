@@ -704,12 +704,24 @@ function Feed() {
           {hosted.length === 0 ? (
             <li className="rounded-3xl bg-paper-2 px-4 py-4 text-sm text-muted">You have not posted a window.</li>
           ) : (
-            hosted.map((row) => (
+            hosted.map((row) => {
+              const face = row.matchPeerName
+                ? {
+                    name: row.matchPeerName,
+                    color: row.matchPeerColor || row.hostColor || row.color,
+                    photo: row.matchPeerPhoto,
+                  }
+                : {
+                    name: row.hostName || row.name,
+                    color: row.hostColor || row.color,
+                    photo: row.hostPhoto,
+                  };
+              return (
               <Card
                 key={row.id}
-                name={row.hostName || row.name}
-                color={row.hostColor || row.color}
-                photo={row.hostPhoto ?? row.photo}
+                name={face.name}
+                color={face.color}
+                photo={face.photo}
                 task={row.task}
                 urgent={row.urgent}
                 dueDate={row.dueDate}
@@ -732,7 +744,8 @@ function Feed() {
                   </div>
                 }
               />
-            ))
+              );
+            })
           )}
         </ul>
       </div>
@@ -748,7 +761,7 @@ function Feed() {
                 key={row.id}
                 name={row.hostName || row.matchPeerName || row.name}
                 color={row.hostColor || row.matchPeerColor || row.color}
-                photo={row.hostPhoto ?? row.matchPeerPhoto ?? row.photo}
+                photo={row.hostPhoto || row.matchPeerPhoto}
                 task={row.task}
                 urgent={row.urgent}
                 dueDate={row.dueDate}
