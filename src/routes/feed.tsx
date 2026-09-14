@@ -43,15 +43,7 @@ function minutesLeft(iso: string | null) {
 }
 
 function Chip({ children, hot = false }: { children: ReactNode; hot?: boolean }) {
-  return (
-    <span
-      className={`inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-sm leading-none ${
-        hot ? "bg-rust text-on-rust" : "border border-ink/10 bg-paper text-ink"
-      }`}
-    >
-      {children}
-    </span>
-  );
+  return <span className={`chip ${hot ? "chip-hot" : ""}`}>{children}</span>;
 }
 
 function Card({
@@ -92,14 +84,14 @@ function Card({
     ...(extra ?? "").split("·").map((s) => s.trim()).filter(Boolean),
   ].filter(Boolean);
   return (
-    <li className="rounded-3xl bg-paper-2 p-5">
+    <li className="panel p-5">
       <div className="flex items-start gap-4">
         <Face name={name} color={color} photo={photo} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-xl font-semibold leading-tight tracking-tight">{name}</p>
-              <p className="mt-1 text-base leading-snug text-ink/80">{task}</p>
+              <p className="text-[1.2rem] font-semibold leading-tight tracking-tight">{name}</p>
+              <p className="mt-1 text-[15px] font-normal leading-snug text-muted">{task}</p>
             </div>
             <div className="shrink-0">{action}</div>
           </div>
@@ -538,7 +530,7 @@ function Feed() {
             <input
               id={`${prefix}-start`}
               type="time"
-              className="h-11 rounded-xl border border-ink/10 bg-paper px-3 font-normal text-ink outline-none"
+              className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
               value={windowStart}
               onChange={(e) => setWindowStart(e.target.value)}
             />
@@ -548,7 +540,7 @@ function Feed() {
             <input
               id={`${prefix}-end`}
               type="time"
-              className="h-11 rounded-xl border border-ink/10 bg-paper px-3 font-normal text-ink outline-none"
+              className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
               value={windowEnd}
               onChange={(e) => setWindowEnd(e.target.value)}
             />
@@ -559,7 +551,7 @@ function Feed() {
           <input
             id={`${prefix}-task`}
             placeholder="finish the email"
-            className="h-11 rounded-xl border border-ink/10 bg-paper px-3 font-normal outline-none"
+            className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal outline-none"
             value={task}
             onChange={(e) => setTask(e.target.value)}
           />
@@ -641,7 +633,7 @@ function Feed() {
   const liveOn = Boolean(mine);
 
   const compose = (
-    <div className="rounded-2xl bg-night p-3 text-paper">
+    <div className="rounded-[1.35rem] bg-night/90 p-4 text-paper">
       <input
         placeholder="Task description"
         className="h-10 w-full bg-transparent text-base text-paper outline-none placeholder:text-paper/40"
@@ -651,8 +643,8 @@ function Feed() {
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium ${
-            urgent ? "bg-rust text-on-rust" : "border border-paper/30 text-paper"
+          className={`chip ${
+            urgent ? "chip-hot" : "bg-paper/10 text-paper"
           }`}
           onClick={() => setUrgent((v) => !v)}
         >
@@ -660,8 +652,8 @@ function Feed() {
         </button>
         <button
           type="button"
-          className={`inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium ${
-            camera ? "bg-rust text-on-rust" : "border border-paper/30 text-paper"
+          className={`chip ${
+            camera ? "chip-hot" : "bg-paper/10 text-paper"
           }`}
           onClick={() => setCamera((v) => !v)}
         >
@@ -698,11 +690,11 @@ function Feed() {
   const yourWindows = (
     <div className="mt-4 flex flex-col gap-5">
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-muted">Your bookings</p>
+        <p className="font-display text-lg">Your bookings</p>
         <p className="mt-1 text-sm text-muted">Windows you posted. Someone can match to you.</p>
         <ul className="mt-2 flex flex-col gap-3">
           {hosted.length === 0 ? (
-            <li className="rounded-3xl bg-paper-2 px-4 py-4 text-sm text-muted">You have not posted a window.</li>
+            <li className="panel px-4 py-4 text-sm text-muted">You have not posted a window.</li>
           ) : (
             hosted.map((row) => {
               const face = row.matchPeerName
@@ -750,11 +742,11 @@ function Feed() {
         </ul>
       </div>
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-muted">You matched</p>
+        <p className="font-display text-lg">You matched</p>
         <p className="mt-1 text-sm text-muted">Bookings you joined from the queue.</p>
         <ul className="mt-2 flex flex-col gap-3">
           {joined.length === 0 ? (
-            <li className="rounded-3xl bg-paper-2 px-4 py-4 text-sm text-muted">You have not joined a window.</li>
+            <li className="panel px-4 py-4 text-sm text-muted">You have not joined a window.</li>
           ) : (
             joined.map((row) => (
               <Card
@@ -822,7 +814,7 @@ function Feed() {
           </div>
           <ul className="mt-3 flex flex-col gap-3">
             {live.length === 0 ? (
-              <li className="rounded-2xl bg-paper-2 px-4 py-5 text-sm text-muted">
+              <li className="panel px-4 py-5 text-sm text-muted">
                 {tab === "school"
                   ? `Nobody from ${me.school} is live${feedCat.length ? ` in ${categoryLabel(feedCat.join(","))}` : ""}.`
                   : `Nobody live${feedCat.length ? ` in ${categoryLabel(feedCat.join(","))}` : ""}. Write a task description below.`}
@@ -887,28 +879,28 @@ function Feed() {
   return (
     <main className="relative isolate z-10 flex min-h-dvh flex-col bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-2 border-b-2 border-sage bg-paper/80 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] backdrop-blur-sm md:px-6">
+      <header className="relative z-20 flex items-center justify-between gap-2 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold leading-none tracking-tight md:text-xl md:font-display">Buddy System</h1>
-            <p className="mt-1 text-[11px] text-muted">
+            <h1 className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl">Buddy System</h1>
+            <p className="mt-1.5 text-[11px] text-muted">
               {plus ? "Plus" : limits ? `${left} left this week` : "R&D"}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
-          <div className="flex rounded-full bg-paper-2 p-0.5 md:hidden">
+          <div className="flex rounded-full bg-paper/50 p-0.5 md:hidden">
             <button
               type="button"
-              className={`rounded-full px-2.5 py-1.5 text-sm ${pane === "live" ? "bg-rust text-on-rust" : "text-muted"}`}
+              className={`rounded-full px-3 py-1.5 text-sm ${pane === "live" ? "bg-rust text-on-rust" : "text-muted"}`}
               onClick={() => setPane("live")}
             >
               Live
             </button>
             <button
               type="button"
-              className={`rounded-full px-2.5 py-1.5 text-sm ${pane === "book" ? "bg-rust text-on-rust" : "text-muted"}`}
+              className={`rounded-full px-3 py-1.5 text-sm ${pane === "book" ? "bg-rust text-on-rust" : "text-muted"}`}
               onClick={() => setPane("book")}
             >
               Book
@@ -934,11 +926,11 @@ function Feed() {
           {yourWindows}
         </section>
         <aside className={`min-w-0 ${pane === "live" ? "hidden md:block" : "block"}`}>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted">Booking feed</p>
+          <p className="font-display text-lg">Booking feed</p>
           <p className="mt-1 text-sm text-muted">Open windows. Be someone’s buddy, or wait in the queue.</p>
           <ul className="mt-2 flex flex-col gap-2">
             {queue.length === 0 ? (
-              <li className="rounded-2xl bg-paper-2 px-4 py-4 text-sm text-muted">Nobody in the queue yet.</li>
+              <li className="panel px-4 py-4 text-sm text-muted">Nobody in the queue yet.</li>
             ) : (
               queue.map((row) => (
                 <Card
@@ -971,7 +963,7 @@ function Feed() {
       {sheet === "settings" ? (
         <div className="fixed inset-0 z-30 flex items-end bg-night/50 md:items-center md:justify-center" onClick={() => setSheet("none")}>
           <div
-            className="w-full max-h-dvh overflow-y-auto rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:max-w-lg md:rounded-3xl md:p-10"
+            className="panel w-full max-h-dvh overflow-y-auto rounded-t-[1.6rem] bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:max-w-lg md:rounded-[1.6rem] md:p-10"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-6">
@@ -1113,7 +1105,7 @@ function Feed() {
                     </ul>
                     <div className="flex gap-2">
                       <input
-                        className="h-11 min-w-0 flex-1 rounded-full border border-ink/10 bg-cream px-4 text-sm"
+                        className="h-11 min-w-0 flex-1 rounded-2xl border-0 bg-paper/70 px-3 text-sm"
                         placeholder="invite admin email"
                         value={adminInvite}
                         onChange={(e) => setAdminInvite(e.target.value)}
@@ -1194,7 +1186,7 @@ function Feed() {
           onClick={() => setReportFor(null)}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:rounded-3xl"
+            className="panel w-full max-w-md rounded-t-[1.6rem] bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:rounded-[1.6rem]"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="font-display text-xl">Report {reportFor.name}</p>
@@ -1202,7 +1194,7 @@ function Feed() {
               They will not see it was you. We read the language. Harm can close an account. Other reports can send a warning.
             </p>
             <textarea
-              className="mt-4 min-h-28 w-full rounded-xl border border-ink/10 bg-paper px-3 py-2 outline-none"
+              className="mt-4 min-h-28 w-full rounded-2xl border-0 bg-paper/70 px-3 py-2 outline-none"
               value={reportBody}
               onChange={(e) => setReportBody(e.target.value)}
               placeholder="What happened."

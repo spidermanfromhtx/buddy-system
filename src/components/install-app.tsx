@@ -65,7 +65,7 @@ export function InstallApp({ className }: { className?: string }) {
       <Btn
         kind="line"
         className={cn(
-          "relative z-20 h-10 rounded-full border border-ink/15 bg-paper px-4 text-sm text-ink hover:bg-paper-2",
+          "relative z-20 h-10 rounded-2xl bg-paper/70 px-4 text-sm text-ink",
           className,
         )}
         onClick={() => void onClick()}
@@ -76,7 +76,7 @@ export function InstallApp({ className }: { className?: string }) {
         ? createPortal(
             <div className="fixed inset-0 z-[80] flex items-end bg-night/50 md:items-center md:justify-center" onClick={() => setOpen(false)}>
               <div
-                className="relative z-[81] w-full max-w-md rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:rounded-3xl"
+                className="panel relative z-[81] w-full max-w-md rounded-t-[1.6rem] bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:rounded-[1.6rem]"
                 onClick={(e) => e.stopPropagation()}
               >
                 <p className="text-2xl font-semibold tracking-tight">Add Buddy System</p>

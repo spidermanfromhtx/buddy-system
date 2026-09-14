@@ -29,7 +29,7 @@ export function CategoryPicker({
     if (onDark) {
       return on
         ? "bg-paper text-night"
-        : "border border-paper/30 bg-transparent text-paper hover:bg-paper/10";
+        : "bg-transparent text-paper/80 hover:bg-paper/10";
     }
     return on
       ? "bg-rust text-on-rust"
@@ -43,7 +43,7 @@ export function CategoryPicker({
           type="button"
           aria-pressed={none}
           className={cn(
-            "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3 text-sm font-medium",
+            "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3.5 text-sm font-medium",
             chip(none),
           )}
           onClick={() => onChange([])}
@@ -59,7 +59,7 @@ export function CategoryPicker({
             type="button"
             aria-pressed={on}
             className={cn(
-              "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3 text-sm font-medium",
+              "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-3.5 text-sm font-medium",
               chip(on),
             )}
             onClick={() => toggle(c.id)}

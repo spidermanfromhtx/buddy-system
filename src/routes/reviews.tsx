@@ -63,7 +63,7 @@ function Reviews() {
         </div>
         {me ? (
           <form
-            className="rounded-2xl bg-paper-2 p-4"
+            className="panel p-4"
             onSubmit={(e) => {
               e.preventDefault();
               save.mutate();
@@ -79,7 +79,7 @@ function Reviews() {
               ))}
             </div>
             <textarea
-              className="mt-3 min-h-28 w-full rounded-xl border border-ink/10 bg-paper px-3 py-2 text-sm outline-none"
+              className="mt-3 min-h-28 w-full rounded-2xl border-0 bg-paper/80 px-3 py-2 text-sm outline-none"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               maxLength={280}
@@ -91,7 +91,7 @@ function Reviews() {
             </Btn>
           </form>
         ) : (
-          <div className="rounded-2xl bg-paper-2 p-4">
+          <div className="panel p-4">
             <p className="text-sm">Sign in to leave a review of the app. You can still read the ones below.</p>
             <Link to="/" className="mt-3 inline-flex h-11 items-center rounded-full bg-rust px-5 text-sm font-medium text-on-rust">
               Sign in

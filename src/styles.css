@@ -14,9 +14,9 @@
   --color-on-rust: var(--on-rust);
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: 0.5rem;
-  --radius-md: 1rem;
-  --radius-lg: 1.5rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.4rem;
+  --radius-lg: 0.7rem;
 }
 
 :root,
@@ -161,7 +161,44 @@
     color: var(--ink);
   }
 
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
   ::selection {
+    background: var(--rust);
+    color: var(--on-rust);
+  }
+}
+
+@layer components {
+  .panel {
+    background: color-mix(in srgb, var(--paper) 70%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+    border-radius: 1.35rem;
+  }
+  .chip {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
+    padding: 0.32rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .chip-hot {
     background: var(--rust);
     color: var(--on-rust);
   }

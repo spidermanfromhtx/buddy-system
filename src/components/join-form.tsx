@@ -67,20 +67,20 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
       <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
-          <p className="truncate text-base font-semibold tracking-tight md:text-lg">Buddy System</p>
+          <p className="truncate text-lg font-semibold tracking-tight md:text-xl">Buddy System</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <a href="/reviews" className="text-sm font-medium text-ink underline-offset-4 hover:underline">
             Reviews
           </a>
-          <InstallApp className="h-9 shrink-0 rounded-full px-3 text-sm" />
+          <InstallApp className="h-9 shrink-0 rounded-md px-3 text-sm" />
         </div>
       </header>
       <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:grid-cols-2 md:px-10 md:pt-16">
         <div>
           {!pending ? (
             <>
-              <h1 className="max-w-xl text-[2rem] font-bold leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
+              <h1 className="max-w-xl text-[2.15rem] font-semibold leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
                 The call rings.
                 <br />
                 You work. You hang up.
@@ -131,7 +131,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                 <input
                   id="join-name"
                   name="name"
-                  className="mt-2 h-11 w-full rounded-full border border-ink/10 bg-cream px-4 font-normal outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-ink/20 bg-cream px-4 font-normal outline-none"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="nickname"
@@ -142,7 +142,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                 <input
                   id="join-birthdate"
                   type="date"
-                  className="mt-2 h-11 w-full rounded-full border border-ink/10 bg-cream px-4 font-normal outline-none"
+                  className="mt-2 h-11 w-full rounded-md border border-ink/20 bg-cream px-4 font-normal outline-none"
                   value={birthdate}
                   onChange={(e) => {
                     setBirthdate(e.target.value);
@@ -209,7 +209,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
               <div className="rounded-[2.1rem] bg-paper px-8 pb-10 pt-16 text-center">
                 <Mark className="mx-auto h-20 w-14" />
                 <p className="mt-5 text-lg font-semibold tracking-tight">Buddy System</p>
-                <p className="mt-8 text-sm italic text-muted">The call rings. You work. You hang up.</p>
+                <p className="mt-8 text-sm text-muted">The call rings. You work. You hang up.</p>
               </div>
             </div>
           </div>
