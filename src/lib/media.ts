@@ -2,13 +2,20 @@ import { packPcm, playWire } from "@/lib/wire-media";
 
 let stream: MediaStream | null = null;
 let output: AudioContext | null = null;
-let speaker: HTMLVideoElement | null = null;
 let keep: HTMLVideoElement | null = null;
 let keepAliveOsc: OscillatorNode | null = null;
-let capture: { src: MediaStreamAudioSourceNode; proc: ScriptProcessorNode; mute: GainNode } | null = null;
+let capture:
+  | {
+      src: MediaStreamAudioSourceNode;
+      analyser: AnalyserNode;
+      raf: number;
+    }
+  | null = null;
 let playBag: { ctx: AudioContext; next: number } | null = null;
 const pcmSinks = new Set<(buf: ArrayBuffer) => void>();
 let micMuted = false;
+let meter = 0;
+let lastSend = 0;
 
 export function isMicMuted() {
   return micMuted;
@@ -16,6 +23,10 @@ export function isMicMuted() {
 
 export function setMicMuted(muted: boolean) {
   micMuted = muted;
+}
+
+export function micLevel() {
+  return meter;
 }
 
 export function hasLiveMic() {
@@ -45,27 +56,6 @@ export function onPcmOut(cb: (buf: ArrayBuffer) => void) {
   };
 }
 
-function wireSpeaker(el: HTMLVideoElement) {
-  el.autoplay = true;
-  el.playsInline = true;
-  el.muted = false;
-  el.volume = 1;
-  el.setAttribute("playsinline", "true");
-  el.setAttribute("webkit-playsinline", "true");
-  el.setAttribute("autoplay", "true");
-}
-
-function getSpeaker() {
-  if (typeof document === "undefined") return null;
-  if (speaker?.isConnected) return speaker;
-  speaker = document.createElement("video");
-  wireSpeaker(speaker);
-  speaker.style.cssText =
-    "position:fixed;left:8px;bottom:8px;width:32px;height:32px;opacity:0.03;pointer-events:none;z-index:80";
-  document.body.appendChild(speaker);
-  return speaker;
-}
-
 function keepLocalAlive(media: MediaStream) {
   if (typeof document === "undefined") return;
   if (!keep) {
@@ -84,34 +74,43 @@ function keepLocalAlive(media: MediaStream) {
 
 function stopCapture() {
   if (!capture) return;
-  capture.proc.onaudioprocess = null;
+  cancelAnimationFrame(capture.raf);
   try {
     capture.src.disconnect();
-    capture.proc.disconnect();
-    capture.mute.disconnect();
+    capture.analyser.disconnect();
   } catch {
     // already gone
   }
   capture = null;
+  meter = 0;
 }
 
 function startCapture() {
   if (!output || !stream) return;
-  const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
+  const audio = stream.getAudioTracks().find((t) => t.readyState === "live" && t.enabled);
   if (!audio) return;
   stopCapture();
   const src = output.createMediaStreamSource(new MediaStream([audio]));
-  const proc = output.createScriptProcessor(2048, 1, 1);
-  const sink = output.createMediaStreamDestination();
-  src.connect(proc);
-  proc.connect(sink);
-  proc.onaudioprocess = (ev) => {
+  const analyser = output.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0;
+  src.connect(analyser);
+  const data = new Float32Array(analyser.fftSize);
+  const tick = () => {
+    const handle = requestAnimationFrame(tick);
+    if (capture) capture.raf = handle;
+    analyser.getFloatTimeDomainData(data);
+    let sum = 0;
+    for (const v of data) sum += v * v;
+    meter = Math.min(1, Math.sqrt(sum / data.length) * 8);
     if (!pcmSinks.size || micMuted) return;
-    const input = ev.inputBuffer.getChannelData(0);
-    const buf = packPcm(output?.sampleRate || 48000, input);
+    const now = Date.now();
+    if (now - lastSend < 50) return;
+    lastSend = now;
+    const buf = packPcm(output?.sampleRate || 48000, data);
     for (const cb of pcmSinks) cb(buf);
   };
-  capture = { src, proc, mute: output.createGain() };
+  capture = { src, analyser, raf: requestAnimationFrame(tick) };
 }
 
 function startKeepAlive() {
@@ -119,8 +118,8 @@ function startKeepAlive() {
   try {
     const osc = output.createOscillator();
     const g = output.createGain();
-    g.gain.value = 0.00005;
-    osc.frequency.value = 30;
+    g.gain.value = 0.00004;
+    osc.frequency.value = 20;
     osc.connect(g);
     g.connect(output.destination);
     osc.start();
@@ -142,19 +141,7 @@ export async function unlockOutput() {
     src.connect(output.destination);
     src.start();
   } catch {
-    // speaker play below
-  }
-  const el = getSpeaker();
-  if (el) {
-    wireSpeaker(el);
-    try {
-      if (!el.srcObject && output) {
-        el.srcObject = output.createMediaStreamDestination().stream;
-      }
-      await el.play();
-    } catch {
-      // Answer / Call already used the gesture
-    }
+    // call tap already unlocked audio
   }
   startCapture();
 }
@@ -209,18 +196,6 @@ export async function getLocalStream(wantCamera: boolean, _monitor = false): Pro
   return stream;
 }
 
-export async function playRemote(remote: MediaStream) {
-  const video = remote.getVideoTracks().filter(isRealVideo);
-  const el = getSpeaker();
-  if (el && video.length) {
-    wireSpeaker(el);
-    el.muted = true;
-    if (el.srcObject !== remote) el.srcObject = remote;
-    void el.play().catch(() => {});
-  }
-  if (output && output.state === "suspended") await output.resume();
-}
-
 export function stopLocalStream() {
   micMuted = false;
   stopCapture();
@@ -231,10 +206,6 @@ export function stopLocalStream() {
   if (keep) {
     keep.srcObject = null;
     keep.pause();
-  }
-  if (speaker) {
-    speaker.srcObject = null;
-    speaker.pause();
   }
 }
 

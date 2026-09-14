@@ -2,60 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import { Btn } from "@/components/btn";
 import {
   currentStream,
-  getAudioContext,
   getLocalStream,
   hasLiveMic,
   hearPcm,
   isMicMuted,
   isRealVideo,
   micHint,
+  micLevel,
   onPcmOut,
-  playRemote,
   setMicMuted,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
 import { startJpegSend } from "@/lib/wire-media";
 
-function MicMeter({ stream }: { stream: MediaStream | null }) {
+function MicMeter({ active }: { active: boolean }) {
   const [level, setLevel] = useState(0);
   useEffect(() => {
-    if (!stream) return;
-    const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
-    if (!audio) return;
+    if (!active) {
+      setLevel(0);
+      return;
+    }
     let raf = 0;
-    let src: MediaStreamAudioSourceNode | null = null;
-    let own: AudioContext | null = null;
-    (async () => {
-      let ctx = getAudioContext();
-      if (!ctx) {
-        own = new AudioContext();
-        ctx = own;
-      }
-      if (ctx.state === "suspended") await ctx.resume();
-      src = ctx.createMediaStreamSource(new MediaStream([audio]));
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      src.connect(analyser);
-      const data = new Uint8Array(analyser.fftSize);
-      const tick = () => {
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (const v of data) {
-          const n = (v - 128) / 128;
-          sum += n * n;
-        }
-        setLevel(Math.min(1, Math.sqrt(sum / data.length) * 6));
-        raf = requestAnimationFrame(tick);
-      };
-      tick();
-    })().catch(() => {});
-    return () => {
-      cancelAnimationFrame(raf);
-      src?.disconnect();
-      void own?.close();
+    const tick = () => {
+      setLevel(micLevel());
+      raf = requestAnimationFrame(tick);
     };
-  }, [stream]);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active]);
   return (
     <div className="mt-3 flex h-8 items-end justify-center gap-1" aria-label="mic level">
       {[0, 1, 2, 3, 4].map((i) => (
@@ -115,19 +90,14 @@ export function AudioCall({
   }
 
   function showRemote(remote: MediaStream) {
-    void playRemote(remote);
     const el = remoteVideoRef.current;
-    if (el) {
-      if (el.srcObject !== remote) el.srcObject = remote;
-      el.muted = true;
-      el.playsInline = true;
-      el.autoplay = true;
-      void el.play().catch(() => {});
-      el.onloadedmetadata = () => {
-        setRemoteVideo(el.videoWidth > 16);
-      };
-    }
-    setRemoteVideo(remote.getVideoTracks().some((t) => t.readyState !== "ended"));
+    if (!el) return;
+    if (el.srcObject !== remote) el.srcObject = remote;
+    el.muted = true;
+    el.playsInline = true;
+    el.onloadedmetadata = () => {
+      if (el.videoWidth > 16) setRemoteVideo(true);
+    };
   }
 
   async function start() {
@@ -290,7 +260,7 @@ export function AudioCall({
       >
         {muted ? "Mic off" : "Mic on"}
       </Btn>
-      <MicMeter stream={muted ? null : local} />
+      <MicMeter active={!muted && !!local} />
       <p className="text-sm text-muted">
         {err ||
           (status === "connected"
