@@ -52,15 +52,31 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       const buffer = ctx.createBuffer(1, pcm.length, rate);
       const channel = buffer.getChannelData(0);
       for (let i = 0; i < pcm.length; i++) channel[i] = (pcm[i] ?? 0) / 32768;
+
+      const now = ctx.currentTime;
+      if (pcmNextRef.current < now || pcmNextRef.current > now + 0.09) pcmNextRef.current = now + 0.015;
+      const start = Math.max(now + 0.005, pcmNextRef.current);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
-      const now = ctx.currentTime;
-      const start = Math.max(now + 0.01, pcmNextRef.current);
       source.start(start);
       pcmNextRef.current = start + buffer.duration;
       setRemoteAudioState("playing");
     });
+  }
+
+  async function renegotiateMedia() {
+    const roomAny = p2pRef.current as unknown as { peers?: Map<string, { pc: RTCPeerConnection; info: PeerInfo }>; sendSignal?: (peerId: string, kind: "offer", payload: unknown) => Promise<void> } | null;
+    if (!roomAny?.peers || !roomAny.sendSignal) return;
+    for (const [peerId, slot] of roomAny.peers) {
+      const pc = slot.pc;
+      if (pc.signalingState !== "stable" || pc.connectionState === "closed") continue;
+      try {
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: Boolean(allowCamera) });
+        await pc.setLocalDescription(offer);
+        if (pc.localDescription) await roomAny.sendSignal(peerId, "offer", pc.localDescription.toJSON());
+      } catch {}
+    }
   }
 
   function showLocal(media: MediaStream) {
@@ -100,6 +116,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       setLocal(media); showLocal(media);
       await unlockOutput();
       p2pRef.current.attachMedia(media);
+      await renegotiateMedia();
     } catch (e) {
       setErr(micHint(e)); setStatus("need-mic");
     } finally { startingMediaRef.current = false; }
@@ -163,7 +180,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
     if (!allowCamera || lastCam.current === wantCamera || !mediaStartedRef.current) return;
     lastCam.current = wantCamera;
     void (async () => {
-      try { const media = await getLocalStream(wantCamera, loopback); setLocal(media); showLocal(media); p2pRef.current?.attachMedia(media); } catch {}
+      try { const media = await getLocalStream(wantCamera, loopback); setLocal(media); showLocal(media); p2pRef.current?.attachMedia(media); await renegotiateMedia(); } catch {}
     })();
   }, [wantCamera, allowCamera, loopback]);
 
