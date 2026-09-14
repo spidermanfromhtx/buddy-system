@@ -19,7 +19,7 @@ function Incoming() {
   const other = me && q.data?.callerId === me.id ? { name: q.data.calleeName, color: q.data.calleeColor, photo: q.data.calleePhoto } : me && q.data?.calleeId === me.id ? { name: q.data.callerName, color: q.data.callerColor, photo: q.data.callerPhoto } : null;
   const name = other?.name ?? search.name ?? q.data?.callerName ?? "Buddy";
   const color = other?.color ?? search.color ?? q.data?.callerColor ?? "#c45c3e";
-  const photo = other?.photo ?? search.photo ?? q.data?.callerPhoto ?? null;
+  const photo = other?.photo ?? q.data?.callerPhoto ?? null;
   const task = search.task ?? q.data?.task ?? "work"; const lengthMin = search.lengthMin ?? q.data?.lengthMin ?? 25; const urgent = search.urgent ?? false;
   const allowCamera = Boolean(search.allowCamera ?? q.data?.allowCamera); const [useCam, setUseCam] = useState(allowCamera);
   const ringingYou = bothRing || (!dummy && !!q.data && !!me && q.data.calleeId === me.id);
