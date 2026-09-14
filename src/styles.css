@@ -12,8 +12,8 @@
   --color-tri: var(--tri);
   --color-cream: var(--cream);
   --color-on-rust: var(--on-rust);
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.25rem;
   --radius-md: 0.4rem;
   --radius-lg: 0.7rem;
