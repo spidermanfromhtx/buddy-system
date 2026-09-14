@@ -137,7 +137,7 @@ export function AudioCall({
         iceServers,
         onPeersChanged: (list) => {
           setPeers(list);
-          const live = list.find((p) => p.connectionState === "connected");
+          const live = list.find((p) => p.connectionState === "connected" || p.voice);
           setStatus(live ? "connected" : list.length ? "connecting" : "waiting");
         },
         onRemoteStream: (_id, remote) => {

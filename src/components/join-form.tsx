@@ -76,16 +76,17 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute -right-24 top-10 size-[28rem] rounded-full bg-[#ddd6f5] opacity-80 blur-2xl" />
         <div className="absolute -bottom-28 -right-16 size-[32rem] rounded-full bg-[#d4ead8] opacity-90 blur-2xl" />
-        <div className="absolute -bottom-10 left-[-8%] size-72 rounded-full bg-[#efe8dc] opacity-70 blur-2xl" />
+        <div className="absolute -bottom-8 left-[-6%] size-72 rounded-full bg-[#f3d7c8] opacity-70 blur-2xl" />
       </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
-          <Mark className="h-8 w-[1.35rem]" />
+          <Mark className="size-9" />
           <p className="truncate text-base font-semibold tracking-tight md:text-lg">Buddy System</p>
         </div>
         <InstallApp className="h-9 shrink-0 rounded-full px-3 text-sm" />
       </header>
-      <section className="relative z-10 mx-auto flex w-full max-w-2xl flex-col px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:px-6 md:pt-16">
+      <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:grid-cols-2 md:px-10 md:pt-16">
+        <div>
         {!pending ? (
           <>
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-rust md:text-[11px]">
@@ -127,7 +128,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
               </li>
               <li className="flex items-center gap-2">
                 <Cal />
-                Easy scheduling
+                Flexible scheduling
               </li>
               <li className="flex items-center gap-2">
                 <Folk />
@@ -210,6 +211,20 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
             </Btn>
           </form>
         )}
+        </div>
+        <div className="relative hidden md:flex md:justify-end">
+          <div className="relative w-72">
+            <div className="absolute -right-8 -top-8 size-56 rounded-full bg-[#ddd6f5] opacity-70 blur-2xl" />
+            <div className="absolute -bottom-10 left-4 size-52 rounded-full bg-[#d4ead8] opacity-80 blur-2xl" />
+            <div className="relative rounded-[2.6rem] bg-ink p-3 shadow-[0_30px_60px_-20px_rgba(22,51,40,0.45)]">
+              <div className="rounded-[2.1rem] bg-paper px-8 pb-10 pt-16 text-center">
+                <Mark className="mx-auto size-16" />
+                <p className="mt-5 text-lg font-semibold tracking-tight">Buddy System</p>
+                <p className="mt-8 text-sm italic text-muted">small check-ins. big impact.</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   );

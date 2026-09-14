@@ -20,15 +20,15 @@
 
 :root,
 [data-theme="default"] {
-  --night: #1c1933;
-  --ink: #1c1933;
-  --paper: #f5f2ec;
-  --paper-2: #ece8e1;
-  --muted: #6f6b7a;
-  --line: #e2ddd4;
-  --rust: #6b5cff;
-  --sage: #c9e4cf;
-  --cream: #faf8f4;
+  --night: #163328;
+  --ink: #163328;
+  --paper: #f4f0e6;
+  --paper-2: #ebe6da;
+  --muted: #667066;
+  --line: #ddd6c8;
+  --rust: #1f6b4a;
+  --sage: #cfe5d4;
+  --cream: #faf7f1;
   --on-rust: #ffffff;
   --lilac: #ddd6f5;
   --mint: #d4ead8;

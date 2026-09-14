@@ -699,7 +699,7 @@ function Feed() {
     <main className="flex min-h-dvh flex-col bg-paper text-ink">
       <header className="flex items-center justify-between gap-2 border-b border-ink/10 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
         <div className="flex min-w-0 items-center gap-2">
-          <Mark className="h-8 w-[1.35rem]" />
+          <Mark className="size-9" />
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold leading-none tracking-tight md:text-xl md:font-display">Buddy System</h1>
             <p className="mt-1 text-[11px] text-muted">

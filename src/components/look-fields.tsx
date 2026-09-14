@@ -48,7 +48,7 @@ export function LookFields({
               !color ? (onDark ? "border-paper" : "border-ink") : "border-transparent",
             )}
             style={{
-              background: `conic-gradient(from 210deg, ${HOUSE} 0 55%, #d4ead8 55% 78%, #f5f2ec 78% 100%)`,
+              background: `conic-gradient(from 210deg, ${HOUSE} 0 50%, #1f6b4a 50% 72%, #f4f0e6 72% 100%)`,
             }}
           />
           {COLORS.map((c) => (

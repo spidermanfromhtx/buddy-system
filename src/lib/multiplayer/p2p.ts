@@ -9,7 +9,7 @@
  * rolls back and accepts, so pairs converge without wedging.
  */
 
-export type SignalKind = "offer" | "answer" | "ice";
+export type SignalKind = "offer" | "answer" | "ice" | "pcm";
 
 /**
  * Wire contract between this client and the signaling relay the app provides
@@ -39,6 +39,8 @@ export interface PeerInfo {
   candidateType: string | null;
   /** Data-channel ping RTT (ms), measured every 2s once connected. */
   rttMs: number | null;
+  /** True once we have heard this peer (ICE or voice packets). */
+  voice: boolean;
 }
 
 export interface P2PRoomOptions {
@@ -80,12 +82,26 @@ interface PeerSlot {
   remote: MediaStream;
 }
 
-const FAST_POLL_MS = 400;
+const FAST_POLL_MS = 200;
 const IDLE_POLL_MS = 2000;
 const PING_INTERVAL_MS = 2000;
-const STALL_MS = 10_000;
+const STALL_MS = 4_000;
 const MAX_RECOVERY_ATTEMPTS = 3;
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];
+
+function bufToB64(buf: ArrayBuffer) {
+  const bytes = new Uint8Array(buf);
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i] ?? 0);
+  return btoa(s);
+}
+
+function b64ToBuf(b64: string) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
 
 function asSignalPayload(payload: unknown) {
   if (typeof payload === "string") {
@@ -221,6 +237,7 @@ export class P2PRoom {
   }
 
   sendMedia(data: ArrayBuffer): void {
+    let sent = false;
     for (const slot of this.peers.values()) {
       const ch =
         slot.reliable?.readyState === "open"
@@ -231,9 +248,22 @@ export class P2PRoom {
       if (!ch) continue;
       try {
         ch.send(data);
+        sent = true;
       } catch {
         // channel closed mid-send
       }
+    }
+    if (!sent) this.sendPcmFallback(data);
+  }
+
+  private lastPcmAt = 0;
+  private sendPcmFallback(data: ArrayBuffer): void {
+    const now = Date.now();
+    if (now - this.lastPcmAt < 70) return;
+    this.lastPcmAt = now;
+    const payload = { a: bufToB64(data) };
+    for (const id of this.peers.keys()) {
+      void this.sendSignal(id, "pcm", payload);
     }
   }
 
@@ -388,12 +418,13 @@ export class P2PRoom {
         connectionState: pc.connectionState,
         candidateType: null,
         rttMs: null,
+        voice: false,
       },
     };
     this.peers.set(peerId, slot);
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) void this.sendSignal(peerId, "ice", e.candidate.toJSON());
+      void this.sendSignal(peerId, "ice", e.candidate ? e.candidate.toJSON() : { candidate: "" });
     };
     pc.onconnectionstatechange = () => {
       slot.info.connectionState = pc.connectionState;
@@ -403,6 +434,7 @@ export class P2PRoom {
       if (pc.connectionState === "connected") {
         slot.recoveryAttempts = 0;
         slot.terminal = false;
+        slot.info.voice = true;
         void this.readCandidateType(slot);
         void this.pushLocalTracks(slot);
       }
@@ -470,8 +502,25 @@ export class P2PRoom {
         slot,
         pc.createDataChannel("media", { ordered: false, maxRetransmits: 0 }),
       );
+      void this.kickOffer(slot, peerId);
     }
     return slot;
+  }
+
+  private async kickOffer(slot: PeerSlot, peerId: string): Promise<void> {
+    if (this.closed || slot.makingOffer) return;
+    if (slot.pc.signalingState !== "stable") return;
+    try {
+      slot.makingOffer = true;
+      const offer = await slot.pc.createOffer();
+      if (this.closed || slot.pc.signalingState !== "stable") return;
+      await slot.pc.setLocalDescription(offer);
+      await this.sendSignal(peerId, "offer", slot.pc.localDescription!.toJSON());
+    } catch {
+      // onnegotiationneeded retries
+    } finally {
+      slot.makingOffer = false;
+    }
   }
 
   private attachMediaChannel(slot: PeerSlot, channel: RTCDataChannel): void {
@@ -566,6 +615,16 @@ export class P2PRoom {
     const polite = this.opts.selfId < from;
 
     try {
+      if (kind === "pcm") {
+        const raw = asSignalPayload(payload);
+        const a = typeof raw.a === "string" ? raw.a : "";
+        if (a) {
+          slot.info.voice = true;
+          this.opts.onMediaData?.(from, b64ToBuf(a));
+          this.emitPeers();
+        }
+        return;
+      }
       if (kind === "offer" || kind === "answer") {
         const description = asSignalPayload(payload) as unknown as RTCSessionDescriptionInit;
         const collision =
@@ -752,7 +811,7 @@ export class P2PRoom {
     // setters otherwise re-render consumers on every poll/ping.
     const list = this.peerList();
     const fingerprint = JSON.stringify(
-      list.map((p) => [p.id, p.name, p.connectionState, p.candidateType, p.rttMs]),
+      list.map((p) => [p.id, p.name, p.connectionState, p.candidateType, p.rttMs, p.voice]),
     );
     if (fingerprint === this.lastPeersFingerprint) return;
     this.lastPeersFingerprint = fingerprint;
