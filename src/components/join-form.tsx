@@ -12,7 +12,7 @@ import { ageFromBirthdate } from "@/lib/utils";
 
 function Sparkle() {
   return (
-    <svg viewBox="0 0 48 48" className="absolute -right-8 top-1 size-10 text-rust md:-right-14 md:size-14" aria-hidden>
+    <svg viewBox="0 0 48 48" className="ml-1 inline size-7 align-top text-rust md:size-10" aria-hidden>
       <path
         fill="currentColor"
         d="M24 2l2.4 16.2L40 14l-10.2 9.2L38 36l-14-8.4L10 36l8.2-12.8L8 14l13.6 4.2z"
@@ -78,29 +78,29 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
         <div className="absolute -bottom-28 -right-16 size-[32rem] rounded-full bg-[#d4ead8] opacity-90 blur-2xl" />
         <div className="absolute -bottom-10 left-[-8%] size-72 rounded-full bg-[#efe8dc] opacity-70 blur-2xl" />
       </div>
-      <header className="relative z-10 flex items-center justify-between px-5 py-5 md:px-10">
-        <div className="flex items-center gap-2.5">
-          <Mark className="size-9" />
-          <p className="text-lg font-semibold tracking-tight">Buddy System</p>
+      <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Mark className="h-8 w-[1.35rem]" />
+          <p className="truncate text-base font-semibold tracking-tight md:text-lg">Buddy System</p>
         </div>
-        <InstallApp />
+        <InstallApp className="h-9 shrink-0 rounded-full px-3 text-sm" />
       </header>
-      <section className="relative z-10 mx-auto flex w-full max-w-2xl flex-col px-6 pb-16 pt-6 md:pt-16">
+      <section className="relative z-10 mx-auto flex w-full max-w-2xl flex-col px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:px-6 md:pt-16">
         {!pending ? (
           <>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-rust">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-rust md:text-[11px]">
               Real support. Real people.
             </p>
-            <h1 className="relative mt-4 max-w-xl text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
+            <h1 className="mt-3 max-w-xl text-[2rem] font-bold leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
               The phone rings.
               <br />
               You work. You hang up.
               <Sparkle />
             </h1>
-            <p className="mt-5 max-w-md text-base text-muted md:text-lg">
+            <p className="mt-4 max-w-md text-[15px] text-muted md:mt-5 md:text-lg">
               Find a live buddy. Schedule a buddy. Be a buddy. 18+.
             </p>
-            <div className="mt-8">
+            <div className="mt-6 max-w-md md:mt-8">
               <EmailCodeForm
                 hero
                 label="Email"
@@ -120,7 +120,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                 }}
               />
             </div>
-            <ul className="mt-14 flex flex-wrap gap-x-8 gap-y-3 text-sm text-muted">
+            <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted md:mt-14 md:gap-x-8">
               <li className="flex items-center gap-2">
                 <Bolt />
                 Real people

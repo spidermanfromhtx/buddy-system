@@ -571,21 +571,23 @@ function Feed() {
         >
           {camera ? "Camera on" : "Camera off"}
         </button>
-        <span className="whitespace-nowrap text-sm text-paper/70">{Math.min(lengthMin, cap)} min</span>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="w-12 shrink-0 whitespace-nowrap text-sm text-paper/70">{Math.min(lengthMin, cap)} min</span>
         <input
           type="range"
           min={5}
           max={cap}
           value={Math.min(lengthMin, cap)}
-          className="min-w-20 flex-1 accent-[var(--rust)]"
+          className="min-w-0 flex-1 accent-[var(--rust)]"
           onChange={(e) => setLengthMin(Number(e.target.value))}
         />
         {liveOn ? (
-          <Btn kind="paper" className="ml-auto h-9 px-4 text-sm" onClick={closeMe}>
+          <Btn kind="paper" className="h-9 shrink-0 px-4 text-sm" onClick={closeMe}>
             End live
           </Btn>
         ) : (
-          <Btn kind="fill" className="ml-auto h-9 px-4 text-sm" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
+          <Btn kind="fill" className="h-9 shrink-0 px-4 text-sm" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
             {goOpen.isPending ? "…" : "Go live"}
           </Btn>
         )}
@@ -695,41 +697,41 @@ function Feed() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-paper text-ink">
-      <header className="flex items-center justify-between gap-3 border-b border-ink/10 px-4 py-3 md:px-6">
-        <div className="flex items-center gap-2.5">
-          <Mark className="size-9" />
-          <div>
-            <h1 className="font-display text-xl leading-none tracking-tight">Buddy System</h1>
+      <header className="flex items-center justify-between gap-2 border-b border-ink/10 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <Mark className="h-8 w-[1.35rem]" />
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold leading-none tracking-tight md:text-xl md:font-display">Buddy System</h1>
             <p className="mt-1 text-[11px] text-muted">
               {plus ? "Plus" : limits ? `${left} left this week` : "R&D"}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-full bg-paper-2 p-1 md:hidden">
+        <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+          <div className="flex rounded-full bg-paper-2 p-0.5 md:hidden">
             <button
               type="button"
-              className={`rounded-full px-3 py-1.5 text-sm ${pane === "live" ? "bg-rust text-on-rust" : "text-muted"}`}
+              className={`rounded-full px-2.5 py-1.5 text-sm ${pane === "live" ? "bg-rust text-on-rust" : "text-muted"}`}
               onClick={() => setPane("live")}
             >
               Live
             </button>
             <button
               type="button"
-              className={`rounded-full px-3 py-1.5 text-sm ${pane === "book" ? "bg-rust text-on-rust" : "text-muted"}`}
+              className={`rounded-full px-2.5 py-1.5 text-sm ${pane === "book" ? "bg-rust text-on-rust" : "text-muted"}`}
               onClick={() => setPane("book")}
             >
               Book
             </button>
           </div>
-          <Btn className="h-10 text-sm" onClick={() => void share()}>
+          <Btn className="hidden h-10 text-sm md:inline-flex" onClick={() => void share()}>
             Share
           </Btn>
-          <InstallApp />
-          <Btn className="h-10 text-sm" onClick={() => void nav({ to: "/reviews" })}>
+          <InstallApp className="hidden h-10 md:inline-flex" />
+          <Btn className="hidden h-10 text-sm md:inline-flex" onClick={() => void nav({ to: "/reviews" })}>
             Reviews
           </Btn>
-          <button type="button" onClick={() => setSheet("settings")} aria-label="Settings">
+          <button type="button" className="shrink-0" onClick={() => setSheet("settings")} aria-label="Settings">
             <Face name={me.name} color={me.color} photo={me.photo} size="sm" />
           </button>
         </div>
@@ -874,6 +876,15 @@ function Feed() {
                 />
               </label>
               <p className="text-xs text-muted">Audio is the default. Camera is optional. In a car, keep camera off.</p>
+              <div className="flex flex-col gap-3 border-t border-ink/10 pt-6 md:hidden">
+                <InstallApp className="h-11 w-full" />
+                <Btn className="h-11 w-full" onClick={() => void share()}>
+                  Share
+                </Btn>
+                <Btn className="h-11 w-full" onClick={() => void nav({ to: "/reviews" })}>
+                  Reviews
+                </Btn>
+              </div>
               <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
                 <p className="font-display text-xl">Home screen</p>
                 <p className="text-sm text-muted">

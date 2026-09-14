@@ -16,7 +16,7 @@ export function Face({
 }) {
   const fill = color || HOUSE;
   const marks = color ? "#1a1a1a" : HOUSE_INK;
-  const dim = size === "lg" ? "size-28" : size === "sm" ? "size-12" : "size-16";
+  const dim = size === "lg" ? "size-24 md:size-28" : size === "sm" ? "size-10 md:size-12" : "size-14 md:size-16";
   return (
     <div
       className={cn("relative shrink-0 overflow-hidden rounded-2xl", dim)}
