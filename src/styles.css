@@ -12,8 +12,8 @@
   --color-tri: var(--tri);
   --color-cream: var(--cream);
   --color-on-rust: var(--on-rust);
-  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.25rem;
   --radius-md: 0.4rem;
   --radius-lg: 0.7rem;
@@ -21,16 +21,16 @@
 
 :root,
 [data-theme="default"] {
-  --night: #1a3d3c;
-  --ink: #1a3d3c;
-  --paper: #f6f3ee;
-  --paper-2: #e4f0ee;
-  --muted: #5d6f6c;
-  --line: #d5d0c8;
-  --rust: #e56b5a;
-  --sage: #9ed9d0;
-  --tri: #f0b8a8;
-  --cream: #faf8f4;
+  --night: #0f3a44;
+  --ink: #0f3a44;
+  --paper: #f7f4f1;
+  --paper-2: #e6f5f3;
+  --muted: #4d6d72;
+  --line: #ddd6cf;
+  --rust: #ff6b81;
+  --sage: #7fe3dc;
+  --tri: #ffb3c0;
+  --cream: #fbf8f5;
   --on-rust: #ffffff;
 }
 
