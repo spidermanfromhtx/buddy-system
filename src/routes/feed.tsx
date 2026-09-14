@@ -97,6 +97,7 @@ function Feed() {
   const [note, setNote] = useState("");
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
+  const [feedCat, setFeedCat] = useState("");
 
   useEffect(() => {
     const p = loadProfile();
@@ -162,12 +163,17 @@ function Feed() {
   }, [me, nav]);
 
   const scoped = useMemo(() => {
-    const rows = q.data ?? [];
-    if (tab !== "school") return rows;
-    if (!me?.school) return [];
-    const campus = me.school.toLowerCase();
-    return rows.filter((l) => (l.school || "").toLowerCase() === campus);
-  }, [q.data, tab, me?.school]);
+    let rows = q.data ?? [];
+    if (tab === "school") {
+      if (!me?.school) return [];
+      const campus = me.school.toLowerCase();
+      rows = rows.filter((l) => (l.school || "").toLowerCase() === campus);
+    }
+    if (feedCat) {
+      rows = rows.filter((l) => l.category === feedCat || l.peerId === me?.id);
+    }
+    return rows;
+  }, [q.data, tab, me?.school, me?.id, feedCat]);
 
   const live = useMemo(() => {
     return scoped
@@ -545,19 +551,25 @@ function Feed() {
         </div>
         <div className="mt-8 flex flex-wrap gap-2">
           <Btn type="button" kind={tab === "all" ? "fill" : "line"} onClick={() => setTab("all")}>
-            Everyone
+            Main feed
           </Btn>
           <Btn type="button" kind={tab === "school" ? "fill" : "line"} onClick={() => setTab("school")}>
-            {me.schoolVerified && me.school ? me.school : "Campus"}
+            University feed
           </Btn>
         </div>
+        {!(tab === "school" && !me.schoolVerified) ? (
+          <div className="mt-4">
+            <p className="text-sm text-muted">Filter by category, or All to see everyone.</p>
+            <CategoryPicker allowAll value={feedCat ? [feedCat] : []} onChange={(ids) => setFeedCat(ids[0] ?? "")} />
+          </div>
+        ) : null}
       </header>
 
       {tab === "school" && !me.schoolVerified ? (
         <div className="mb-8 flex max-w-md flex-col gap-4">
-          <p className="font-display text-3xl tracking-tight">Campus</p>
+          <p className="font-display text-3xl tracking-tight">University feed</p>
           <p className="text-base text-muted">
-            Add a school email in Settings. We send a 6-digit code. Then this tab only shows people from that campus.
+            Add a school email in Settings. We send a 6-digit code. Then this feed only shows people from that campus.
           </p>
           <Btn kind="fill" className="self-start" onClick={() => setSheet("settings")}>
             Open settings
@@ -569,8 +581,8 @@ function Feed() {
         {live.length === 0 ? (
           <li className="py-10 text-base text-muted">
             {tab === "school"
-              ? `Nobody from ${me.school} is live. Go live or book a window.`
-              : "Nobody live. Go live or book a window."}
+              ? `Nobody from ${me.school} is live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Go live or book a window.`
+              : `Nobody live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Go live or book a window.`}
           </li>
         ) : null}
         {live.map((row) => {

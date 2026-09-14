@@ -117,7 +117,15 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
             <fieldset>
               <legend className="text-base font-medium">What do you use this for?</legend>
               <p className="mt-1 text-sm text-muted">Pick every category that fits. Matching uses this when you want someone similar or different.</p>
-              <CategoryPicker multiple value={categories} onChange={setCategories} onDark />
+              <CategoryPicker
+                multiple
+                onDark
+                value={categories}
+                onChange={(ids) => {
+                  setCategories(ids);
+                  if (err === "categories") setErr("");
+                }}
+              />
               {err === "categories" ? (
                 <span className="mt-2 block text-sm text-rust">Pick at least one.</span>
               ) : null}
