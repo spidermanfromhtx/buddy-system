@@ -467,9 +467,9 @@ function Feed() {
 
   const bookFields = (prefix: string) => (
     <div id={`book-${prefix}`} className="flex flex-col">
-      <p className="font-display text-2xl tracking-tight">Book</p>
-      <p className="mt-1 text-sm text-muted">Pick a day. We match you. The call rings.</p>
-      <div className="mt-5 flex flex-col gap-4">
+      <p className="font-display text-xl tracking-tight">Book</p>
+      <p className="mt-0.5 text-sm text-muted">Pick a day. We match you. The call rings.</p>
+      <div className="mt-3 flex flex-col gap-3">
         <div>
           <p className="text-sm font-medium">Date</p>
           <p className="mt-1 text-xs text-muted">Tap a day. Past days are closed.</p>
@@ -478,7 +478,7 @@ function Feed() {
           </div>
           <p className="mt-3 text-sm">{formatWindow(windowDate, windowStart, windowEnd)}</p>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-2 text-sm font-medium" htmlFor={`${prefix}-start`}>
             Start time
             <input
@@ -518,7 +518,7 @@ function Feed() {
             <CategoryPicker value={category} onChange={setCategory} />
           </div>
         </fieldset>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-3">
           <fieldset>
             <legend className="text-sm font-medium">Camera</legend>
             <p className="mt-1 text-xs text-muted">On or off for this window.</p>
@@ -568,8 +568,17 @@ function Feed() {
             ))}
           </div>
         </fieldset>
-        <Btn kind="fill" className="h-12 w-full" onClick={() => goBook.mutate()}>
-          Book
+        <Btn
+          kind={goBook.isPending || scheduled.some((r) => !r.matchPeerName) ? "paper" : "fill"}
+          className={`h-12 w-full ${
+            goBook.isPending || scheduled.some((r) => !r.matchPeerName)
+              ? "border border-ink/10 shadow-inner"
+              : "shadow-sm"
+          }`}
+          disabled={goBook.isPending}
+          onClick={() => goBook.mutate()}
+        >
+          {goBook.isPending ? "…" : scheduled.some((r) => !r.matchPeerName) ? "In the queue" : "Book"}
         </Btn>
       </div>
     </div>
@@ -629,6 +638,36 @@ function Feed() {
         <CategoryPicker onDark value={category} onChange={setCategory} />
       </div>
       {note ? <p className="mt-2 text-sm text-paper/70">{note}</p> : null}
+    </div>
+  );
+
+  const yourWindows = (
+    <div className="mt-3">
+      <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {scheduled.length === 0 ? (
+          <li className="rounded-2xl bg-paper-2 px-4 py-3 text-sm text-muted">None yet.</li>
+        ) : (
+          scheduled.map((row) => (
+            <Card
+              key={row.id}
+              name={row.name}
+              color={row.color}
+              photo={row.photo}
+              task={row.task}
+              urgent={row.urgent}
+              dueDate={row.dueDate}
+              lengthMin={row.lengthMin}
+              category={row.category}
+              offerCamera={row.camera}
+              extra={[row.windowLabel, row.matchPeerName ? `matched · ${row.matchPeerName}` : "match pending"]
+                .filter(Boolean)
+                .join(" · ")}
+              action={<span className="text-sm text-muted">{row.matchPeerName ? "matched" : "pending"}</span>}
+            />
+          ))
+        )}
+      </ul>
     </div>
   );
 
@@ -771,17 +810,18 @@ function Feed() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-4 pt-4 md:grid-cols-2 md:px-6">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-3 px-4 pb-8 pt-3 md:grid-cols-2 md:gap-5 md:px-6 md:pt-4">
         <section className={pane === "book" ? "hidden md:block" : "block"}>
           {liveBoard}
-          <div className="pb-2 pt-4">{compose}</div>
+          <div className="pt-3">{compose}</div>
+          {yourWindows}
         </section>
-        <aside className={`min-w-0 pb-8 ${pane === "live" ? "hidden md:block" : "block"}`}>
+        <aside className={`min-w-0 ${pane === "live" ? "hidden md:block" : "block"}`}>
           <p className="text-xs uppercase tracking-[0.18em] text-muted">Booking feed</p>
           <p className="mt-1 text-sm text-muted">Open windows. Be someone’s buddy, or wait in the queue.</p>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-2 flex flex-col gap-2">
             {queue.length === 0 ? (
-              <li className="rounded-2xl bg-paper-2 px-4 py-5 text-sm text-muted">Nobody in the queue yet.</li>
+              <li className="rounded-2xl bg-paper-2 px-4 py-4 text-sm text-muted">Nobody in the queue yet.</li>
             ) : (
               queue.map((row) => (
                 <Card
@@ -807,39 +847,7 @@ function Feed() {
               ))
             )}
           </ul>
-          {bookFields("side")}
-          <div className="mt-8">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
-            <ul className="mt-3 flex flex-col gap-2">
-              {scheduled.length === 0 ? (
-                <li className="text-sm text-muted">None yet.</li>
-              ) : (
-                scheduled.map((row) => (
-                  <Card
-                    key={row.id}
-                    name={row.name}
-                    color={row.color}
-                    photo={row.photo}
-                    task={row.task}
-                    urgent={row.urgent}
-                    dueDate={row.dueDate}
-                    lengthMin={row.lengthMin}
-                    category={row.category}
-                    offerCamera={row.camera}
-                    extra={[
-                      row.windowLabel,
-                      row.matchPeerName ? `matched · ${row.matchPeerName}` : "match pending",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    action={
-                      <span className="text-sm text-muted">{row.matchPeerName ? "matched" : "pending"}</span>
-                    }
-                  />
-                ))
-              )}
-            </ul>
-          </div>
+          <div className="mt-4">{bookFields("side")}</div>
         </aside>
       </div>
 
