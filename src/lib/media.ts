@@ -13,27 +13,44 @@ export function currentStream() {
 
 export function isHoldVideo(track: MediaStreamTrack) {
   const w = track.getSettings().width;
-  const h = track.getSettings().height;
   return track.kind === "video" && typeof w === "number" && w > 0 && w <= 32;
+}
+
+export function isRealVideo(track: MediaStreamTrack) {
+  if (track.kind !== "video") return false;
+  if (track.readyState !== "live") return false;
+  if (track.muted) return false;
+  if (isHoldVideo(track)) return false;
+  return true;
+}
+
+export function streamHasVideo(media: MediaStream | null | undefined) {
+  return Boolean(media?.getVideoTracks().some(isRealVideo));
+}
+
+function wireSpeaker(el: HTMLVideoElement) {
+  el.autoplay = true;
+  el.playsInline = true;
+  el.muted = false;
+  el.volume = 1;
+  el.setAttribute("playsinline", "true");
+  el.setAttribute("webkit-playsinline", "true");
+  el.setAttribute("autoplay", "true");
+}
+
+export function setSpeaker(el: HTMLVideoElement | null) {
+  speaker = el;
+  if (el) wireSpeaker(el);
 }
 
 function getSpeaker() {
   if (typeof document === "undefined") return null;
+  if (speaker && speaker.isConnected) return speaker;
   if (!speaker) {
     speaker = document.createElement("video");
-    speaker.autoplay = true;
-    speaker.setAttribute("playsinline", "true");
-    speaker.setAttribute("webkit-playsinline", "true");
-    speaker.setAttribute("autoplay", "true");
-    speaker.muted = false;
-    speaker.volume = 1;
-    speaker.style.position = "fixed";
-    speaker.style.left = "0";
-    speaker.style.bottom = "0";
-    speaker.style.width = "2px";
-    speaker.style.height = "2px";
-    speaker.style.opacity = "0.02";
-    speaker.style.pointerEvents = "none";
+    wireSpeaker(speaker);
+    speaker.style.cssText =
+      "position:fixed;left:0;bottom:0;width:8px;height:8px;opacity:0.02;pointer-events:none";
     document.body.appendChild(speaker);
   }
   return speaker;
@@ -47,9 +64,10 @@ function keepLocalAlive(media: MediaStream) {
     keep = document.createElement("video");
     keep.muted = true;
     keep.autoplay = true;
+    keep.playsInline = true;
     keep.setAttribute("playsinline", "true");
     keep.setAttribute("webkit-playsinline", "true");
-    keep.style.cssText = "position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none";
+    keep.style.cssText = "position:fixed;right:0;bottom:0;width:8px;height:8px;opacity:0.02;pointer-events:none";
     document.body.appendChild(keep);
   }
   if (keep.srcObject !== media) keep.srcObject = media;
@@ -78,8 +96,7 @@ export async function unlockOutput() {
   }
   const el = getSpeaker();
   if (!el) return;
-  el.muted = false;
-  el.volume = 1;
+  wireSpeaker(el);
   try {
     if (!el.srcObject && output) {
       el.srcObject = output.createMediaStreamDestination().stream;
@@ -90,12 +107,23 @@ export async function unlockOutput() {
   }
 }
 
+function kickPlay(el: HTMLMediaElement) {
+  wireSpeaker(el as HTMLVideoElement);
+  const go = () => {
+    const p = el.play();
+    if (p) void p.catch(() => {});
+  };
+  go();
+  el.onloadedmetadata = go;
+  el.oncanplay = go;
+}
+
 export async function getLocalStream(wantCamera: boolean, monitor = false): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("insecure");
   }
   if (stream && hasLiveMic()) {
-    const liveVideo = stream.getVideoTracks().filter((t) => t.readyState === "live" && !isHoldVideo(t));
+    const liveVideo = stream.getVideoTracks().filter(isRealVideo);
     const hold = stream.getVideoTracks().filter((t) => t.readyState === "live" && isHoldVideo(t));
     if (wantCamera && liveVideo.length === 0) {
       try {
@@ -107,15 +135,20 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
           t.stop();
           stream.removeTrack(t);
         }
-        for (const t of cam.getVideoTracks()) stream.addTrack(t);
+        for (const t of cam.getVideoTracks()) {
+          t.enabled = true;
+          stream.addTrack(t);
+        }
       } catch {
         addHoldVideo(stream);
       }
+      for (const t of stream.getAudioTracks()) t.enabled = true;
       keepLocalAlive(stream);
       return stream;
     }
     if (!wantCamera && liveVideo.length) {
       for (const t of liveVideo) {
+        t.enabled = false;
         t.stop();
         stream.removeTrack(t);
       }
@@ -123,19 +156,13 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
       keepLocalAlive(stream);
       return stream;
     }
-    if (!wantCamera) {
-      addHoldVideo(stream);
-      keepLocalAlive(stream);
-      return stream;
-    }
-    if (liveVideo.length) {
-      keepLocalAlive(stream);
-      return stream;
-    }
+    for (const t of stream.getAudioTracks()) t.enabled = true;
+    keepLocalAlive(stream);
+    return stream;
   }
   const audio: boolean | MediaTrackConstraints = monitor
     ? { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
-    : true;
+    : { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
   const video: boolean | MediaTrackConstraints = wantCamera
     ? { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } }
     : false;
@@ -146,10 +173,10 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
   for (const c of tries) {
     try {
       stream = await navigator.mediaDevices.getUserMedia(c);
+      for (const t of stream.getTracks()) t.enabled = true;
       if (wantCamera && !stream.getVideoTracks().some((t) => !isHoldVideo(t))) {
         addHoldVideo(stream);
       }
-      if (!wantCamera) addHoldVideo(stream);
       keepLocalAlive(stream);
       return stream;
     } catch (e) {
@@ -163,7 +190,6 @@ export function stopLocalStream() {
   const extra: MediaStream[] = [];
   if (stream) extra.push(stream);
   if (keep?.srcObject instanceof MediaStream) extra.push(keep.srcObject);
-  if (speaker?.srcObject instanceof MediaStream) extra.push(speaker.srcObject);
   for (const media of extra) {
     for (const t of media.getTracks()) {
       t.enabled = false;
@@ -177,7 +203,6 @@ export function stopLocalStream() {
   }
   if (speaker) {
     speaker.srcObject = null;
-    speaker.pause();
   }
   try {
     remoteNode?.disconnect();
@@ -188,14 +213,18 @@ export function stopLocalStream() {
 }
 
 export async function playRemote(remote: MediaStream) {
+  for (const t of remote.getTracks()) t.enabled = true;
   const audioTracks = remote.getAudioTracks().filter((t) => t.readyState === "live");
-  const audioOnly = audioTracks.length ? new MediaStream(audioTracks) : remote;
   const el = getSpeaker();
   if (el) {
-    el.srcObject = audioOnly;
-    el.muted = false;
-    el.volume = 1;
-    void el.play().catch(() => {});
+    const mixed = new MediaStream([
+      ...audioTracks,
+      ...remote.getVideoTracks().filter((t) => t.readyState === "live"),
+    ]);
+    if (el.srcObject !== remote && el.srcObject !== mixed) {
+      el.srcObject = audioTracks.length ? mixed : remote;
+    }
+    kickPlay(el);
   }
   try {
     output ??= new AudioContext();
@@ -208,6 +237,7 @@ export async function playRemote(remote: MediaStream) {
       }
     }
     if (!audioTracks.length) return;
+    const audioOnly = new MediaStream(audioTracks);
     remoteNode = output.createMediaStreamSource(audioOnly);
     remoteNode.connect(output.destination);
   } catch {

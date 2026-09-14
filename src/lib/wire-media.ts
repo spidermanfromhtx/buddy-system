@@ -31,30 +31,21 @@ export function startPcmSend(
   const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
   if (!audio) return () => {};
   const src = ctx.createMediaStreamSource(new MediaStream([audio]));
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
   const mute = ctx.createGain();
   mute.gain.value = 0;
-  src.connect(analyser);
-  analyser.connect(mute);
+  const proc = ctx.createScriptProcessor(2048, 1, 1);
+  src.connect(proc);
+  proc.connect(mute);
   mute.connect(ctx.destination);
-  const data = new Float32Array(analyser.fftSize);
-  const bytes = new Uint8Array(analyser.fftSize);
   void ctx.resume();
-  const id = window.setInterval(() => {
-    if (typeof analyser.getFloatTimeDomainData === "function") {
-      analyser.getFloatTimeDomainData(data);
-      send(packPcm(ctx.sampleRate, data));
-      return;
-    }
-    analyser.getByteTimeDomainData(bytes);
-    for (let i = 0; i < bytes.length; i++) data[i] = ((bytes[i] ?? 128) - 128) / 128;
-    send(packPcm(ctx.sampleRate, data));
-  }, 40);
+  proc.onaudioprocess = (ev) => {
+    const input = ev.inputBuffer.getChannelData(0);
+    send(packPcm(ctx.sampleRate, input));
+  };
   return () => {
-    window.clearInterval(id);
+    proc.onaudioprocess = null;
     src.disconnect();
-    analyser.disconnect();
+    proc.disconnect();
     mute.disconnect();
   };
 }

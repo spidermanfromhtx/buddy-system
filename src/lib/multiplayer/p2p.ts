@@ -370,6 +370,7 @@ export class P2PRoom {
     const pc = new RTCPeerConnection({
       iceServers: this.opts.iceServers ?? defaultIceServers(),
       bundlePolicy: "max-bundle",
+      iceCandidatePoolSize: 8,
     });
     const slot: PeerSlot = {
       pc,
@@ -419,7 +420,13 @@ export class P2PRoom {
       if (!initiator && !pc.currentRemoteDescription) return;
       try {
         slot.makingOffer = true;
-        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        const hasVideo = Boolean(
+          this.opts.mediaStream?.getVideoTracks().some((t) => t.readyState === "live" && t.enabled),
+        );
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: hasVideo,
+        });
         if (this.closed || pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
         await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
@@ -456,7 +463,6 @@ export class P2PRoom {
       pc.getTransceivers().map((tr) => tr.receiver.track?.kind ?? tr.sender.track?.kind),
     );
     if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" });
-    if (!kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
 
     if (initiator) {
       this.attachChannel(
