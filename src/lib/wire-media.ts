@@ -4,13 +4,15 @@ const AUDIO = 0;
 const JPEG = 1;
 
 export function packPcm(sampleRate: number, samples: Float32Array): ArrayBuffer {
-  const out = new ArrayBuffer(8 + samples.length * 2);
+  const target = 16000;
+  const data = sampleRate === target ? samples : resample(samples, sampleRate, target);
+  const out = new ArrayBuffer(8 + data.length * 2);
   const view = new DataView(out);
   view.setUint8(0, AUDIO);
-  view.setUint32(4, sampleRate, true);
+  view.setUint32(4, target, true);
   const pcm = new Int16Array(out, 8);
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i] ?? 0));
+  for (let i = 0; i < data.length; i++) {
+    const s = Math.max(-1, Math.min(1, data[i] ?? 0));
     pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
   return out;
@@ -115,7 +117,11 @@ export function playWire(
     buffer.getChannelData(0).set(samples);
     node.buffer = buffer;
     node.connect(audio.ctx.destination);
-    const start = Math.max(audio.ctx.currentTime + 0.04, audio.next);
+    const start = Math.max(audio.ctx.currentTime + 0.02, audio.next);
+    if (start - audio.ctx.currentTime > 0.09) {
+      node.start(audio.ctx.currentTime + 0.02);
+      return audio.ctx.currentTime + 0.02 + buffer.duration;
+    }
     node.start(start);
     return start + buffer.duration;
   } catch {

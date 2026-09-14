@@ -102,7 +102,7 @@ function startCapture() {
   if (!audio) return;
   stopCapture();
   const src = output.createMediaStreamSource(new MediaStream([audio]));
-  const proc = output.createScriptProcessor(2048, 1, 1);
+  const proc = output.createScriptProcessor(1024, 1, 1);
   const mute = output.createGain();
   mute.gain.value = 0;
   src.connect(proc);

@@ -698,7 +698,7 @@ function Feed() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-paper text-ink">
-      <header className="flex items-center justify-between gap-2 border-b border-ink/10 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
+      <header className="flex items-center justify-between gap-2 border-b border-tri/30 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <div className="min-w-0">

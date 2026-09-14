@@ -63,9 +63,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-paper text-ink">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute -right-24 top-10 size-[28rem] rounded-full bg-[#ddd6f5] opacity-80 blur-2xl" />
-        <div className="absolute -bottom-28 -right-16 size-[32rem] rounded-full bg-[#c8c4f0] opacity-50 blur-2xl" />
-        <div className="absolute -bottom-8 left-[-6%] size-72 rounded-full bg-[#efe8dc] opacity-70 blur-2xl" />
+        <div className="absolute -right-24 top-10 size-[28rem] rounded-full bg-sage opacity-80 blur-2xl" />
+        <div className="absolute -bottom-28 -right-16 size-[32rem] rounded-full bg-tri opacity-50 blur-2xl" />
+        <div className="absolute -bottom-8 left-[-6%] size-72 rounded-full bg-rust/25 opacity-80 blur-2xl" />
       </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
@@ -202,7 +202,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
         </div>
         <div className="relative hidden md:flex md:justify-end">
           <div className="relative w-72">
-            <div className="absolute -right-8 -top-8 size-56 rounded-full bg-[#ddd6f5] opacity-70 blur-2xl" />
+            <div className="absolute -right-8 -top-8 size-56 rounded-full bg-sage opacity-70 blur-2xl" />
             <div className="relative rounded-[2.6rem] bg-ink p-3 shadow-[0_30px_60px_-20px_rgba(28,25,51,0.45)]">
               <div className="rounded-[2.1rem] bg-paper px-8 pb-10 pt-16 text-center">
                 <Mark className="mx-auto h-20 w-14" />

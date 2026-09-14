@@ -9,6 +9,7 @@
   --color-line: var(--line);
   --color-rust: var(--rust);
   --color-sage: var(--sage);
+  --color-tri: var(--tri);
   --color-cream: var(--cream);
   --color-on-rust: var(--on-rust);
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
@@ -23,11 +24,12 @@
   --night: #1c1933;
   --ink: #1c1933;
   --paper: #f5f2ec;
-  --paper-2: #ebe7df;
+  --paper-2: #ebe4f2;
   --muted: #6b6578;
-  --line: #e3ddd4;
+  --line: #d8d3c8;
   --rust: #6b5cff;
   --sage: #c8c4f0;
+  --tri: #c4b49a;
   --cream: #faf8f4;
   --on-rust: #ffffff;
 }
@@ -36,11 +38,12 @@
   --night: #3a1818;
   --ink: #3a1818;
   --paper: #f7f1ef;
-  --paper-2: #efe4e2;
+  --paper-2: #f3e6c4;
   --muted: #7a5c5c;
-  --line: #ead9d6;
+  --line: #c5d0e4;
   --rust: #d94b4b;
   --sage: #f0c35a;
+  --tri: #4a7ec8;
   --cream: #fbf7f5;
   --on-rust: #ffffff;
 }
@@ -49,11 +52,12 @@
   --night: #3a2414;
   --ink: #3a2414;
   --paper: #f7f2ec;
-  --paper-2: #efe6da;
+  --paper-2: #d7eaf1;
   --muted: #7a6858;
-  --line: #eadfd0;
+  --line: #e0c4d0;
   --rust: #e07a32;
   --sage: #5aa8c8;
+  --tri: #c45c86;
   --cream: #fbf7f2;
   --on-rust: #ffffff;
 }
@@ -62,11 +66,12 @@
   --night: #322c14;
   --ink: #322c14;
   --paper: #f6f4ea;
-  --paper-2: #eee9d6;
+  --paper-2: #d7eee4;
   --muted: #746c50;
-  --line: #e6e0c8;
+  --line: #cfc8ea;
   --rust: #d4b03a;
   --sage: #4fa87a;
+  --tri: #7a6ad4;
   --cream: #fbf9f0;
   --on-rust: #1c1933;
 }
@@ -75,11 +80,12 @@
   --night: #143024;
   --ink: #143024;
   --paper: #eef5f0;
-  --paper-2: #ddece3;
+  --paper-2: #f3e9c4;
   --muted: #5a7466;
-  --line: #d0e0d6;
+  --line: #c8c8ea;
   --rust: #3d9a6a;
   --sage: #e0c04a;
+  --tri: #6a6ad4;
   --cream: #f5faf7;
   --on-rust: #ffffff;
 }
@@ -88,11 +94,12 @@
   --night: #14243a;
   --ink: #14243a;
   --paper: #eef3f8;
-  --paper-2: #dde6f0;
+  --paper-2: #f6e4e1;
   --muted: #5a6880;
-  --line: #d0dae6;
+  --line: #ead9b8;
   --rust: #3d7ad4;
   --sage: #e07a6a;
+  --tri: #e0c04a;
   --cream: #f5f8fb;
   --on-rust: #ffffff;
 }
@@ -101,11 +108,12 @@
   --night: #18183a;
   --ink: #18183a;
   --paper: #f0f0f7;
-  --paper-2: #e2e2f0;
+  --paper-2: #f6e2ea;
   --muted: #5c5c80;
-  --line: #d4d4e6;
+  --line: #c5e4d8;
   --rust: #4a54c8;
   --sage: #e07a9a;
+  --tri: #50b48c;
   --cream: #f6f6fb;
   --on-rust: #ffffff;
 }
@@ -114,11 +122,12 @@
   --night: #2a1836;
   --ink: #2a1836;
   --paper: #f5f0f6;
-  --paper-2: #eadfeb;
+  --paper-2: #f3e6c8;
   --muted: #6e5a74;
-  --line: #e0d4e2;
+  --line: #c5ddd8;
   --rust: #8a4cbf;
   --sage: #e0a04a;
+  --tri: #4aa0a8;
   --cream: #faf6fa;
   --on-rust: #ffffff;
 }

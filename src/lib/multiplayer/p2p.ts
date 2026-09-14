@@ -245,12 +245,13 @@ export class P2PRoom {
     let sent = false;
     for (const slot of this.peers.values()) {
       const ch =
-        slot.reliable?.readyState === "open"
-          ? slot.reliable
-          : slot.media?.readyState === "open"
-            ? slot.media
+        slot.media?.readyState === "open"
+          ? slot.media
+          : slot.reliable?.readyState === "open"
+            ? slot.reliable
             : null;
       if (!ch) continue;
+      if (ch.bufferedAmount > 24_000) continue;
       try {
         ch.send(data);
         sent = true;
@@ -474,7 +475,7 @@ export class P2PRoom {
       this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true }));
       this.attachMediaChannel(
         slot,
-        pc.createDataChannel("media", { ordered: false, maxRetransmits: 0 }),
+        pc.createDataChannel("media", { ordered: false, maxPacketLifeTime: 180 }),
       );
     }
 

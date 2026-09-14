@@ -33,7 +33,7 @@ export function CategoryPicker({
     }
     return on
       ? "bg-rust text-on-rust"
-      : "border border-ink/15 bg-paper text-ink hover:bg-paper-2";
+      : "border border-tri/40 bg-paper text-ink hover:bg-paper-2";
   }
 
   return (
