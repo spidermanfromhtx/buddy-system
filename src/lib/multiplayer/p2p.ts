@@ -82,11 +82,11 @@ interface PeerSlot {
   remote: MediaStream;
 }
 
-const FAST_POLL_MS = 200;
+const FAST_POLL_MS = 250;
 const IDLE_POLL_MS = 2000;
 const PING_INTERVAL_MS = 2000;
-const STALL_MS = 4_000;
-const MAX_RECOVERY_ATTEMPTS = 3;
+const STALL_MS = 20_000;
+const MAX_RECOVERY_ATTEMPTS = 4;
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];
 
 function bufToB64(buf: ArrayBuffer) {
@@ -120,6 +120,7 @@ export function defaultIceServers(): RTCIceServer[] {
     {
       urls: [
         "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
         "stun:stun.cloudflare.com:3478",
         "stun:stun.relay.metered.ca:80",
       ],
@@ -402,7 +403,6 @@ export class P2PRoom {
     const pc = new RTCPeerConnection({
       iceServers: this.opts.iceServers ?? defaultIceServers(),
       bundlePolicy: "max-bundle",
-      iceCandidatePoolSize: 8,
     });
     const slot: PeerSlot = {
       pc,
@@ -426,27 +426,10 @@ export class P2PRoom {
     pc.onicecandidate = (e) => {
       void this.sendSignal(peerId, "ice", e.candidate ? e.candidate.toJSON() : { candidate: "" });
     };
-    pc.onconnectionstatechange = () => {
-      slot.info.connectionState = pc.connectionState;
-      if (pc.connectionState === "connecting" || pc.connectionState === "connected") {
-        slot.lastProgressAt = Date.now();
-      }
-      if (pc.connectionState === "connected") {
-        slot.recoveryAttempts = 0;
-        slot.terminal = false;
-        slot.info.voice = true;
-        void this.readCandidateType(slot);
-        void this.pushLocalTracks(slot);
-      }
-      this.emitPeers();
-      if (pc.connectionState === "failed") {
-        // Refires negotiationneeded → a fresh offer through signaling, so a
-        // lost offer or dead path cannot wedge the pair (glare-safe).
-        pc.restartIce();
-      }
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        this.schedulePoll(FAST_POLL_MS);
-      }
+    pc.onconnectionstatechange = () => this.syncPair(slot);
+    pc.oniceconnectionstatechange = () => this.syncPair(slot);
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === "gathering") slot.lastProgressAt = Date.now();
     };
     pc.onnegotiationneeded = async () => {
       if (this.closed || slot.makingOffer) return;
@@ -479,6 +462,18 @@ export class P2PRoom {
       ev.track.onended = fire;
     };
 
+    if (initiator) {
+      this.attachChannel(
+        slot,
+        pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 }),
+      );
+      this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true }));
+      this.attachMediaChannel(
+        slot,
+        pc.createDataChannel("media", { ordered: false, maxRetransmits: 0 }),
+      );
+    }
+
     const media = this.opts.mediaStream;
     if (media) {
       for (const track of media.getTracks()) {
@@ -492,18 +487,7 @@ export class P2PRoom {
     );
     if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" });
 
-    if (initiator) {
-      this.attachChannel(
-        slot,
-        pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 }),
-      );
-      this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true }));
-      this.attachMediaChannel(
-        slot,
-        pc.createDataChannel("media", { ordered: false, maxRetransmits: 0 }),
-      );
-      void this.kickOffer(slot, peerId);
-    }
+    if (initiator) void this.kickOffer(slot, peerId);
     return slot;
   }
 
@@ -526,9 +510,7 @@ export class P2PRoom {
   private attachMediaChannel(slot: PeerSlot, channel: RTCDataChannel): void {
     slot.media = channel;
     channel.binaryType = "arraybuffer";
-    channel.onopen = () => {
-      slot.lastProgressAt = Date.now();
-    };
+    channel.onopen = () => this.markLive(slot);
     channel.onmessage = (e) => {
       const data = e.data;
       if (data instanceof ArrayBuffer) {
@@ -545,9 +527,7 @@ export class P2PRoom {
     channel.binaryType = "arraybuffer";
     if (channel.label === "state") slot.state = channel;
     else slot.reliable = channel;
-    channel.onopen = () => {
-      slot.lastProgressAt = Date.now();
-    };
+    channel.onopen = () => this.markLive(slot);
     channel.onmessage = (e) => {
       if (e.data instanceof ArrayBuffer) {
         this.opts.onMediaData?.(slot.info.id, e.data);
@@ -747,6 +727,53 @@ export class P2PRoom {
    * fingerprint wedge). After MAX_RECOVERY_ATTEMPTS the pair is terminal:
    * visible to the app as its last connectionState, ignored by fast-poll.
    */
+  private pairIsUp(slot: PeerSlot): boolean {
+    const ice = slot.pc.iceConnectionState;
+    const dcOpen = [slot.state, slot.reliable, slot.media].some((ch) => ch?.readyState === "open");
+    return (
+      slot.pc.connectionState === "connected" ||
+      ice === "connected" ||
+      ice === "completed" ||
+      dcOpen
+    );
+  }
+
+  private markLive(slot: PeerSlot): void {
+    slot.lastProgressAt = Date.now();
+    if (slot.info.connectionState === "connected" && slot.info.voice) return;
+    slot.info.connectionState = "connected";
+    slot.info.voice = true;
+    slot.recoveryAttempts = 0;
+    slot.terminal = false;
+    this.emitPeers();
+    void this.readCandidateType(slot);
+    void this.pushLocalTracks(slot);
+  }
+
+  private syncPair(slot: PeerSlot): void {
+    const live = slot.pc.connectionState;
+    const ice = slot.pc.iceConnectionState;
+    if (this.pairIsUp(slot)) {
+      this.markLive(slot);
+      return;
+    }
+    if (live === "connecting" || ice === "checking" || ice === "connected") {
+      slot.lastProgressAt = Date.now();
+    }
+    if (live !== slot.info.connectionState && slot.info.connectionState !== "connected") {
+      slot.info.connectionState = live;
+      this.emitPeers();
+    }
+    if (live === "failed") {
+      try {
+        slot.pc.restartIce();
+      } catch {
+        // next watchdog rebuilds
+      }
+    }
+    if (live === "failed" || live === "disconnected") this.schedulePoll(FAST_POLL_MS);
+  }
+
   private watchdog(): void {
     if (this.closed) return;
     const now = Date.now();
@@ -756,12 +783,16 @@ export class P2PRoom {
       // still trips the stall timer instead of hiding behind a cached
       // "connected". Only live progress states refresh the stall clock.
       const live = slot.pc.connectionState;
-      if (live !== slot.info.connectionState) {
+      const ice = slot.pc.iceConnectionState;
+      if (this.pairIsUp(slot)) {
+        this.markLive(slot);
+        continue;
+      }
+      if (live !== slot.info.connectionState && slot.info.connectionState !== "connected") {
         slot.info.connectionState = live;
-        if (live === "connecting" || live === "connected") slot.lastProgressAt = now;
         this.emitPeers();
       }
-      if (slot.terminal || live === "connected") continue;
+      if (slot.terminal) continue;
       if (now - slot.lastProgressAt <= STALL_MS) continue;
       if (slot.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
         slot.terminal = true;
