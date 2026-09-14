@@ -222,11 +222,15 @@ export class P2PRoom {
 
   sendMedia(data: ArrayBuffer): void {
     for (const slot of this.peers.values()) {
-      if (slot.media?.readyState !== "open") continue;
-      try {
-        slot.media.send(data);
-      } catch {
-        // channel closed mid-send
+      const channels = [slot.media, slot.reliable];
+      for (const ch of channels) {
+        if (ch?.readyState !== "open") continue;
+        try {
+          ch.send(data);
+          break;
+        } catch {
+          // try the next channel
+        }
       }
     }
   }
@@ -415,7 +419,7 @@ export class P2PRoom {
       if (!initiator && !pc.currentRemoteDescription) return;
       try {
         slot.makingOffer = true;
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
         if (this.closed || pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
         await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
@@ -493,6 +497,14 @@ export class P2PRoom {
       slot.lastProgressAt = Date.now();
     };
     channel.onmessage = (e) => {
+      if (e.data instanceof ArrayBuffer) {
+        this.opts.onMediaData?.(slot.info.id, e.data);
+        return;
+      }
+      if (e.data instanceof Blob) {
+        void e.data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf));
+        return;
+      }
       let msg: { t: string; d?: unknown };
       try {
         msg = JSON.parse(e.data as string) as { t: string; d?: unknown };

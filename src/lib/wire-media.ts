@@ -33,7 +33,11 @@ export function startPcmSend(
   const src = ctx.createMediaStreamSource(new MediaStream([audio]));
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 2048;
+  const mute = ctx.createGain();
+  mute.gain.value = 0;
   src.connect(analyser);
+  analyser.connect(mute);
+  mute.connect(ctx.destination);
   const data = new Float32Array(analyser.fftSize);
   const bytes = new Uint8Array(analyser.fftSize);
   void ctx.resume();
@@ -50,6 +54,8 @@ export function startPcmSend(
   return () => {
     window.clearInterval(id);
     src.disconnect();
+    analyser.disconnect();
+    mute.disconnect();
   };
 }
 

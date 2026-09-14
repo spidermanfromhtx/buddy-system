@@ -99,7 +99,7 @@ function Feed() {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
   const [feedCat, setFeedCat] = useState("");
-  const [theme, setTheme] = useState<ThemeId>("ink");
+  const [theme, setTheme] = useState<ThemeId>("brown");
 
   useEffect(() => {
     const p = loadProfile();

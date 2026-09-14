@@ -94,12 +94,6 @@ export function AudioCall({
   const [remoteVideo, setRemoteVideo] = useState(false);
   const [remoteJpeg, setRemoteJpeg] = useState(false);
 
-  async function hearThem(stream?: MediaStream | null) {
-    await unlockOutput();
-    const remote = stream ?? remoteRef.current;
-    if (remote) await playRemote(remote);
-  }
-
   function showLocal(media: MediaStream) {
     const el = localVideoRef.current;
     if (!el) return;
@@ -113,11 +107,19 @@ export function AudioCall({
     setRemoteVideo(real);
     const el = remoteVideoRef.current;
     if (el) {
-      if (el.srcObject !== stream) el.srcObject = stream;
+      el.srcObject = stream;
       el.muted = true;
       void el.play().catch(() => {});
     }
-    void hearThem(stream);
+    const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === "live");
+    const speaker = remoteAudioRef.current;
+    if (speaker && audioTracks.length) {
+      speaker.srcObject = new MediaStream(audioTracks);
+      speaker.muted = false;
+      speaker.volume = 1;
+      void speaker.play().catch(() => {});
+    }
+    void playRemote(stream);
   }
 
   async function start() {
@@ -226,7 +228,7 @@ export function AudioCall({
       stopPcm();
       stopJpeg();
     };
-  }, [local, wantCamera, loopback, status]);
+  }, [local, wantCamera, loopback]);
 
   const showStage = wantCamera || remoteVideo || remoteJpeg;
 
@@ -235,7 +237,7 @@ export function AudioCall({
       <div className={showStage ? "relative aspect-square w-full max-w-xs" : undefined}>
         <audio
           ref={remoteAudioRef}
-          className="pointer-events-none fixed bottom-0 left-0 h-px w-px"
+          className="pointer-events-none fixed bottom-0 left-0 h-3 w-3 opacity-[0.01]"
           autoPlay
           playsInline
         />
@@ -299,9 +301,7 @@ export function AudioCall({
           Join the line
         </Btn>
       ) : (
-        <Btn className="mt-2" onClick={() => void hearThem()}>
-          Tap to hear them
-        </Btn>
+        <p className="text-xs text-muted">speak. the bars should move.</p>
       )}
     </div>
   );

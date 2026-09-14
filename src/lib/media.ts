@@ -14,7 +14,7 @@ export function currentStream() {
 export function isHoldVideo(track: MediaStreamTrack) {
   const w = track.getSettings().width;
   const h = track.getSettings().height;
-  return track.kind === "video" && w !== undefined && w <= 32 && (h === undefined || h <= 32);
+  return track.kind === "video" && typeof w === "number" && w > 0 && w <= 32;
 }
 
 function getSpeaker() {
@@ -68,7 +68,7 @@ export async function unlockOutput() {
   try {
     output ??= new AudioContext();
     if (output.state === "suspended") await output.resume();
-    const buf = output.createBuffer(1, 1, output.sampleRate);
+    const buf = output.createBuffer(1, 8, output.sampleRate);
     const src = output.createBufferSource();
     src.buffer = buf;
     src.connect(output.destination);
@@ -77,10 +77,17 @@ export async function unlockOutput() {
     // speaker play below is enough
   }
   const el = getSpeaker();
-  if (!el || !el.srcObject) return;
+  if (!el) return;
   el.muted = false;
   el.volume = 1;
-  void el.play().catch(() => {});
+  try {
+    if (!el.srcObject && output) {
+      el.srcObject = output.createMediaStreamDestination().stream;
+    }
+    void el.play().catch(() => {});
+  } catch {
+    // Call / Answer already used the gesture
+  }
 }
 
 export async function getLocalStream(wantCamera: boolean, monitor = false): Promise<MediaStream> {
@@ -182,11 +189,7 @@ export async function playRemote(remote: MediaStream) {
     el.srcObject = audioOnly;
     el.muted = false;
     el.volume = 1;
-    try {
-      await el.play();
-    } catch {
-      // iOS may still play through the already-unlocked element
-    }
+    void el.play().catch(() => {});
   }
   try {
     output ??= new AudioContext();

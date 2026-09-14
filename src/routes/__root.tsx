@@ -40,7 +40,7 @@ function Root() {
     applyTheme(loadTheme());
   }, []);
   return (
-    <html lang="en" data-theme="ink" suppressHydrationWarning>
+    <html lang="en" data-theme="brown" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

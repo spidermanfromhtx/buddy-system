@@ -18,18 +18,6 @@
 }
 
 :root,
-[data-theme="ink"] {
-  --night: #111110;
-  --ink: #1f1e1c;
-  --paper: #f3f0ea;
-  --paper-2: #eae6de;
-  --muted: #6e6b65;
-  --line: #ddd8ce;
-  --rust: #8f5b45;
-  --sage: #3d5c50;
-  --cream: #f7f5f0;
-}
-
 [data-theme="brown"] {
   --night: #14110e;
   --ink: #2a241f;
@@ -40,6 +28,18 @@
   --rust: #c45c3e;
   --sage: #2f6f5e;
   --cream: #fbf7f0;
+}
+
+[data-theme="ink"] {
+  --night: #111110;
+  --ink: #1f1e1c;
+  --paper: #f3f0ea;
+  --paper-2: #eae6de;
+  --muted: #6e6b65;
+  --line: #ddd8ce;
+  --rust: #8f5b45;
+  --sage: #3d5c50;
+  --cream: #f7f5f0;
 }
 
 [data-theme="olive"] {

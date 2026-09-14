@@ -6,19 +6,19 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
-const KEY = "buddy-theme";
+const KEY = "buddy-system-theme";
 
 export function isTheme(v: string | null | undefined): v is ThemeId {
   return THEMES.some((t) => t.id === v);
 }
 
 export function loadTheme(): ThemeId {
-  if (typeof window === "undefined") return "ink";
+  if (typeof window === "undefined") return "brown";
   try {
     const v = localStorage.getItem(KEY);
-    return isTheme(v) ? v : "ink";
+    return isTheme(v) ? v : "brown";
   } catch {
-    return "ink";
+    return "brown";
   }
 }
 
