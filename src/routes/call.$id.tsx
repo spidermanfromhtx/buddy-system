@@ -6,6 +6,7 @@ import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
 import { parseCallSearch } from "@/lib/call-search";
 import { getCall, setCallStatus } from "@/lib/listings";
+import { getCallElapsed } from "@/lib/call-timer";
 import { stopLocalStream } from "@/lib/media";
 import { loadProfile } from "@/lib/profile";
 import { pingBreak, playHangup } from "@/lib/ring";
@@ -33,6 +34,13 @@ function CallScreen() {
     refetchInterval: 3000,
   });
 
+  const timerQ = useQuery({
+    queryKey: ["call-elapsed", id],
+    queryFn: () => getCallElapsed({ data: { id } }),
+    enabled: !dummy,
+    refetchInterval: 1000,
+  });
+
   const name = search.name ?? (me && q.data?.callerId === me.id ? q.data?.calleeName : q.data?.callerName) ?? "Buddy";
   const color =
     search.color ?? (me && q.data?.callerId === me.id ? q.data?.calleeColor : q.data?.callerColor) ?? "#c45c3e";
@@ -46,9 +54,12 @@ function CallScreen() {
   const breakEvery = (me?.breakEveryMin ?? 30) * 60;
 
   useEffect(() => {
-    const t = setInterval(() => setSec((n) => n + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
+    if (dummy) {
+      const t = setInterval(() => setSec((n) => n + 1), 1000);
+      return () => clearInterval(t);
+    }
+    setSec(timerQ.data ?? 0);
+  }, [dummy, timerQ.data]);
 
   useEffect(() => {
     if (sec > 0 && breakEvery > 0 && sec - lastBreak.current >= breakEvery) {
