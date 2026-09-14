@@ -1,5 +1,5 @@
 export const NONE = "";
-export const HOUSE = "#8c1515";
+export const HOUSE = "#8C1515";
 export const HOUSE_INK = "#000000";
 export const HOUSE_CREAM = "#f5f4f2";
 
