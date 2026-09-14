@@ -65,6 +65,7 @@ function Card({
   extra,
   category,
   offerCamera,
+  yours,
   action,
 }: {
   name: string;
@@ -79,11 +80,12 @@ function Card({
   offerCamera?: boolean;
   ratingAvg?: number | null;
   ratingCount?: number;
+  yours?: boolean;
   action: ReactNode;
 }) {
   const due = formatDue(dueDate);
   const chips = [
-    name,
+    yours ? "your window" : "their window",
     urgent ? "urgent" : "not urgent",
     `${lengthMin} min`,
     offerCamera ? "camera on" : "camera off",
@@ -97,12 +99,15 @@ function Card({
         <Face name={name} color={color} photo={photo} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-tight">{task}</p>
+            <p className="min-w-0 flex-1 text-lg leading-snug tracking-tight">
+              <span className="font-semibold">{name}</span>
+              <span> {task}</span>
+            </p>
             <div className="shrink-0">{action}</div>
           </div>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {chips.map((c, i) => (
-              <Chip key={`${c}-${i}`} hot={c === "urgent"}>
+              <Chip key={`${c}-${i}`} hot={c === "urgent" || c === "your window"}>
                 {c}
               </Chip>
             ))}
@@ -694,15 +699,16 @@ function Feed() {
           scheduled.map((row) => (
             <Card
               key={row.id}
-              name={row.matchPeerName || row.name}
-              color={row.color}
-              photo={row.matchPeerName ? null : row.photo}
+              name={row.hostName || row.name}
+              color={row.hostColor || row.color}
+              photo={row.hostPhoto ?? row.photo}
               task={row.task}
               urgent={row.urgent}
               dueDate={row.dueDate}
               lengthMin={row.lengthMin}
               category={row.category}
               offerCamera={row.camera}
+              yours={(row.hostPeerId || row.peerId) === me.id}
               extra={[row.windowLabel, row.matchPeerName ? "matched" : "match pending"].filter(Boolean).join(" · ")}
               action={
                 <div className="flex flex-col items-end gap-1">
@@ -782,9 +788,10 @@ function Feed() {
                   lengthMin={row.lengthMin}
                   category={row.category}
                   offerCamera={row.camera}
+                  yours={isYou}
                   extra={
                     isYou
-                      ? `you · live${remain !== null ? ` · ${remain}m left` : ""}`
+                      ? `live${remain !== null ? ` · ${remain}m left` : ""}`
                       : row.school && tab === "all"
                         ? row.school
                         : undefined
@@ -882,15 +889,16 @@ function Feed() {
               queue.map((row) => (
                 <Card
                   key={row.id}
-                  name={row.name}
-                  color={row.color}
-                  photo={row.photo}
+                  name={row.hostName || row.name}
+                  color={row.hostColor || row.color}
+                  photo={row.hostPhoto ?? row.photo}
                   task={row.task}
                   urgent={row.urgent}
                   dueDate={row.dueDate}
                   lengthMin={row.lengthMin}
                   category={row.category}
                   offerCamera={row.camera}
+                  yours={(row.hostPeerId || row.peerId) === me.id}
                   extra={row.windowLabel ?? "window"}
                   ratingAvg={row.ratingAvg}
                   ratingCount={row.ratingCount}
