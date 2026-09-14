@@ -34,10 +34,10 @@ export function EmailCodeForm({
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const field = hero
-    ? "h-16 w-full rounded-2xl border-0 bg-paper/80 px-5 text-lg outline-none placeholder:text-muted"
+    ? "h-16 w-full rounded-2xl border border-white bg-white px-5 text-lg text-ink shadow-[0_8px_24px_rgba(15,58,68,0.08)] outline-none placeholder:text-muted"
     : onDark
       ? "mt-2 h-12 w-full rounded-2xl border-0 bg-paper/10 px-4 text-paper outline-none"
-      : "mt-2 h-12 w-full rounded-2xl border-0 bg-paper/80 px-4 font-normal outline-none";
+      : "mt-2 h-12 w-full rounded-2xl border border-white bg-white px-4 font-normal text-ink outline-none";
 
   async function sendCode() {
     const extra = validate?.(email);

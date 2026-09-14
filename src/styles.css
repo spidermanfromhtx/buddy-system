@@ -169,7 +169,13 @@
   textarea,
   optgroup,
   ::placeholder {
-    font-family: inherit;
+    font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  *,
+  *::before,
+  *::after {
+    font-family: "Syne", ui-sans-serif, system-ui, sans-serif;
   }
 
   h1,
