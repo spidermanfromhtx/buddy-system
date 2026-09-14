@@ -168,12 +168,17 @@ export function renderWebManifest(hostHeader) {
       name,
       short_name: name,
       id: "/",
-      start_url: "/feed",
+      start_url: "/",
       scope: "/",
       display: "standalone",
       background_color: "#f5f2ec",
       theme_color: "#f5f2ec",
       icons: [
+        {
+          src: "/apple-touch-icon.png",
+          sizes: "180x180",
+          type: "image/png",
+        },
         {
           src: "/icon-192.png",
           sizes: "192x192",
@@ -182,11 +187,6 @@ export function renderWebManifest(hostHeader) {
         {
           src: "/icon-512.png",
           sizes: "512x512",
-          type: "image/png",
-        },
-        {
-          src: "/apple-touch-icon.png",
-          sizes: "180x180",
           type: "image/png",
         },
       ],
