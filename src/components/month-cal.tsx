@@ -84,7 +84,7 @@ export function MonthCal({
               className={cn(
                 "h-11 w-full rounded-full text-sm",
                 past && "text-muted",
-                selected && "bg-ink text-paper",
+                selected && "bg-rust text-on-rust",
                 !selected && isToday && "border border-ink/30",
               )}
             >

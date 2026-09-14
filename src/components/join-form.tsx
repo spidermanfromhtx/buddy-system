@@ -58,15 +58,29 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   }
 
   return (
-    <main className="min-h-dvh bg-night text-paper [color-scheme:dark]">
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-10 px-6 py-16">
-        <div className="flex items-center justify-center gap-3">
-          <Mark onDark />
-          <h1 className="font-display text-5xl tracking-tight text-paper md:text-6xl">Buddy System</h1>
+    <main className="min-h-dvh bg-night text-paper [color-scheme:dark] md:grid md:grid-cols-2">
+      <section className="flex flex-col justify-between px-8 py-12 md:min-h-dvh md:px-12">
+        <div className="flex items-center gap-3">
+          <Mark onDark className="size-12" />
+          <p className="font-display text-2xl tracking-tight">Buddy System</p>
         </div>
+        <div className="mt-16 md:mt-0">
+          <h1 className="font-display text-5xl tracking-tight md:text-7xl">
+            The phone rings.
+            <br />
+            You work.
+            <br />
+            You hang up.
+          </h1>
+          <p className="mt-6 max-w-sm text-base text-paper/60">
+            Find a live buddy. Schedule a buddy. Be a buddy. 18+.
+          </p>
+        </div>
+      </section>
+      <section className="bg-paper px-6 py-12 text-ink md:flex md:min-h-dvh md:items-center md:px-12">
+        <div className="mx-auto w-full max-w-md">
         {!pending ? (
           <EmailCodeForm
-            onDark
             label="Email"
             hint="Log in or create an account. Gmail, Yahoo, school mail, whatever you use. We email a 6-digit code."
             placeholder="you@gmail.com"
@@ -86,32 +100,32 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
         ) : (
           <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
             <p className="text-base text-muted">Verified {pending.email}. Finish your profile.</p>
-            <label className="text-base text-muted" htmlFor="join-name">
+            <label className="text-base font-medium" htmlFor="join-name">
               Your name
               <input
                 id="join-name"
                 name="name"
-                className="mt-2 h-11 w-full rounded-xl border border-paper/15 bg-paper/5 px-3 text-paper outline-none"
+                className="mt-2 h-11 w-full rounded-xl border border-ink/10 bg-paper px-3 font-normal outline-none"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="nickname"
               />
             </label>
-            <label className="text-base text-muted" htmlFor="join-birthdate">
+            <label className="text-base font-medium" htmlFor="join-birthdate">
               Birthdate
               <input
                 id="join-birthdate"
                 type="date"
-                className="mt-2 h-11 w-full rounded-xl border border-paper/15 bg-paper/5 px-3 text-paper outline-none"
+                className="mt-2 h-11 w-full rounded-xl border border-ink/10 bg-paper px-3 font-normal outline-none"
                 value={birthdate}
                 onChange={(e) => {
                   setBirthdate(e.target.value);
                   if (err === "18") setErr("");
                 }}
               />
-              <span className="mt-2 block text-sm text-muted">You must be 18 or older.</span>
+              <span className="mt-2 block text-sm font-normal text-muted">You must be 18 or older.</span>
               {err === "18" ? (
-                <span className="mt-1 block text-sm text-rust">The birthday you entered is under 18.</span>
+                <span className="mt-1 block text-sm font-normal text-rust">The birthday you entered is under 18.</span>
               ) : null}
             </label>
             <fieldset>
@@ -119,7 +133,6 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
               <p className="mt-1 text-sm text-muted">Pick every category that fits. Matching uses this when you want someone similar or different.</p>
               <CategoryPicker
                 multiple
-                onDark
                 value={categories}
                 onChange={(ids) => {
                   setCategories(ids);
@@ -130,21 +143,17 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                 <span className="mt-2 block text-sm text-rust">Pick at least one.</span>
               ) : null}
             </fieldset>
-            <LookFields name={name} color={color} photo={photo} onColor={setColor} onPhoto={setPhoto} onDark />
-            <div className="flex flex-col gap-2 border-t border-paper/10 pt-6 text-base text-muted">
-              <p>Find a live buddy. Call someone who is open.</p>
-              <p>Schedule a buddy. Book a window. The call rings.</p>
-              <p>Be a buddy. Tap Go live with a task description.</p>
-            </div>
+            <LookFields name={name} color={color} photo={photo} onColor={setColor} onPhoto={setPhoto} />
             {err && err !== "18" && err !== "categories" ? (
               <p className="text-sm text-rust">{err === "name" ? "Name is required." : err}</p>
             ) : null}
-            <Btn type="submit" kind="paper" className="h-12 w-full" disabled={busy}>
+            <Btn type="submit" kind="fill" className="h-12 w-full" disabled={busy}>
               continue
             </Btn>
           </form>
         )}
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

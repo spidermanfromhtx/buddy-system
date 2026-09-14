@@ -87,36 +87,36 @@ function Incoming() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-12 text-center">
-      <div className="flex w-full max-w-md flex-col items-center px-6 py-12 md:px-10">
-        <p className="text-sm uppercase tracking-[0.2em] text-muted">
+    <main className="flex min-h-dvh flex-col bg-night text-paper">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+        <p className="text-xs uppercase tracking-[0.22em] text-paper/50">
           {dummy ? "demo ring" : ringingYou || bothRing ? "incoming" : "calling"}
         </p>
-        <div className="mt-8">
+        <div className="mt-10">
           <Face name={name} color={color} photo={photo} size="lg" ringing />
         </div>
-        <h1 className="mt-6 font-display text-4xl tracking-tight">{name}</h1>
-        <p className="mt-3 text-lg">{task}</p>
-        <p className="mt-2 text-base text-muted">
+        <h1 className="mt-8 font-display text-5xl tracking-tight">{name}</h1>
+        <p className="mt-3 text-lg text-paper/80">{task}</p>
+        <p className="mt-2 text-sm text-paper/50">
           {urgent ? "urgent · " : ""}
           {lengthMin} min
           {allowCamera ? " · camera available" : ""}
         </p>
         {allowCamera ? (
           <div className="mt-8 flex w-full gap-2">
-            <Btn type="button" kind={!useCam ? "ink" : "line"} className="flex-1" onClick={() => setUseCam(false)}>
+            <Btn type="button" kind={!useCam ? "fill" : "night"} className="flex-1" onClick={() => setUseCam(false)}>
               Audio only
             </Btn>
-            <Btn type="button" kind={useCam ? "ink" : "line"} className="flex-1" onClick={() => setUseCam(true)}>
+            <Btn type="button" kind={useCam ? "fill" : "night"} className="flex-1" onClick={() => setUseCam(true)}>
               Camera
             </Btn>
           </div>
         ) : null}
-        <div className="mt-10 flex w-full flex-col gap-2">
+        <div className="mt-12 flex w-full flex-col gap-2">
           <Btn kind="fill" className="h-14 w-full text-lg" onClick={() => void answer()}>
             Answer
           </Btn>
-          <Btn className="h-12 w-full" onClick={() => void decline()}>
+          <Btn kind="night" className="h-12 w-full" onClick={() => void decline()}>
             Decline
           </Btn>
         </div>
@@ -124,3 +124,4 @@ function Incoming() {
     </main>
   );
 }
+

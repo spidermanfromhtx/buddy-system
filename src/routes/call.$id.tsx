@@ -78,15 +78,18 @@ function CallScreen() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-12 text-center">
-      <div className="flex w-full max-w-md flex-col items-center px-6 py-12 md:px-10">
-        {useCam ? null : <Face name={name} color={color} photo={photo} size="lg" />}
-        <h1 className="mt-6 font-display text-4xl tracking-tight">{name}</h1>
-        <p className="mt-3 text-lg">{task}</p>
-        <p className="mt-4 font-display text-3xl tabular-nums text-muted">
-          {formatMmSs(sec)} / {formatMmSs(lengthMin * 60)}
-        </p>
-        <div className="mt-6 w-full">
+    <main className="flex min-h-dvh flex-col bg-night text-paper">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-between px-6 py-10">
+        <div className="flex w-full flex-col items-center text-center">
+          {useCam ? null : <Face name={name} color={color} photo={photo} size="lg" />}
+          <p className="mt-6 text-xs uppercase tracking-[0.2em] text-paper/50">{task}</p>
+          <h1 className="mt-2 font-display text-4xl tracking-tight">{name}</h1>
+          <p className="mt-6 font-display text-5xl tabular-nums">
+            {formatMmSs(sec)}
+          </p>
+          <p className="mt-1 text-sm text-paper/50">{formatMmSs(lengthMin * 60)}</p>
+        </div>
+        <div className="w-full">
           {dummy && me ? (
             <AudioCall
               room="loop"
@@ -107,25 +110,25 @@ function CallScreen() {
               onCamera={setUseCam}
             />
           ) : (
-            <p className="text-sm text-muted">connecting</p>
+            <p className="text-center text-sm text-paper/50">connecting</p>
           )}
-        </div>
-        {breakOn ? (
-          <div className="mt-8 w-full rounded-2xl bg-paper-2 p-5 text-ink">
-            <p className="font-display text-lg">stretch</p>
-            <p className="mt-1 text-sm">stand up. 30 seconds. then back.</p>
-            <Btn kind="ink" className="mt-4 h-10 w-full" onClick={() => setBreakOn(false)}>
-              still working
+          {breakOn ? (
+            <div className="mt-6 rounded-3xl bg-paper p-5 text-ink">
+              <p className="font-display text-lg">stretch</p>
+              <p className="mt-1 text-sm text-muted">stand up. 30 seconds. then back.</p>
+              <Btn kind="fill" className="mt-4 h-10 w-full" onClick={() => setBreakOn(false)}>
+                still working
+              </Btn>
+            </div>
+          ) : null}
+          <div className="mt-8 flex flex-col gap-2">
+            <Btn kind="fill" className="h-14 w-full text-lg" onClick={() => void hangup()}>
+              Hang up
+            </Btn>
+            <Btn kind="night" className="w-full" onClick={() => setBreakOn(true)}>
+              stretch ping
             </Btn>
           </div>
-        ) : null}
-        <div className="mt-10 flex w-full flex-col gap-2">
-          <Btn kind="fill" className="h-14 w-full text-lg" onClick={() => void hangup()}>
-            Hang up
-          </Btn>
-          <Btn className="w-full" onClick={() => setBreakOn(true)}>
-            stretch ping
-          </Btn>
         </div>
       </div>
     </main>

@@ -16,13 +16,13 @@ export function Face({
   const dim = size === "lg" ? "size-28" : size === "sm" ? "size-12" : "size-16";
   return (
     <div
-      className={cn("relative shrink-0 overflow-hidden rounded-full", dim)}
+      className={cn("relative shrink-0 overflow-hidden rounded-2xl", dim)}
       aria-label={name}
       title={name}
       style={{ backgroundColor: color }}
     >
       {ringing ? (
-        <span className="absolute inset-0 animate-ping rounded-full bg-rust/40" />
+        <span className="absolute inset-0 animate-ping rounded-2xl bg-rust/40" />
       ) : null}
       {photo ? (
         <img src={photo} alt="" className="relative size-full object-cover" />

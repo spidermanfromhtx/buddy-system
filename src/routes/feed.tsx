@@ -36,7 +36,7 @@ function minutesLeft(iso: string | null) {
   return Math.max(0, Math.ceil(ms / 60_000));
 }
 
-function Row({
+function Card({
   name,
   color,
   photo,
@@ -62,20 +62,35 @@ function Row({
   action: ReactNode;
 }) {
   const due = formatDue(dueDate);
+  const bits = [
+    `${lengthMin} min`,
+    category ? categoryLabel(category) : "",
+    offerCamera ? "camera" : "",
+    due,
+    extra,
+  ].filter(Boolean);
   return (
-    <li className="flex items-center gap-4 border-b border-ink/10 py-6">
-      <Face name={name} color={color} photo={photo} />
-      <div className="min-w-0 flex-1">
-        <p className="text-lg leading-snug">{task}</p>
-        <p className="mt-1 text-sm text-muted">
-          {name} · {urgent ? "urgent" : "not urgent"} · {lengthMin} min
-          {category ? ` · ${categoryLabel(category)}` : ""}
-          {offerCamera ? " · camera on" : ""}
-          {due ? ` · ${due}` : ""}
-          {extra ? ` · ${extra}` : ""}
-        </p>
+    <li className="flex flex-col rounded-3xl bg-paper-2 p-5">
+      <div className="flex items-start gap-4">
+        <Face name={name} color={color} photo={photo} />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-2xl leading-tight tracking-tight">{task}</p>
+          <p className="mt-1 text-sm text-muted">{name}</p>
+        </div>
+        {urgent ? (
+          <span className="shrink-0 rounded-full bg-rust px-2.5 py-1 text-xs font-medium text-on-rust">urgent</span>
+        ) : null}
       </div>
-      {action}
+      {bits.length ? (
+        <p className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
+          {bits.map((b) => (
+            <span key={b} className="rounded-full bg-paper px-2.5 py-1">
+              {b}
+            </span>
+          ))}
+        </p>
+      ) : null}
+      <div className="mt-4">{action}</div>
     </li>
   );
 }
@@ -98,6 +113,7 @@ function Feed() {
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
   const [feedCat, setFeedCat] = useState("");
+  const [pane, setPane] = useState<"live" | "book">("live");
 
   useEffect(() => {
     const p = loadProfile();
@@ -409,11 +425,9 @@ function Feed() {
 
   const bookFields = (prefix: string) => (
     <div id={`book-${prefix}`} className="flex flex-col">
-      <div className="mb-12">
-        <p className="font-display text-4xl tracking-tight md:text-5xl">Book a window</p>
-        <p className="mt-3 text-base text-muted">Pick a day. We match you. The call rings.</p>
-      </div>
-      <div className="flex flex-col gap-8">
+      <p className="font-display text-3xl tracking-tight">Book</p>
+      <p className="mt-2 text-sm text-muted">Pick a day. We match you. The call rings.</p>
+      <div className="mt-6 flex flex-col gap-6">
         <div>
           <p className="text-sm font-medium">Date</p>
           <p className="mt-1 text-xs text-muted">Tap a day. Past days are closed.</p>
@@ -518,410 +532,364 @@ function Feed() {
   );
 
   const liveOn = Boolean(mine);
-  const actions = (
-    <>
-      <Btn kind={liveOn ? "fill" : "line"} onClick={() => setSheet("open")}>
-        Go live
-      </Btn>
-      <Btn className="md:hidden" onClick={() => setSheet("book")}>
-        Book
-      </Btn>
-      <Btn kind={liveOn ? "line" : "fill"} onClick={closeMe}>
-        End live
-      </Btn>
-    </>
+
+  const compose = (
+    <div className="rounded-3xl bg-night p-4 text-paper">
+      <input
+        placeholder="finish the email"
+        className="h-12 w-full bg-transparent text-lg text-paper outline-none placeholder:text-paper/40"
+        value={task}
+        onChange={(e) => setTask(e.target.value)}
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={urgent ? "rounded-full bg-rust px-3 py-1 text-sm text-on-rust" : "rounded-full bg-paper/10 px-3 py-1 text-sm"}
+          onClick={() => setUrgent((v) => !v)}
+        >
+          urgent
+        </button>
+        <button
+          type="button"
+          className={camera ? "rounded-full bg-rust px-3 py-1 text-sm text-on-rust" : "rounded-full bg-paper/10 px-3 py-1 text-sm"}
+          onClick={() => setCamera((v) => !v)}
+        >
+          camera
+        </button>
+        <span className="rounded-full bg-paper/10 px-3 py-1 text-sm">{lengthMin} min</span>
+        <input
+          type="range"
+          min={5}
+          max={cap}
+          value={lengthMin}
+          className="min-w-24 flex-1"
+          onChange={(e) => setLengthMin(Number(e.target.value))}
+        />
+        {liveOn ? (
+          <Btn kind="paper" className="ml-auto h-11" onClick={closeMe}>
+            End live
+          </Btn>
+        ) : (
+          <Btn kind="fill" className="ml-auto h-11" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
+            {goOpen.isPending ? "…" : "Go live"}
+          </Btn>
+        )}
+      </div>
+      {note ? <p className="mt-3 text-sm text-paper/70">{note}</p> : null}
+    </div>
   );
 
-  return (
-    <main className="flex min-h-dvh flex-col px-6 pb-28 pt-10 text-left md:px-10 md:pb-16">
-      <div className="mx-auto grid w-full max-w-7xl items-start gap-12 md:grid-cols-2 md:gap-12 lg:gap-16 xl:gap-24">
-        <section className="min-w-0">
-      <header className="mb-12 flex flex-col items-start">
-        <div className="flex items-center gap-3">
-          <Mark />
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Buddy System</h1>
-        </div>
-        <p className="mt-3 max-w-md text-base text-muted">
-          Find a live buddy. Schedule a buddy. Be a buddy.
-        </p>
-        <p className="mt-3 text-sm text-muted">
-          {plus
-            ? "Plus. Unlimited sessions. Calls up to 2 hours."
-            : limits
-              ? `${left} of ${FREE_SESSIONS} free sessions left this week. Free calls are ${FREE_MAX_MIN} minutes.`
-              : "Limits are off while we test."}
-        </p>
-        <div className="mt-8 hidden flex-wrap gap-2 md:flex">{actions}</div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Btn className="text-sm" onClick={() => void share()}>
-            Share
-          </Btn>
-          <Btn className="text-sm" onClick={() => setSheet("settings")}>
-            Settings
-          </Btn>
-        </div>
-        <div className="mt-8 flex flex-wrap gap-2">
-          <Btn type="button" kind={tab === "all" ? "fill" : "line"} onClick={() => setTab("all")}>
-            Main feed
-          </Btn>
-          <Btn type="button" kind={tab === "school" ? "fill" : "line"} onClick={() => setTab("school")}>
-            University feed
-          </Btn>
-        </div>
-        {!(tab === "school" && !me.schoolVerified) ? (
-          <div className="mt-4">
-            <p className="text-sm text-muted">Filter by category, or All to see everyone.</p>
-            <CategoryPicker allowAll value={feedCat ? [feedCat] : []} onChange={(ids) => setFeedCat(ids[0] ?? "")} />
-          </div>
-        ) : null}
-      </header>
-
+  const liveBoard = (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex gap-6 border-b border-ink/10">
+        <button
+          type="button"
+          className={`border-b-2 pb-3 text-sm font-medium ${tab === "all" ? "border-rust text-ink" : "border-transparent text-muted"}`}
+          onClick={() => setTab("all")}
+        >
+          Main
+        </button>
+        <button
+          type="button"
+          className={`border-b-2 pb-3 text-sm font-medium ${tab === "school" ? "border-rust text-ink" : "border-transparent text-muted"}`}
+          onClick={() => setTab("school")}
+        >
+          University
+        </button>
+      </div>
       {tab === "school" && !me.schoolVerified ? (
-        <div className="mb-8 flex max-w-md flex-col gap-4">
-          <p className="font-display text-3xl tracking-tight">University feed</p>
-          <p className="text-base text-muted">
-            Add a school email in Settings. We send a 6-digit code. Then this feed only shows people from that campus.
+        <div className="mt-8 max-w-md">
+          <p className="font-display text-3xl tracking-tight">Your campus</p>
+          <p className="mt-3 text-base text-muted">
+            Add a school email in Settings. We send a 6-digit code. Then this only shows people from that campus.
           </p>
-          <Btn kind="fill" className="self-start" onClick={() => setSheet("settings")}>
+          <Btn kind="fill" className="mt-6" onClick={() => setSheet("settings")}>
             Open settings
           </Btn>
         </div>
       ) : (
         <>
-      <ul className="flex flex-col border-t border-ink/10">
-        {live.length === 0 ? (
-          <li className="py-10 text-base text-muted">
-            {tab === "school"
-              ? `Nobody from ${me.school} is live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Go live or book a window.`
-              : `Nobody live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Go live or book a window.`}
-          </li>
-        ) : null}
-        {live.map((row) => {
-          const isYou = row.peerId === me.id;
-          return (
-            <Row
-              key={row.id}
-              name={row.name}
-              color={row.color}
-              photo={isYou ? me.photo : row.photo}
-              task={row.task}
-              urgent={row.urgent}
-              dueDate={row.dueDate}
-              lengthMin={row.lengthMin}
-              category={row.category}
-              offerCamera={row.camera}
-              extra={
-                isYou
-                  ? `you · live${remain !== null ? ` · ${remain}m left` : ""}`
-                  : row.school && tab === "all"
-                    ? row.school
-                    : undefined
-              }
-              action={
-                isYou ? (
-                  <Btn className="whitespace-nowrap" onClick={() => refreshLive.mutate()}>
-                    still open
-                  </Btn>
-                ) : (
-                  <Btn kind="fill" className="min-w-16" onClick={() => void call(row)}>
-                    Call
-                  </Btn>
-                )
-              }
-            />
-          );
-        })}
-      </ul>
-
-      <div className="mt-14">
-        <p className="mb-3 text-sm uppercase tracking-[0.18em] text-muted">scheduled</p>
-        <ul className="flex flex-col border-t border-ink/10">
-          {scheduled.length === 0 ? (
-            <li className="py-8 text-base text-muted">No windows booked yet. Use Book a window.</li>
-          ) : null}
-          {scheduled.map((row) => (
-            <Row
-              key={row.id}
-              name={row.name}
-              color={row.color}
-              photo={row.photo}
-              task={row.task}
-              urgent={row.urgent}
-              dueDate={row.dueDate}
-              lengthMin={row.lengthMin}
-              category={row.category}
-              offerCamera={row.camera}
-              extra={
-                [
-                  row.windowLabel,
-                  row.matchPeerName ? `matched · ${row.matchPeerName}` : "waiting for a match",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              }
-              action={<span className="text-sm text-muted">window</span>}
-            />
-          ))}
-        </ul>
-        {note && tab !== "school" ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
-        {note && tab === "school" && me.school ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
-      </div>
+          <div className="mt-5">
+            <CategoryPicker allowAll value={feedCat ? [feedCat] : []} onChange={(ids) => setFeedCat(ids[0] ?? "")} />
+          </div>
+          <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {live.length === 0 ? (
+              <li className="rounded-3xl bg-paper-2 p-8 text-base text-muted sm:col-span-2">
+                {tab === "school"
+                  ? `Nobody from ${me.school} is live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}.`
+                  : `Nobody live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Write a one-liner and go live.`}
+              </li>
+            ) : null}
+            {live.map((row) => {
+              const isYou = row.peerId === me.id;
+              return (
+                <Card
+                  key={row.id}
+                  name={row.name}
+                  color={row.color}
+                  photo={isYou ? me.photo : row.photo}
+                  task={row.task}
+                  urgent={row.urgent}
+                  dueDate={row.dueDate}
+                  lengthMin={row.lengthMin}
+                  category={row.category}
+                  offerCamera={row.camera}
+                  extra={
+                    isYou
+                      ? `you · live${remain !== null ? ` · ${remain}m left` : ""}`
+                      : row.school && tab === "all"
+                        ? row.school
+                        : undefined
+                  }
+                  action={
+                    isYou ? (
+                      <Btn className="w-full" onClick={() => refreshLive.mutate()}>
+                        still open
+                      </Btn>
+                    ) : (
+                      <Btn kind="fill" className="w-full" onClick={() => void call(row)}>
+                        Call
+                      </Btn>
+                    )
+                  }
+                />
+              );
+            })}
+          </ul>
         </>
       )}
+    </div>
+  );
+
+  return (
+    <main className="flex min-h-dvh flex-col bg-paper text-ink">
+      <header className="flex items-center justify-between gap-4 px-5 py-4 md:px-8">
+        <div className="flex items-center gap-3">
+          <Mark className="size-10" />
+          <div>
+            <h1 className="font-display text-2xl tracking-tight">Buddy System</h1>
+            <p className="text-xs text-muted">
+              {plus ? "Plus" : limits ? `${left} left this week` : "R&D"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full bg-paper-2 p-1 md:hidden">
+            <button
+              type="button"
+              className={`rounded-full px-3 py-1.5 text-sm ${pane === "live" ? "bg-rust text-on-rust" : "text-muted"}`}
+              onClick={() => setPane("live")}
+            >
+              Live
+            </button>
+            <button
+              type="button"
+              className={`rounded-full px-3 py-1.5 text-sm ${pane === "book" ? "bg-rust text-on-rust" : "text-muted"}`}
+              onClick={() => setPane("book")}
+            >
+              Book
+            </button>
+          </div>
+          <Btn className="h-10 text-sm" onClick={() => void share()}>
+            Share
+          </Btn>
+          <button type="button" onClick={() => setSheet("settings")} aria-label="Settings">
+            <Face name={me.name} color={me.color} photo={me.photo} size="sm" />
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-0 md:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+        <section className={`flex min-h-0 flex-col px-5 pb-6 md:px-8 ${pane === "book" ? "hidden md:flex" : "flex"}`}>
+          {liveBoard}
+          <div className="mt-6">{compose}</div>
         </section>
-        <aside className="hidden min-w-0 md:block md:border-l md:border-ink/10 md:pl-8 lg:pl-12 xl:pl-16">
+        <aside
+          className={`min-w-0 overflow-y-auto bg-paper-2 px-5 py-6 md:px-8 ${pane === "live" ? "hidden md:block" : "block"}`}
+        >
           {bookFields("side")}
+          <div className="mt-10">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">Your windows</p>
+            <ul className="mt-4 flex flex-col gap-3">
+              {scheduled.length === 0 ? (
+                <li className="text-sm text-muted">None yet.</li>
+              ) : (
+                scheduled.map((row) => (
+                  <Card
+                    key={row.id}
+                    name={row.name}
+                    color={row.color}
+                    photo={row.photo}
+                    task={row.task}
+                    urgent={row.urgent}
+                    dueDate={row.dueDate}
+                    lengthMin={row.lengthMin}
+                    category={row.category}
+                    offerCamera={row.camera}
+                    extra={[row.windowLabel, row.matchPeerName ? `matched · ${row.matchPeerName}` : "waiting"]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    action={<span className="text-sm text-muted">window</span>}
+                  />
+                ))
+              )}
+            </ul>
+          </div>
         </aside>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 flex justify-between gap-2 border-t border-ink/10 bg-paper/90 px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
-        {actions}
-      </nav>
-
-      {sheet !== "none" ? (
-        <div
-          className={
-            sheet === "book"
-              ? "fixed inset-0 z-30 flex items-end bg-night/50 md:hidden"
-              : "fixed inset-0 z-30 flex items-end bg-night/50 md:items-center md:justify-center"
-          }
-          onClick={() => setSheet("none")}
-        >
+      {sheet === "settings" ? (
+        <div className="fixed inset-0 z-30 flex items-end bg-night/50 md:items-center md:justify-center" onClick={() => setSheet("none")}>
           <div
-            className="w-full max-h-dvh overflow-y-auto rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink shadow-xl shadow-night/20 md:max-w-lg md:rounded-3xl md:p-10"
+            className="w-full max-h-dvh overflow-y-auto rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:max-w-lg md:rounded-3xl md:p-10"
             onClick={(e) => e.stopPropagation()}
           >
-            {sheet === "settings" ? (
-              <div className="flex flex-col gap-6">
-                <p className="font-display text-xl">Settings</p>
-                <LookFields
-                  name={me.name}
-                  color={me.color}
-                  photo={me.photo}
-                  onColor={(c) => {
-                    const next = saveProfile({ ...me, color: c });
+            <div className="flex flex-col gap-6">
+              <p className="font-display text-xl">Settings</p>
+              <LookFields
+                name={me.name}
+                color={me.color}
+                photo={me.photo}
+                onColor={(c) => {
+                  const next = saveProfile({ ...me, color: c });
+                  setMe(next);
+                  void saveAccount({ data: { token: me.sessionToken, color: c } });
+                  if (mine) {
+                    void upsertLive({
+                      data: {
+                        id: mine.id,
+                        peerId: me.id,
+                        name: next.name,
+                        color: next.color,
+                        photo: next.photo ?? undefined,
+                        task: mine.task,
+                        urgent: mine.urgent,
+                        lengthMin: mine.lengthMin,
+                        camera: mine.camera,
+                        dueDate: mine.dueDate ?? undefined,
+                        school: next.school ?? undefined,
+                        category: mine.category ?? undefined,
+                      },
+                    }).then(() => q.refetch());
+                  }
+                }}
+                onPhoto={(p) => {
+                  const next = saveProfile({ ...me, photo: p });
+                  setMe(next);
+                  void saveAccount({ data: { token: me.sessionToken, photo: p } });
+                  if (mine) {
+                    void upsertLive({
+                      data: {
+                        id: mine.id,
+                        peerId: me.id,
+                        name: next.name,
+                        color: next.color,
+                        photo: next.photo ?? undefined,
+                        task: mine.task,
+                        urgent: mine.urgent,
+                        lengthMin: mine.lengthMin,
+                        camera: mine.camera,
+                        dueDate: mine.dueDate ?? undefined,
+                        school: next.school ?? undefined,
+                        category: mine.category ?? undefined,
+                      },
+                    }).then(() => q.refetch());
+                  }
+                }}
+              />
+              <p className="text-base text-muted">Account email: {me.email}</p>
+              <fieldset>
+                <legend className="text-base font-medium">Your categories</legend>
+                <p className="mt-1 text-sm text-muted">What you use this for. Matching uses this.</p>
+                <CategoryPicker
+                  multiple
+                  value={me.categories}
+                  onChange={(ids) => {
+                    const next = saveProfile({ ...me, categories: ids });
                     setMe(next);
-                    void saveAccount({ data: { token: me.sessionToken, color: c } });
-                    if (mine) {
-                      void upsertLive({
-                        data: {
-                          id: mine.id,
-                          peerId: me.id,
-                          name: next.name,
-                          color: next.color,
-                          photo: next.photo ?? undefined,
-                          task: mine.task,
-                          urgent: mine.urgent,
-                          lengthMin: mine.lengthMin,
-                          camera: mine.camera,
-                          dueDate: mine.dueDate ?? undefined,
-                          school: next.school ?? undefined,
-                          category: mine.category ?? undefined,
-                        },
-                      }).then(() => q.refetch());
-                    }
-                  }}
-                  onPhoto={(p) => {
-                    const next = saveProfile({ ...me, photo: p });
-                    setMe(next);
-                    void saveAccount({ data: { token: me.sessionToken, photo: p } });
-                    if (mine) {
-                      void upsertLive({
-                        data: {
-                          id: mine.id,
-                          peerId: me.id,
-                          name: next.name,
-                          color: next.color,
-                          photo: next.photo ?? undefined,
-                          task: mine.task,
-                          urgent: mine.urgent,
-                          lengthMin: mine.lengthMin,
-                          camera: mine.camera,
-                          dueDate: mine.dueDate ?? undefined,
-                          school: next.school ?? undefined,
-                          category: mine.category ?? undefined,
-                        },
-                      }).then(() => q.refetch());
-                    }
+                    if (ids[0] && !category) setCategory(ids[0]);
+                    void saveAccount({ data: { token: me.sessionToken, categories: ids } });
                   }}
                 />
-                <p className="text-base text-muted">Account email: {me.email}</p>
-                <fieldset>
-                  <legend className="text-base font-medium">Your categories</legend>
-                  <p className="mt-1 text-sm text-muted">What you use this for. Matching uses this.</p>
-                  <CategoryPicker
-                    multiple
-                    value={me.categories}
-                    onChange={(ids) => {
-                      const next = saveProfile({ ...me, categories: ids });
-                      setMe(next);
-                      if (ids[0] && !category) setCategory(ids[0]);
-                      void saveAccount({ data: { token: me.sessionToken, categories: ids } });
-                    }}
-                  />
-                </fieldset>
-                {me.schoolVerified && me.school ? (
-                  <p className="text-base text-muted">Verified campus: {me.school}</p>
-                ) : (
-                  <CampusVerify peerId={me.id} onVerified={onCampusVerified} />
-                )}
-                <label className="text-sm font-medium" htmlFor="break-every">
-                  Break reminder
-                  <p className="mt-1 text-xs font-normal text-muted">Ping both of you every {me.breakEveryMin} minutes.</p>
-                  <input
-                    id="break-every"
-                    type="range"
-                    min={1}
-                    max={60}
-                    value={me.breakEveryMin}
-                    className="mt-2 w-full"
-                    onChange={(e) => {
-                      const next = saveProfile({ ...me, breakEveryMin: Number(e.target.value) });
-                      setMe(next);
-                      void saveAccount({
-                        data: { token: me.sessionToken, breakEveryMin: Number(e.target.value) },
-                      });
-                    }}
-                  />
-                </label>
-                <p className="text-xs text-muted">Audio is the default. Camera is optional. In a car, keep camera off.</p>
-                <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
-                  <p className="font-display text-xl">Plan</p>
-                  <label className="flex h-11 items-center gap-2 text-sm font-medium">
-                    <input
-                      type="checkbox"
-                      checked={limits}
-                      onChange={(e) => {
-                        const on = e.target.checked;
-                        const next = saveProfile({ ...me, limitsOn: on });
-                        setMe(next);
-                        void saveAccount({ data: { token: me.sessionToken, limitsOn: on } });
-                      }}
-                    />
-                    Session limits
-                  </label>
-                  <p className="text-sm text-muted">
-                    Off for R&D. On = {FREE_SESSIONS} free {FREE_MAX_MIN}-minute sessions a week.
-                  </p>
-                  {plus ? (
-                    <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>
-                  ) : limits ? (
-                    <>
-                      <p className="text-base text-muted">
-                        {left} of {FREE_SESSIONS} free 45-minute sessions left this week. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
-                      </p>
-                      <Btn
-                        kind="fill"
-                        onClick={() => {
-                          void startPlusCheckout({ data: { token: me.sessionToken } }).then((res) => {
-                            if (!res.ok) {
-                              setNote(res.error);
-                              return;
-                            }
-                            window.location.href = res.url;
-                          });
-                        }}
-                      >
-                        Get Plus · $5 a month
-                      </Btn>
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted">Plus stays off until limits are on.</p>
-                  )}
-                </div>
-                <Btn
-                  onClick={() => {
-                    clearProfile();
-                    void nav({ to: "/join" });
+              </fieldset>
+              {me.schoolVerified && me.school ? (
+                <p className="text-base text-muted">Verified campus: {me.school}</p>
+              ) : (
+                <CampusVerify peerId={me.id} onVerified={onCampusVerified} />
+              )}
+              <label className="text-sm font-medium" htmlFor="break-every">
+                Break reminder
+                <p className="mt-1 text-xs font-normal text-muted">Ping both of you every {me.breakEveryMin} minutes.</p>
+                <input
+                  id="break-every"
+                  type="range"
+                  min={1}
+                  max={60}
+                  value={me.breakEveryMin}
+                  className="mt-2 w-full"
+                  onChange={(e) => {
+                    const next = saveProfile({ ...me, breakEveryMin: Number(e.target.value) });
+                    setMe(next);
+                    void saveAccount({
+                      data: { token: me.sessionToken, breakEveryMin: Number(e.target.value) },
+                    });
                   }}
-                >
-                  Sign out
-                </Btn>
-              </div>
-            ) : sheet === "book" ? (
-              bookFields("sheet")
-            ) : (
-              <div className="flex flex-col gap-6">
-                <p className="font-display text-xl">Go live</p>
-                <label className="flex flex-col gap-1 text-sm font-medium" htmlFor="task-input">
-                  Task description
-                  <input
-                    id="task-input"
-                    placeholder="finish the email"
-                    className="h-11 rounded-xl border border-ink/10 bg-paper px-3 font-normal outline-none"
-                    value={task}
-                    onChange={(e) => setTask(e.target.value)}
-                  />
-                  <span className="text-xs font-normal text-muted">One line. Not an assignment.</span>
-                </label>
-                <fieldset>
-                  <legend className="text-sm font-medium">Category</legend>
-                  <p className="mt-1 text-xs text-muted">What kind of task this is.</p>
-                  <CategoryPicker value={category ? [category] : []} onChange={(ids) => setCategory(ids[0] ?? "")} />
-                </fieldset>
+                />
+              </label>
+              <p className="text-xs text-muted">Audio is the default. Camera is optional. In a car, keep camera off.</p>
+              <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
+                <p className="font-display text-xl">Plan</p>
                 <label className="flex h-11 items-center gap-2 text-sm font-medium">
-                  <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
-                  This is urgent
-                </label>
-                <label className="text-sm font-medium" htmlFor="open-length">
-                  Call length
-                  <p className="text-xs font-normal text-muted">{lengthMin} minutes</p>
                   <input
-                    id="open-length"
-                    type="range"
-                    min={5}
-                    max={cap}
-                    value={lengthMin}
-                    className="w-full"
-                    onChange={(e) => setLengthMin(Number(e.target.value))}
+                    type="checkbox"
+                    checked={limits}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      const next = saveProfile({ ...me, limitsOn: on });
+                      setMe(next);
+                      void saveAccount({ data: { token: me.sessionToken, limitsOn: on } });
+                    }}
                   />
+                  Session limits
                 </label>
-                <div>
-                  <p className="text-sm font-medium">Due date</p>
-                  <p className="mt-1 text-xs text-muted">Optional. Only if this task has one.</p>
-                  {dueDate ? (
-                    <>
-                      <div className="mt-2">
-                        <MonthCal value={dueDate} onChange={setDueDate} />
-                      </div>
-                      <Btn type="button" className="mt-2" onClick={() => setDueDate("")}>
-                        Clear due date
-                      </Btn>
-                    </>
-                  ) : (
-                    <Btn type="button" className="mt-2" onClick={() => setDueDate(todayIso())}>
-                      Add due date
-                    </Btn>
-                  )}
-                </div>
-                <fieldset>
-                  <legend className="text-sm font-medium">Camera</legend>
-                  <p className="mt-1 text-xs text-muted">On or off for this call. Phone will ask for mic when you go live.</p>
-                  <div className="mt-2 flex gap-2">
+                <p className="text-sm text-muted">
+                  Off for R&D. On = {FREE_SESSIONS} free {FREE_MAX_MIN}-minute sessions a week.
+                </p>
+                {plus ? (
+                  <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours.</p>
+                ) : limits ? (
+                  <>
+                    <p className="text-base text-muted">
+                      {left} of {FREE_SESSIONS} free 45-minute sessions left this week. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
+                    </p>
                     <Btn
-                      type="button"
-                      kind={!camera ? "ink" : "line"}
-                      className="flex-1"
-                      onClick={() => setCamera(false)}
+                      kind="fill"
+                      onClick={() => {
+                        void startPlusCheckout({ data: { token: me.sessionToken } }).then((res) => {
+                          if (!res.ok) {
+                            setNote(res.error);
+                            return;
+                          }
+                          window.location.href = res.url;
+                        });
+                      }}
                     >
-                      Off
+                      Get Plus · $5 a month
                     </Btn>
-                    <Btn
-                      type="button"
-                      kind={camera ? "ink" : "line"}
-                      className="flex-1"
-                      onClick={() => setCamera(true)}
-                    >
-                      On
-                    </Btn>
-                  </div>
-                </fieldset>
-                {note && sheet === "open" ? <p className="text-sm text-rust">{note}</p> : null}
-                <Btn kind="fill" className="h-12 w-full" disabled={goOpen.isPending} onClick={() => goOpen.mutate()}>
-                  {goOpen.isPending ? "Going live…" : "Go live"}
-                </Btn>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted">Plus stays off until limits are on.</p>
+                )}
               </div>
-            )}
+              <Btn
+                onClick={() => {
+                  clearProfile();
+                  void nav({ to: "/join" });
+                }}
+              >
+                Sign out
+              </Btn>
+            </div>
           </div>
         </div>
       ) : null}
