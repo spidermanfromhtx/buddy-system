@@ -54,6 +54,7 @@ export async function sendAccountCode(data: { email: string }) {
     await sendCodeEmail(email, code, "account");
   } catch (err) {
     console.error("account email failed", err);
+    await sql.query(`DELETE FROM account_codes WHERE email = $1`, [email]).catch(() => undefined);
     return { ok: false as const, error: mailErrorMessage(err) };
   }
   return { ok: true as const };

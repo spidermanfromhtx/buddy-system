@@ -18,8 +18,8 @@ export function sixDigit() {
 export function mailErrorMessage(err: unknown) {
   const msg = err instanceof Error ? err.message : "";
   if (msg === "not-configured") return "Email sending is not connected yet.";
-  if (msg === "resend-own-email") {
-    return "For now, codes only arrive at the email on the Resend account. Use that inbox.";
+  if (msg === "resend-own-email" || msg === "resend-domain") {
+    return "Resend will only deliver to the email on your Resend account until we add a real domain. Use that exact inbox.";
   }
   return "Could not send the email. Check the address and try again.";
 }
@@ -46,6 +46,7 @@ export async function sendCodeEmail(to: string, code: string, kind: "account" | 
   if (res.ok) return;
   const body = await res.text().catch(() => "");
   console.error("resend failed", res.status, body);
-  if (res.status === 403 && /own email/i.test(body)) throw new Error("resend-own-email");
+  if (/own email/i.test(body)) throw new Error("resend-own-email");
+  if (/not verified|verify your domain|resend\.dev/i.test(body)) throw new Error("resend-domain");
   throw new Error("email-failed");
 }

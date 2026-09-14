@@ -32,6 +32,7 @@ export async function sendCampusCode(data: { email: string; peerId: string }) {
     await sendCodeEmail(email, code, "campus");
   } catch (err) {
     console.error("campus email failed", err);
+    await sql.query(`DELETE FROM campus_codes WHERE email = $1`, [email]).catch(() => undefined);
     return { ok: false as const, error: mailErrorMessage(err) };
   }
   return { ok: true as const };
