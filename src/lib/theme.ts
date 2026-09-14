@@ -1,11 +1,11 @@
 export const COLOR_THEMES = [
-  { id: "clay", color: "#c45c3e", label: "Clay" },
-  { id: "sage", color: "#2f6f5e", label: "Sage" },
-  { id: "sea", color: "#3d6ea8", label: "Sea" },
-  { id: "gold", color: "#c9a227", label: "Gold" },
-  { id: "plum", color: "#7a3e5c", label: "Plum" },
-  { id: "slate", color: "#4a7c8c", label: "Slate" },
-  { id: "moss", color: "#5c6b3a", label: "Moss" },
+  { id: "coral", color: "#e56b5a", label: "Coral" },
+  { id: "pink", color: "#e05a84", label: "Pink" },
+  { id: "lavender", color: "#8b7cc8", label: "Lavender" },
+  { id: "blue", color: "#4a7fd4", label: "Blue" },
+  { id: "sky", color: "#4aa3c4", label: "Sky" },
+  { id: "apricot", color: "#e8894a", label: "Apricot" },
+  { id: "berry", color: "#c45a78", label: "Berry" },
 ] as const;
 
 export type ThemeId = (typeof COLOR_THEMES)[number]["id"];
@@ -13,18 +13,25 @@ export type ThemeId = (typeof COLOR_THEMES)[number]["id"];
 export const COLORS = COLOR_THEMES.map((t) => t.color);
 
 const OLD: Record<string, string> = {
-  "#c45c3e": "#c45c3e",
-  "#b85c38": "#c45c3e",
-  "#8a4a32": "#c45c3e",
-  "#8b5e3c": "#c45c3e",
-  "#a67c52": "#c9a227",
-  "#2f6f5e": "#2f6f5e",
-  "#3d6ea8": "#3d6ea8",
-  "#3f5f8a": "#3d6ea8",
-  "#c9a227": "#c9a227",
-  "#7a3e5c": "#7a3e5c",
-  "#4a7c8c": "#4a7c8c",
-  "#5c6b3a": "#5c6b3a",
+  "#e56b5a": "#e56b5a",
+  "#c45c3e": "#e56b5a",
+  "#b85c38": "#e56b5a",
+  "#8a4a32": "#e56b5a",
+  "#8b5e3c": "#e56b5a",
+  "#e05a84": "#e05a84",
+  "#7a3e5c": "#e05a84",
+  "#8b7cc8": "#8b7cc8",
+  "#5c6b3a": "#8b7cc8",
+  "#4a7fd4": "#4a7fd4",
+  "#3d6ea8": "#4a7fd4",
+  "#3f5f8a": "#4a7fd4",
+  "#4aa3c4": "#4aa3c4",
+  "#4a7c8c": "#4aa3c4",
+  "#e8894a": "#e8894a",
+  "#c9a227": "#e8894a",
+  "#a67c52": "#e8894a",
+  "#c45a78": "#c45a78",
+  "#2f6f5e": "#4aa3c4",
 };
 
 export function normalizeColor(color: string | null | undefined) {

@@ -46,7 +46,7 @@ function Root() {
     applyColorTheme(loadProfile()?.color);
   }, []);
   return (
-    <html lang="en" data-theme="clay" suppressHydrationWarning>
+    <html lang="en" data-theme="coral" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
