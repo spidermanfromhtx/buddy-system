@@ -18,7 +18,7 @@ function Reviews() {
       <div className="mx-auto flex max-w-xl flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Mark className="size-9" />
+            <Mark />
             <div>
               <h1 className="font-display text-3xl tracking-tight">Hear from other buddies</h1>
               <p className="mt-1 text-sm text-muted">Anonymous ratings. Public so you can see who you might join.</p>

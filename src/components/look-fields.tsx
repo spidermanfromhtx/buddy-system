@@ -2,8 +2,32 @@ import { useRef } from "react";
 import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
 import { compressPhoto } from "@/lib/photo";
-import { COLORS, HOUSE, NONE, applyColorTheme } from "@/lib/theme";
+import { COLOR_THEMES, NONE, applyColorTheme, swatchFill } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+
+function Swatch({
+  label,
+  selected,
+  fill,
+  onPick,
+}: {
+  label: string;
+  selected: boolean;
+  fill: string;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={selected}
+      title={label}
+      onClick={onPick}
+      className={cn("size-11 rounded-full border-black", selected ? "border-[3px]" : "border")}
+      style={{ background: fill }}
+    />
+  );
+}
 
 export function LookFields({
   name,
@@ -28,43 +52,31 @@ export function LookFields({
       <div className="flex items-center gap-4">
         <Face name={name || "you"} color={color} photo={photo} size="lg" />
         <p className="text-base text-muted">
-          House look is cream and coral. Pick another color if you want the app and your face to follow it. A photo sits on top.
+          House look is cream and purple. Each color is a three-color set. A photo sits on top.
         </p>
       </div>
       <fieldset>
         <legend className="text-base font-medium">Your color</legend>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            aria-label="House colors"
-            aria-pressed={!color}
-            title="House"
-            onClick={() => {
+          <Swatch
+            label="House colors"
+            selected={!color}
+            fill={swatchFill(NONE)}
+            onPick={() => {
               applyColorTheme(NONE);
               onColor(NONE);
             }}
-            className={cn(
-              "size-11 overflow-hidden rounded-full border-2",
-              !color ? (onDark ? "border-paper" : "border-ink") : "border-transparent",
-            )}
-            style={{
-              background: `conic-gradient(from 210deg, ${HOUSE} 0 50%, #1f6b4a 50% 72%, #f4f0e6 72% 100%)`,
-            }}
           />
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={c}
-              onClick={() => {
-                applyColorTheme(c);
-                onColor(c);
+          {COLOR_THEMES.map((t) => (
+            <Swatch
+              key={t.id}
+              label={t.label}
+              selected={color === t.color}
+              fill={swatchFill(t.color)}
+              onPick={() => {
+                applyColorTheme(t.color);
+                onColor(t.color);
               }}
-              className={cn(
-                "size-11 rounded-full border-2",
-                color === c ? (onDark ? "border-paper" : "border-ink") : "border-transparent",
-              )}
-              style={{ backgroundColor: c }}
             />
           ))}
         </div>

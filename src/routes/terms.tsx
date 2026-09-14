@@ -8,7 +8,7 @@ function Terms() {
     <main className="min-h-dvh bg-paper px-6 py-10 text-ink">
       <div className="mx-auto flex max-w-xl flex-col gap-5">
         <div className="flex items-center gap-3">
-          <Mark className="size-9" />
+          <Mark />
           <h1 className="font-display text-3xl tracking-tight">Terms</h1>
         </div>
         <p className="text-sm text-muted">Buddy System. 18+ body-doubling calls. Last updated September 2026.</p>
