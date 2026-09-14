@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { hashCode, hashesEqual, mailErrorMessage, sendCodeEmail, sixDigit } from "@/lib/mail-code.server";
 import { parseCategories, serializeCategories } from "@/lib/categories";
+import { weeklyUsed } from "@/lib/plan";
 import { isEmail, normalizeEmail } from "@/lib/school";
 import { ageFromBirthdate, newId } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ function mapAccount(r: Record<string, unknown>): AccountRow {
     sessionToken: String(r.session_token),
     categories: parseCategories(r.categories),
     plan: String(r.plan || "free"),
-    sessionsUsed: Number(r.sessions_used ?? 0),
+    sessionsUsed: weeklyUsed(r.sessions_used, r.sessions_week_start),
   };
 }
 

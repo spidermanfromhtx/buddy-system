@@ -1,15 +1,22 @@
 import { getSql, type Sql } from "@/lib/db";
-import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_MAX_MIN, PLUS_PRICE_LABEL, isPlus } from "@/lib/plan";
+import { FREE_MAX_MIN, FREE_SESSIONS, FREE_WEEK_MS, PLUS_MAX_MIN, PLUS_PRICE_LABEL, isPlus, weeklyUsed } from "@/lib/plan";
 
 export type SessionGate =
   | { ok: true; plan: string; sessionsUsed: number; maxMin: number }
   | { ok: false; error: string; code: "paywall" | "length" | "signin" };
 
 export async function planForPeer(sql: Sql, peerId: string) {
-  const rows = await sql.query(`SELECT plan, sessions_used FROM accounts WHERE id = $1 LIMIT 1`, [peerId]);
+  const rows = await sql.query(
+    `SELECT plan, sessions_used, sessions_week_start FROM accounts WHERE id = $1 LIMIT 1`,
+    [peerId],
+  );
   const row = rows[0];
   if (!row) return null;
-  return { plan: String(row.plan || "free"), sessionsUsed: Number(row.sessions_used ?? 0) };
+  return {
+    plan: String(row.plan || "free"),
+    sessionsUsed: weeklyUsed(row.sessions_used, row.sessions_week_start),
+    weekStart: row.sessions_week_start ? String(row.sessions_week_start) : null,
+  };
 }
 
 export async function takeSession(sql: Sql, peerId: string, lengthMin: number): Promise<SessionGate> {
@@ -30,12 +37,19 @@ export async function takeSession(sql: Sql, peerId: string, lengthMin: number): 
     return {
       ok: false,
       code: "paywall",
-      error: `You've used your ${FREE_SESSIONS} free sessions. ${PLUS_PRICE_LABEL} for unlimited.`,
+      error: `You've used this week's ${FREE_SESSIONS} free sessions. ${PLUS_PRICE_LABEL} for unlimited.`,
     };
   }
   if (!plus) {
-    await sql.query(`UPDATE accounts SET sessions_used = sessions_used + 1 WHERE id = $1`, [peerId]);
-    found.sessionsUsed += 1;
+    const start = Date.parse(String(found.weekStart ?? ""));
+    const freshWeek = !Number.isFinite(start) || Date.now() - start >= FREE_WEEK_MS;
+    if (freshWeek) {
+      await sql.query(`UPDATE accounts SET sessions_used = 1, sessions_week_start = now() WHERE id = $1`, [peerId]);
+      found.sessionsUsed = 1;
+    } else {
+      await sql.query(`UPDATE accounts SET sessions_used = sessions_used + 1 WHERE id = $1`, [peerId]);
+      found.sessionsUsed += 1;
+    }
   }
   return { ok: true, plan: found.plan, sessionsUsed: found.sessionsUsed, maxMin };
 }

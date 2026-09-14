@@ -532,7 +532,7 @@ function Feed() {
         <p className="mt-3 text-sm text-muted">
           {plus
             ? "Plus. Unlimited sessions. Calls up to 2 hours."
-            : `${left} of ${FREE_SESSIONS} free sessions left. Free calls are ${FREE_MAX_MIN} minutes. ${PLUS_PRICE_LABEL} for unlimited.`}
+            : `${left} of ${FREE_SESSIONS} free sessions left this week. Free calls are ${FREE_MAX_MIN} minutes.`}
         </p>
         <div className="mt-8 hidden flex-wrap gap-2 md:flex">{actions}</div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -769,7 +769,7 @@ function Feed() {
                   ) : (
                     <>
                       <p className="text-base text-muted">
-                        {left} of {FREE_SESSIONS} free 45-minute sessions left. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
+                        {left} of {FREE_SESSIONS} free 45-minute sessions left this week. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
                       </p>
                       <Btn
                         kind="fill"
