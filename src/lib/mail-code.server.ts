@@ -19,14 +19,38 @@ export function mailErrorMessage(err: unknown) {
   const msg = err instanceof Error ? err.message : "";
   if (msg === "not-configured") return "Email sending is not connected yet.";
   if (msg === "resend-own-email" || msg === "resend-domain") {
-    return "Resend will only deliver to the email on your Resend account until we add a real domain. Use that exact inbox.";
+    return "That inbox cannot get a code until we connect a mail sender that can reach everyone.";
   }
   return "Could not send the email. Check the address and try again.";
 }
 
 export async function sendCodeEmail(to: string, code: string, kind: "account" | "campus") {
   const what = kind === "campus" ? "campus code" : "login code";
+  const subject = `Your Buddy System ${what}`;
   const text = `Your Buddy System ${what} is ${code}.\n\nIt expires in 10 minutes.\n\nIf you did not ask for this, ignore the email.`;
+
+  const brevo = process.env.BREVO_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  if (brevo && from) {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": brevo,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "Buddy System", email: from },
+        to: [{ email: to }],
+        subject,
+        textContent: text,
+      }),
+    });
+    if (res.ok) return;
+    const body = await res.text().catch(() => "");
+    console.error("brevo failed", res.status, body);
+    throw new Error("email-failed");
+  }
+
   const key = process.env.RESEND_API_KEY?.trim();
   if (!key) throw new Error("not-configured");
 
@@ -37,9 +61,9 @@ export async function sendCodeEmail(to: string, code: string, kind: "account" | 
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM?.trim() || "Buddy System <beth.t@example.com>",
+      from: from || "Buddy System <beth.t@example.com>",
       to: [to],
-      subject: `Your Buddy System ${what}`,
+      subject,
       text,
     }),
   });

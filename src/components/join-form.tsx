@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Btn } from "@/components/btn";
+import { CategoryPicker } from "@/components/category-picker";
 import { EmailCodeForm } from "@/components/email-code-form";
 import { LookFields } from "@/components/look-fields";
 import { Mark } from "@/components/mark";
@@ -15,6 +16,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   const [birthdate, setBirthdate] = useState("2004-01-01");
   const [color, setColor] = useState(COLORS[0]);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -28,6 +30,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
     if (!pending) return;
     if (!name.trim()) return setErr("name");
     if (ageFromBirthdate(birthdate) < 18) return setErr("18");
+    if (!categories.length) return setErr("categories");
     setBusy(true);
     setErr("");
     try {
@@ -39,6 +42,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           birthdate,
           color,
           photo,
+          categories,
         },
       });
       if (!res.ok) {
@@ -64,7 +68,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           <EmailCodeForm
             onDark
             label="Email"
-            hint="Log in or create an account. Gmail, Yahoo, or whatever you use. We email a 6-digit code."
+            hint="Log in or create an account. Gmail, Yahoo, school mail, whatever you use. We email a 6-digit code."
             placeholder="you@gmail.com"
             verifyLabel="Verify email"
             send={(email) => requestAccountCode({ data: { email } })}
@@ -110,13 +114,21 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                 <span className="mt-1 block text-sm text-rust">The birthday you entered is under 18.</span>
               ) : null}
             </label>
+            <fieldset>
+              <legend className="text-base font-medium">What do you use this for?</legend>
+              <p className="mt-1 text-sm text-muted">Pick every category that fits. Matching uses this when you want someone similar or different.</p>
+              <CategoryPicker multiple value={categories} onChange={setCategories} onDark />
+              {err === "categories" ? (
+                <span className="mt-2 block text-sm text-rust">Pick at least one.</span>
+              ) : null}
+            </fieldset>
             <LookFields name={name} color={color} photo={photo} onColor={setColor} onPhoto={setPhoto} onDark />
             <div className="flex flex-col gap-2 border-t border-paper/10 pt-6 text-base text-muted">
               <p>Find a live buddy. Call someone who is open.</p>
               <p>Schedule a buddy. Book a window. The call rings.</p>
               <p>Be a buddy. Tap Go live with a task description.</p>
             </div>
-            {err && err !== "18" ? (
+            {err && err !== "18" && err !== "categories" ? (
               <p className="text-sm text-rust">{err === "name" ? "Name is required." : err}</p>
             ) : null}
             <Btn type="submit" kind="paper" className="h-12 w-full" disabled={busy}>

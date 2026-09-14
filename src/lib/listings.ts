@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql, type Sql } from "@/lib/db";
-import { prefsFit, sid, tasksSimilar } from "@/lib/match";
+import { listingsSimilar, prefsFit, sid } from "@/lib/match";
 
 const ID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 
@@ -35,6 +35,7 @@ export type Listing = {
   matchPeerName: string | null;
   matchRoom: string | null;
   matchCallId: string | null;
+  category: string | null;
 };
 
 function mapRow(r: Record<string, unknown>): Listing {
@@ -61,6 +62,7 @@ function mapRow(r: Record<string, unknown>): Listing {
     matchPeerName: r.match_peer_name ? String(r.match_peer_name) : null,
     matchRoom: r.match_room ? String(r.match_room) : null,
     matchCallId: r.match_call_id ? String(r.match_call_id) : null,
+    category: r.category ? String(r.category) : null,
   };
 }
 
@@ -126,6 +128,7 @@ export const upsertLive = createServerFn({ method: "POST" })
         camera: z.boolean(),
         dueDate: z.string().max(20).optional(),
         school: z.string().max(80).optional(),
+        category: z.string().max(20).optional(),
       })
       .parse(d),
   )
@@ -133,8 +136,8 @@ export const upsertLive = createServerFn({ method: "POST" })
     const sql = await getSql();
     const school = await schoolForPeer(sql, data.peerId);
     await sql.query(
-      `INSERT INTO listings (id, peer_id, name, color, photo, task, urgent, mode, length_min, camera, due_date, school, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'live',$8,$9,$10,$11, now() + interval '15 minutes')
+      `INSERT INTO listings (id, peer_id, name, color, photo, task, urgent, mode, length_min, camera, due_date, school, category, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'live',$8,$9,$10,$11,$12, now() + interval '15 minutes')
        ON CONFLICT (id) DO UPDATE SET
          name = EXCLUDED.name,
          color = EXCLUDED.color,
@@ -145,6 +148,7 @@ export const upsertLive = createServerFn({ method: "POST" })
          camera = EXCLUDED.camera,
          due_date = EXCLUDED.due_date,
          school = EXCLUDED.school,
+         category = EXCLUDED.category,
          expires_at = now() + interval '15 minutes'`,
       [
         data.id,
@@ -158,6 +162,7 @@ export const upsertLive = createServerFn({ method: "POST" })
         data.camera,
         data.dueDate ?? null,
         school,
+        data.category ?? null,
       ],
     );
     return { ok: true };
@@ -182,6 +187,7 @@ export const bookWindow = createServerFn({ method: "POST" })
         windowEnd: z.string().max(40),
         dueDate: z.string().max(20).optional(),
         school: z.string().max(80).optional(),
+        category: z.string().max(20).optional(),
       })
       .parse(d),
   )
@@ -190,8 +196,8 @@ export const bookWindow = createServerFn({ method: "POST" })
     const school = await schoolForPeer(sql, data.peerId);
     await sql.query(
       `INSERT INTO listings
-        (id, peer_id, name, color, photo, task, urgent, mode, length_min, camera, similar_pref, window_label, window_start, window_end, due_date, school, expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'scheduled',$8,$9,$10,$11,$12,$13,$14,$15, $13::timestamptz)
+        (id, peer_id, name, color, photo, task, urgent, mode, length_min, camera, similar_pref, window_label, window_start, window_end, due_date, school, category, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'scheduled',$8,$9,$10,$11,$12,$13,$14,$15,$16, $13::timestamptz)
        ON CONFLICT (id) DO UPDATE SET
          task = EXCLUDED.task,
          photo = EXCLUDED.photo,
@@ -200,6 +206,7 @@ export const bookWindow = createServerFn({ method: "POST" })
          window_end = EXCLUDED.window_end,
          similar_pref = EXCLUDED.similar_pref,
          school = EXCLUDED.school,
+         category = EXCLUDED.category,
          expires_at = EXCLUDED.window_end`,
       [
         data.id,
@@ -217,6 +224,7 @@ export const bookWindow = createServerFn({ method: "POST" })
         data.windowEnd,
         data.dueDate ?? null,
         school,
+        data.category ?? null,
       ],
     );
     const matched = await pairListing(sql, data.id);
@@ -383,7 +391,10 @@ async function pairListing(sql: Sql, listingId: string) {
     const schoolA = row.school ? String(row.school) : "";
     const schoolB = other.school ? String(other.school) : "";
     if (schoolA !== schoolB) continue;
-    const similar = tasksSimilar(String(row.task), String(other.task));
+    const similar = listingsSimilar(
+      { task: String(row.task), category: row.category ? String(row.category) : null },
+      { task: String(other.task), category: other.category ? String(other.category) : null },
+    );
     if (!prefsFit(String(row.similar_pref ?? "either"), String(other.similar_pref ?? "either"), similar)) {
       continue;
     }

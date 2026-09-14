@@ -35,6 +35,11 @@ export function tasksSimilar(a: string, b: string) {
   return taskTokens(b).some((w) => left.has(w));
 }
 
+export function listingsSimilar(a: { task: string; category?: string | null }, b: { task: string; category?: string | null }) {
+  if (a.category && b.category) return a.category === b.category;
+  return tasksSimilar(a.task, b.task);
+}
+
 export function prefsFit(aPref: string, bPref: string, similar: boolean) {
   const ok = (pref: string) => {
     if (pref === "similar") return similar;

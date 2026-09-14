@@ -1,3 +1,4 @@
+import { parseCategories } from "./categories";
 import { ageFromBirthdate, newId } from "./utils";
 
 const KEY = "buddy-system-profile";
@@ -15,6 +16,7 @@ export type Profile = {
   schoolEmail: string | null;
   schoolVerified: boolean;
   campusToken: string | null;
+  categories: string[];
 };
 
 export const COLORS = [
@@ -54,6 +56,7 @@ export function loadProfile(): Profile | null {
       schoolEmail: p.schoolEmail ?? null,
       schoolVerified: Boolean(p.schoolVerified && p.school && p.campusToken),
       campusToken: p.schoolVerified ? p.campusToken ?? null : null,
+      categories: parseCategories(p.categories),
     };
   } catch {
     return null;
@@ -77,6 +80,7 @@ export function saveProfile(partial: Omit<Profile, "id"> & { id?: string }): Pro
     schoolEmail: schoolVerified ? partial.schoolEmail ?? existing?.schoolEmail ?? null : null,
     schoolVerified: Boolean(schoolVerified && school),
     campusToken: schoolVerified ? partial.campusToken ?? existing?.campusToken ?? null : null,
+    categories: parseCategories(partial.categories ?? existing?.categories ?? []),
   };
   localStorage.setItem(KEY, JSON.stringify(p));
   return p;
@@ -96,6 +100,7 @@ export function profileFromAccount(
     photo: string | null;
     breakEveryMin: number;
     sessionToken: string;
+    categories?: string[];
   },
   extra?: Partial<Pick<Profile, "school" | "schoolEmail" | "schoolVerified" | "campusToken">>,
 ): Profile {
@@ -112,5 +117,6 @@ export function profileFromAccount(
     schoolEmail: extra?.schoolEmail ?? null,
     schoolVerified: extra?.schoolVerified ?? false,
     campusToken: extra?.campusToken ?? null,
+    categories: parseCategories(account.categories),
   });
 }

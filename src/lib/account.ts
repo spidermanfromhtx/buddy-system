@@ -31,6 +31,7 @@ export const createAccount = createServerFn({ method: "POST" })
         birthdate: z.string().max(20),
         color: z.string().max(16),
         photo: PHOTO,
+        categories: z.array(z.string()).min(1).max(8),
       })
       .parse(d),
   )
@@ -48,6 +49,7 @@ export const saveAccount = createServerFn({ method: "POST" })
         color: z.string().max(16).optional(),
         photo: PHOTO,
         breakEveryMin: z.number().int().min(1).max(60).optional(),
+        categories: z.array(z.string()).max(8).optional(),
       })
       .parse(d),
   )

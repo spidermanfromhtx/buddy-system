@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Btn } from "@/components/btn";
+import { CategoryPicker } from "@/components/category-picker";
 import { Face } from "@/components/face";
 import { LookFields } from "@/components/look-fields";
 import { Mark } from "@/components/mark";
@@ -9,6 +10,7 @@ import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
 import { JoinForm } from "@/components/join-form";
 import { saveAccount } from "@/lib/account";
+import { categoryLabel } from "@/lib/categories";
 import {
   bookWindow,
   closeLive,
@@ -42,6 +44,7 @@ function Row({
   dueDate,
   lengthMin,
   extra,
+  category,
   offerCamera,
   action,
 }: {
@@ -53,6 +56,7 @@ function Row({
   dueDate?: string | null;
   lengthMin: number;
   extra?: string;
+  category?: string | null;
   offerCamera?: boolean;
   action: ReactNode;
 }) {
@@ -64,6 +68,7 @@ function Row({
         <p className="text-lg leading-snug">{task}</p>
         <p className="mt-1 text-sm text-muted">
           {name} · {urgent ? "urgent" : "not urgent"} · {lengthMin} min
+          {category ? ` · ${categoryLabel(category)}` : ""}
           {offerCamera ? " · camera on" : ""}
           {due ? ` · ${due}` : ""}
           {extra ? ` · ${extra}` : ""}
@@ -87,13 +92,17 @@ function Feed() {
   const [windowEnd, setWindowEnd] = useState("22:00");
   const [similar, setSimilar] = useState<"similar" | "different" | "either">("either");
   const [dueDate, setDueDate] = useState("");
+  const [category, setCategory] = useState("");
   const [note, setNote] = useState("");
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
 
   useEffect(() => {
     const p = loadProfile();
-    if (p) setMe(p);
+    if (p) {
+      setMe(p);
+      if (p.categories[0]) setCategory(p.categories[0]);
+    }
   }, []);
 
   const q = useQuery({
@@ -183,6 +192,7 @@ function Feed() {
           camera,
           dueDate: dueDate || undefined,
           school: me.school ?? undefined,
+          category: category || undefined,
         },
       });
     },
@@ -211,6 +221,7 @@ function Feed() {
           camera: mine.camera,
           dueDate: mine.dueDate ?? undefined,
           school: me.school ?? undefined,
+          category: mine.category ?? undefined,
         },
       });
     },
@@ -240,6 +251,7 @@ function Feed() {
           windowEnd: range.end,
           dueDate: dueDate || undefined,
           school: me.school ?? undefined,
+          category: category || undefined,
         },
       });
     },
@@ -391,6 +403,11 @@ function Feed() {
           />
           <span className="text-xs font-normal text-muted">One line. Not an assignment.</span>
         </label>
+        <fieldset>
+          <legend className="text-sm font-medium">Category</legend>
+          <p className="mt-1 text-xs text-muted">What kind of task this is. Matching uses this.</p>
+          <CategoryPicker value={category ? [category] : []} onChange={(ids) => setCategory(ids[0] ?? "")} />
+        </fieldset>
         <div className="grid grid-cols-2 gap-6">
           <fieldset>
             <legend className="text-sm font-medium">Camera</legend>
@@ -426,7 +443,7 @@ function Feed() {
         </label>
         <fieldset>
           <legend className="text-sm font-medium">Match with</legend>
-          <p className="mt-1 text-xs text-muted">Someone with a similar task, a different one, or either.</p>
+          <p className="mt-1 text-xs text-muted">Someone in the same category, a different one, or either.</p>
           <div className="mt-3 flex gap-2 text-sm">
             {(["similar", "different", "either"] as const).map((v) => (
               <Btn
@@ -526,6 +543,7 @@ function Feed() {
               urgent={row.urgent}
               dueDate={row.dueDate}
               lengthMin={row.lengthMin}
+              category={row.category}
               offerCamera={row.camera}
               extra={
                 isYou
@@ -566,6 +584,7 @@ function Feed() {
               urgent={row.urgent}
               dueDate={row.dueDate}
               lengthMin={row.lengthMin}
+              category={row.category}
               offerCamera={row.camera}
               extra={
                 [
@@ -632,6 +651,7 @@ function Feed() {
                           camera: mine.camera,
                           dueDate: mine.dueDate ?? undefined,
                           school: next.school ?? undefined,
+                          category: mine.category ?? undefined,
                         },
                       }).then(() => q.refetch());
                     }
@@ -654,12 +674,27 @@ function Feed() {
                           camera: mine.camera,
                           dueDate: mine.dueDate ?? undefined,
                           school: next.school ?? undefined,
+                          category: mine.category ?? undefined,
                         },
                       }).then(() => q.refetch());
                     }
                   }}
                 />
                 <p className="text-base text-muted">Account email: {me.email}</p>
+                <fieldset>
+                  <legend className="text-base font-medium">Your categories</legend>
+                  <p className="mt-1 text-sm text-muted">What you use this for. Matching uses this.</p>
+                  <CategoryPicker
+                    multiple
+                    value={me.categories}
+                    onChange={(ids) => {
+                      const next = saveProfile({ ...me, categories: ids });
+                      setMe(next);
+                      if (ids[0] && !category) setCategory(ids[0]);
+                      void saveAccount({ data: { token: me.sessionToken, categories: ids } });
+                    }}
+                  />
+                </fieldset>
                 {me.schoolVerified && me.school ? (
                   <p className="text-base text-muted">Verified campus: {me.school}</p>
                 ) : (
@@ -710,6 +745,11 @@ function Feed() {
                   />
                   <span className="text-xs font-normal text-muted">One line. Not an assignment.</span>
                 </label>
+                <fieldset>
+                  <legend className="text-sm font-medium">Category</legend>
+                  <p className="mt-1 text-xs text-muted">What kind of task this is.</p>
+                  <CategoryPicker value={category ? [category] : []} onChange={(ids) => setCategory(ids[0] ?? "")} />
+                </fieldset>
                 <label className="flex h-11 items-center gap-2 text-sm font-medium">
                   <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
                   This is urgent

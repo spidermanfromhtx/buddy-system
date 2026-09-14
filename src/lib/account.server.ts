@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { hashCode, hashesEqual, mailErrorMessage, sendCodeEmail, sixDigit } from "@/lib/mail-code.server";
+import { parseCategories, serializeCategories } from "@/lib/categories";
 import { isEmail, normalizeEmail } from "@/lib/school";
 import { ageFromBirthdate, newId } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ export type AccountRow = {
   photo: string | null;
   breakEveryMin: number;
   sessionToken: string;
+  categories: string[];
 };
 
 function mapAccount(r: Record<string, unknown>): AccountRow {
@@ -25,6 +27,7 @@ function mapAccount(r: Record<string, unknown>): AccountRow {
     photo: r.photo ? String(r.photo) : null,
     breakEveryMin: Number(r.break_every_min ?? 30),
     sessionToken: String(r.session_token),
+    categories: parseCategories(r.categories),
   };
 }
 
@@ -102,12 +105,15 @@ export async function createAccount(data: {
   birthdate: string;
   color: string;
   photo: string | null;
+  categories: string[];
 }) {
   const email = normalizeEmail(data.email);
   if (ageFromBirthdate(data.birthdate) < 18) {
     return { ok: false as const, error: "You must be 18 or older." };
   }
   if (!data.name.trim()) return { ok: false as const, error: "Name is required." };
+  const categories = parseCategories(data.categories);
+  if (!categories.length) return { ok: false as const, error: "Pick at least one category." };
   const sql = await getSql();
   const pending = await sql.query(
     `SELECT * FROM account_pending WHERE email = $1 AND session_token = $2 AND expires_at > now() LIMIT 1`,
@@ -116,9 +122,9 @@ export async function createAccount(data: {
   if (!pending[0]) return { ok: false as const, error: "Verify your email first." };
   const id = newId("p");
   await sql.query(
-    `INSERT INTO accounts (id, email, session_token, name, birthdate, color, photo, break_every_min)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,30)`,
-    [id, email, data.token, data.name.trim(), data.birthdate, data.color, data.photo],
+    `INSERT INTO accounts (id, email, session_token, name, birthdate, color, photo, break_every_min, categories)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,30,$8)`,
+    [id, email, data.token, data.name.trim(), data.birthdate, data.color, data.photo, serializeCategories(categories)],
   );
   await sql.query(`DELETE FROM account_pending WHERE email = $1`, [email]);
   return {
@@ -132,6 +138,7 @@ export async function createAccount(data: {
       photo: data.photo,
       breakEveryMin: 30,
       sessionToken: data.token,
+      categories,
     },
   };
 }
@@ -142,6 +149,7 @@ export async function saveAccount(data: {
   color?: string;
   photo?: string | null;
   breakEveryMin?: number;
+  categories?: string[];
 }) {
   const sql = await getSql();
   const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [data.token]);
@@ -151,9 +159,11 @@ export async function saveAccount(data: {
   const color = data.color ?? cur.color;
   const photo = data.photo === undefined ? cur.photo : data.photo;
   const breakEveryMin = data.breakEveryMin ?? cur.breakEveryMin;
+  const categories = data.categories ? parseCategories(data.categories) : cur.categories;
+  if (data.categories && !categories.length) return { ok: false as const, error: "Pick at least one category." };
   await sql.query(
-    `UPDATE accounts SET name = $2, color = $3, photo = $4, break_every_min = $5 WHERE session_token = $1`,
-    [data.token, name, color, photo, breakEveryMin],
+    `UPDATE accounts SET name = $2, color = $3, photo = $4, break_every_min = $5, categories = $6 WHERE session_token = $1`,
+    [data.token, name, color, photo, breakEveryMin, serializeCategories(categories)],
   );
   return { ok: true as const };
 }
