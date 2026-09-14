@@ -6,7 +6,6 @@ import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
 import { parseCallSearch } from "@/lib/call-search";
 import { getCall, setCallStatus } from "@/lib/listings";
-import { getCallElapsed } from "@/lib/call-timer";
 import { stopLocalStream } from "@/lib/media";
 import { loadProfile } from "@/lib/profile";
 import { pingBreak, playHangup } from "@/lib/ring";
@@ -18,8 +17,8 @@ function CallScreen() {
   const { id } = Route.useParams(); const search = Route.useSearch(); const nav = useNavigate();
   const dummy = Boolean(search.dummy) || id.startsWith("dummy-"); const me = typeof window !== "undefined" ? loadProfile() : null;
   const [sec, setSec] = useState(0); const [breakOn, setBreakOn] = useState(false); const lastBreak = useRef(0);
-  const q = useQuery({ queryKey: ["call", id], queryFn: () => getCall({ data: { id } }), enabled: !dummy, refetchInterval: 1000 });
-  const timerQ = useQuery({ queryKey: ["call-elapsed", id], queryFn: () => getCallElapsed({ data: { id } }), enabled: !dummy, refetchInterval: 1000 });
+  const liveStartedAtRef = useRef<number | null>(null);
+  const q = useQuery({ queryKey: ["call", id], queryFn: () => getCall({ data: { id } }), enabled: !dummy, refetchInterval: 500 });
   const name = search.name ?? (me && q.data?.callerId === me.id ? q.data?.calleeName : q.data?.callerName) ?? "Buddy";
   const color = search.color ?? (me && q.data?.callerId === me.id ? q.data?.calleeColor : q.data?.callerColor) ?? "#c45c3e";
   const photo = me && q.data?.callerId === me.id ? (q.data?.calleePhoto ?? null) : (q.data?.callerPhoto ?? null);
@@ -27,12 +26,26 @@ function CallScreen() {
   const allowCamera = Boolean(search.allowCamera ?? q.data?.allowCamera); const [useCam, setUseCam] = useState(allowCamera); const room = search.room ?? q.data?.room;
   const breakEvery = (me?.breakEveryMin ?? 30) * 60;
 
-  useEffect(() => { if (dummy) { const t = setInterval(() => setSec((n) => n + 1), 1000); return () => clearInterval(t); } setSec(timerQ.data ?? 0); }, [dummy, timerQ.data]);
+  useEffect(() => {
+    if (dummy) {
+      const t = setInterval(() => setSec((n) => n + 1), 1000);
+      return () => clearInterval(t);
+    }
+    if (q.data?.status !== "live") { liveStartedAtRef.current = null; setSec(0); return; }
+    if (liveStartedAtRef.current == null) liveStartedAtRef.current = Date.now();
+    const tick = () => {
+      if (liveStartedAtRef.current != null) setSec(Math.max(0, Math.floor((Date.now() - liveStartedAtRef.current) / 1000)));
+    };
+    tick();
+    const t = setInterval(tick, 250);
+    return () => clearInterval(t);
+  }, [dummy, q.data?.status]);
+
   useEffect(() => { if (sec > 0 && breakEvery > 0 && sec - lastBreak.current >= breakEvery) { lastBreak.current = sec; setBreakOn(true); } }, [sec, breakEvery]);
   useEffect(() => { if (!breakOn) return; pingBreak(); const t = setInterval(pingBreak, 3500); return () => clearInterval(t); }, [breakOn]);
   useEffect(() => { if (!dummy && q.data?.status === "done") { stopLocalStream(); void nav({ to: "/rate/$id", params: { id } }); } }, [dummy, q.data?.status, nav, id]);
 
-  async function markConnected() { if (!dummy) await setCallStatus({ data: { id, status: "live" } }); }
+  async function markConnected() { if (!dummy && q.data?.status !== "live") await setCallStatus({ data: { id, status: "live" } }); }
   async function hangup() {
     playHangup(); await new Promise((r) => setTimeout(r, 450)); stopLocalStream();
     if (room && me) void fetch("/api/rtc", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "leave", room, peer: me.id }), keepalive: true }).catch(() => {});
