@@ -1,3 +1,4 @@
+import { HOUSE, HOUSE_INK } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function Face({
@@ -13,7 +14,8 @@ export function Face({
   size?: "sm" | "md" | "lg";
   ringing?: boolean;
 }) {
-  const fill = color || "#1a1a1a";
+  const fill = color || HOUSE;
+  const marks = color ? "#1a1a1a" : HOUSE_INK;
   const dim = size === "lg" ? "size-28" : size === "sm" ? "size-12" : "size-16";
   return (
     <div
@@ -30,11 +32,11 @@ export function Face({
       ) : (
         <svg viewBox="0 0 64 64" className="relative size-full" aria-hidden>
           <circle cx="32" cy="32" r="32" fill={fill} />
-          <circle cx="23" cy="26" r="4.2" fill={color ? "#1a1a1a" : "#f6f5f1"} />
-          <circle cx="41" cy="26" r="4.2" fill={color ? "#1a1a1a" : "#f6f5f1"} />
+          <circle cx="23" cy="26" r="4.2" fill={marks} />
+          <circle cx="41" cy="26" r="4.2" fill={marks} />
           <path
             d="M23 41c5 7 13 7 18 0"
-            stroke={color ? "#1a1a1a" : "#f6f5f1"}
+            stroke={marks}
             strokeWidth="3"
             fill="none"
             strokeLinecap="round"
