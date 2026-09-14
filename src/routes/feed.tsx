@@ -45,7 +45,7 @@ function minutesLeft(iso: string | null) {
 function Chip({ children, hot = false }: { children: ReactNode; hot?: boolean }) {
   return (
     <span
-      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-xs leading-none ${
+      className={`inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-sm leading-none ${
         hot ? "bg-rust text-on-rust" : "border border-ink/10 bg-paper text-ink"
       }`}
     >
@@ -65,7 +65,6 @@ function Card({
   extra,
   category,
   offerCamera,
-  yours,
   action,
 }: {
   name: string;
@@ -85,7 +84,6 @@ function Card({
 }) {
   const due = formatDue(dueDate);
   const chips = [
-    yours ? "your window" : "their window",
     urgent ? "urgent" : "not urgent",
     `${lengthMin} min`,
     offerCamera ? "camera on" : "camera off",
@@ -94,20 +92,20 @@ function Card({
     ...(extra ?? "").split("·").map((s) => s.trim()).filter(Boolean),
   ].filter(Boolean);
   return (
-    <li className="rounded-2xl bg-paper-2 p-4">
-      <div className="flex items-start gap-3">
-        <Face name={name} color={color} photo={photo} size="sm" />
+    <li className="rounded-3xl bg-paper-2 p-5">
+      <div className="flex items-start gap-4">
+        <Face name={name} color={color} photo={photo} size="md" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start gap-2">
-            <p className="min-w-0 flex-1 text-lg leading-snug tracking-tight">
-              <span className="font-semibold">{name}</span>
-              <span> {task}</span>
-            </p>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xl font-semibold leading-tight tracking-tight">{name}</p>
+              <p className="mt-1 text-base leading-snug text-ink/80">{task}</p>
+            </div>
             <div className="shrink-0">{action}</div>
           </div>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-2">
             {chips.map((c, i) => (
-              <Chip key={`${c}-${i}`} hot={c === "urgent" || c === "your window"}>
+              <Chip key={`${c}-${i}`} hot={c === "urgent" || c === "matched"}>
                 {c}
               </Chip>
             ))}
@@ -696,30 +694,37 @@ function Feed() {
         {scheduled.length === 0 ? (
           <li className="rounded-2xl bg-paper-2 px-4 py-3 text-sm text-muted">None yet.</li>
         ) : (
-          scheduled.map((row) => (
+          scheduled.map((row) => {
+            const buddy = row.matchPeerName
+              ? {
+                  name: row.matchPeerName,
+                  color: row.matchPeerColor || row.color,
+                  photo: row.matchPeerPhoto,
+                }
+              : { name: me.name, color: me.color, photo: me.photo };
+            return (
             <Card
               key={row.id}
-              name={row.hostName || row.name}
-              color={row.hostColor || row.color}
-              photo={row.hostPhoto ?? row.photo}
+              name={buddy.name}
+              color={buddy.color}
+              photo={buddy.photo}
               task={row.task}
               urgent={row.urgent}
               dueDate={row.dueDate}
               lengthMin={row.lengthMin}
               category={row.category}
               offerCamera={row.camera}
-              yours={(row.hostPeerId || row.peerId) === me.id}
-              extra={[row.windowLabel, row.matchPeerName ? "matched" : "match pending"].filter(Boolean).join(" · ")}
+              extra={[row.windowLabel, row.matchPeerName ? "matched" : "waiting for a buddy"].filter(Boolean).join(" · ")}
               action={
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-2">
                   {row.matchPeerName ? (
-                    <Btn className="h-9 px-3 text-sm" disabled={unmatchWin.isPending} onClick={() => unmatchWin.mutate(row)}>
+                    <Btn className="h-11 px-4 text-sm" disabled={unmatchWin.isPending} onClick={() => unmatchWin.mutate(row)}>
                       Unmatch
                     </Btn>
                   ) : null}
                   <button
                     type="button"
-                    className="text-[11px] text-muted underline"
+                    className="text-sm text-muted underline"
                     onClick={() => dropWin.mutate(row)}
                   >
                     Remove
@@ -727,7 +732,8 @@ function Feed() {
                 </div>
               }
             />
-          ))
+            );
+          })
         )}
       </ul>
     </div>
@@ -766,7 +772,7 @@ function Feed() {
           <div className="mt-3">
             <CategoryPicker allowAll multiple value={feedCat} onChange={setFeedCat} />
           </div>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-3 flex flex-col gap-3">
             {live.length === 0 ? (
               <li className="rounded-2xl bg-paper-2 px-4 py-5 text-sm text-muted">
                 {tab === "school"
@@ -898,7 +904,6 @@ function Feed() {
                   lengthMin={row.lengthMin}
                   category={row.category}
                   offerCamera={row.camera}
-                  yours={(row.hostPeerId || row.peerId) === me.id}
                   extra={row.windowLabel ?? "window"}
                   ratingAvg={row.ratingAvg}
                   ratingCount={row.ratingCount}
