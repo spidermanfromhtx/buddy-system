@@ -52,10 +52,9 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
       const buffer = ctx.createBuffer(1, pcm.length, rate);
       const channel = buffer.getChannelData(0);
       for (let i = 0; i < pcm.length; i++) channel[i] = (pcm[i] ?? 0) / 32768;
-
       const now = ctx.currentTime;
-      if (pcmNextRef.current < now || pcmNextRef.current > now + 0.09) pcmNextRef.current = now + 0.015;
-      const start = Math.max(now + 0.005, pcmNextRef.current);
+      if (pcmNextRef.current < now || pcmNextRef.current > now + 0.06) pcmNextRef.current = now + 0.008;
+      const start = Math.max(now + 0.003, pcmNextRef.current);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
@@ -66,6 +65,7 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
   }
 
   async function renegotiateMedia() {
+    await new Promise((resolve) => setTimeout(resolve, 150));
     const roomAny = p2pRef.current as unknown as { peers?: Map<string, { pc: RTCPeerConnection; info: PeerInfo }>; sendSignal?: (peerId: string, kind: "offer", payload: unknown) => Promise<void> } | null;
     if (!roomAny?.peers || !roomAny.sendSignal) return;
     for (const [peerId, slot] of roomAny.peers) {
@@ -94,10 +94,10 @@ export function AudioCall({ room, selfId, name, wantCamera, allowCamera = false,
     if (video) {
       const tracks = remote.getVideoTracks();
       if (tracks.length) {
-        const next = new MediaStream(tracks);
-        video.srcObject = next;
+        if (video.srcObject !== remote) video.srcObject = remote;
         video.muted = true; video.playsInline = true; video.autoplay = true;
         void video.play().catch(() => {});
+        if (video.readyState >= 1 && video.videoWidth > 16) setRemoteVideo(true);
         video.onloadedmetadata = () => { if (video.videoWidth > 16) setRemoteVideo(true); };
       }
     }
