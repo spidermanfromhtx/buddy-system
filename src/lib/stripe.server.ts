@@ -1,7 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getSql } from "@/lib/db";
-import { markFreeByCustomer, markPlus, markPlusByCustomer } from "@/lib/plan.server";
+import { markFreeByCustomer, markPlan, markPlusByCustomer } from "@/lib/plan.server";
 
 function stripeKey() {
   return process.env.STRIPE_SECRET_KEY?.trim() || "";
@@ -34,16 +34,21 @@ async function stripeForm(path: string, body: Record<string, string>) {
   return json;
 }
 
-export async function startPlusCheckout(token: string) {
+export async function startPlusCheckout(token: string, plan: "plus" | "pro" = "plus") {
   const sql = await getSql();
   const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
   const row = rows[0];
   if (!row) return { ok: false as const, error: "Sign in again." };
-  if (String(row.plan) === "plus") return { ok: false as const, error: "You already have Plus." };
+  const current = String(row.plan);
+  if (plan === "plus" && (current === "plus" || current === "pro")) {
+    return { ok: false as const, error: "You already have a paid plan." };
+  }
+  if (plan === "pro" && current === "pro") return { ok: false as const, error: "You already have Pro." };
   if (!stripeKey()) {
     return { ok: false as const, error: "Payments are not connected yet." };
   }
   const origin = originFromRequest();
+  const paid = plan === "pro";
   const session = await stripeForm("checkout/sessions", {
     mode: "subscription",
     success_url: `${origin}/feed?plus=1`,
@@ -52,12 +57,16 @@ export async function startPlusCheckout(token: string) {
     customer_email: String(row.email),
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][unit_amount]": "500",
+    "line_items[0][price_data][unit_amount]": paid ? "800" : "500",
     "line_items[0][price_data][recurring][interval]": "month",
-    "line_items[0][price_data][product_data][name]": "Buddy System Plus",
-    "line_items[0][price_data][product_data][description]": "Unlimited sessions. Calls longer than 45 minutes.",
+    "line_items[0][price_data][product_data][name]": paid ? "Buddy System Pro" : "Buddy System Plus",
+    "line_items[0][price_data][product_data][description]": paid
+      ? "Unlimited sessions. Calls up to 2 hours. Window share when it ships."
+      : "Unlimited sessions. Calls longer than 45 minutes.",
     "metadata[account_id]": String(row.id),
+    "metadata[plan]": plan,
     "subscription_data[metadata][account_id]": String(row.id),
+    "subscription_data[metadata][plan]": plan,
   });
   const url = typeof session.url === "string" ? session.url : "";
   if (!url) return { ok: false as const, error: "Could not start checkout." };
@@ -82,10 +91,12 @@ export async function handleStripeWebhook(request: Request) {
   const obj = event.data?.object ?? {};
   const type = event.type || "";
   if (type === "checkout.session.completed") {
-    const accountId = String(obj.client_reference_id || (obj.metadata as Record<string, string> | undefined)?.account_id || "");
+    const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
+    const accountId = String(obj.client_reference_id || meta.account_id || "");
     const customer = String(obj.customer || "");
     const sub = String(obj.subscription || "");
-    if (accountId && customer) await markPlus(accountId, customer, sub);
+    const plan = meta.plan === "pro" ? "pro" : "plus";
+    if (accountId && customer) await markPlan(accountId, customer, sub, plan);
   }
   if (type === "customer.subscription.deleted") {
     const customer = String(obj.customer || "");
@@ -95,7 +106,9 @@ export async function handleStripeWebhook(request: Request) {
     const customer = String(obj.customer || "");
     const sub = String(obj.id || "");
     const status = String(obj.status || "");
-    if (customer && (status === "active" || status === "trialing")) await markPlusByCustomer(customer, sub);
+    const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
+    const plan = meta.plan === "pro" ? "pro" : "plus";
+    if (customer && (status === "active" || status === "trialing")) await markPlusByCustomer(customer, sub, plan);
     if (customer && (status === "canceled" || status === "unpaid" || status === "incomplete_expired")) {
       await markFreeByCustomer(customer);
     }

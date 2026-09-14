@@ -49,7 +49,7 @@ export function loadProfile(): Profile | null {
       schoolVerified: Boolean(p.schoolVerified && p.school && p.campusToken),
       campusToken: p.schoolVerified ? p.campusToken ?? null : null,
       categories: parseCategories(p.categories),
-      plan: p.plan === "plus" ? "plus" : "free",
+      plan: p.plan === "pro" ? "pro" : p.plan === "plus" ? "plus" : "free",
       sessionsUsed: Number(p.sessionsUsed ?? 0),
       limitsOn: Boolean(p.limitsOn),
       admin: Boolean(p.admin),

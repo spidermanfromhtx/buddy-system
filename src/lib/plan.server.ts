@@ -57,12 +57,16 @@ export async function takeSession(sql: Sql, peerId: string, lengthMin: number): 
   return { ok: true, plan: found.plan, sessionsUsed: found.sessionsUsed, maxMin };
 }
 
-export async function markPlus(accountId: string, customerId: string, subscriptionId: string) {
+export async function markPlan(accountId: string, customerId: string, subscriptionId: string, plan: "plus" | "pro") {
   const sql = await getSql();
   await sql.query(
-    `UPDATE accounts SET plan = 'plus', stripe_customer_id = $2, stripe_subscription_id = $3 WHERE id = $1`,
-    [accountId, customerId, subscriptionId],
+    `UPDATE accounts SET plan = $4, stripe_customer_id = $2, stripe_subscription_id = $3 WHERE id = $1`,
+    [accountId, customerId, subscriptionId, plan],
   );
+}
+
+export async function markPlus(accountId: string, customerId: string, subscriptionId: string) {
+  await markPlan(accountId, customerId, subscriptionId, "plus");
 }
 
 export async function markFreeByCustomer(customerId: string) {
@@ -72,10 +76,11 @@ export async function markFreeByCustomer(customerId: string) {
   ]);
 }
 
-export async function markPlusByCustomer(customerId: string, subscriptionId: string) {
+export async function markPlusByCustomer(customerId: string, subscriptionId: string, plan: "plus" | "pro" = "plus") {
   const sql = await getSql();
-  await sql.query(`UPDATE accounts SET plan = 'plus', stripe_subscription_id = $2 WHERE stripe_customer_id = $1`, [
+  await sql.query(`UPDATE accounts SET plan = $3, stripe_subscription_id = $2 WHERE stripe_customer_id = $1`, [
     customerId,
     subscriptionId,
+    plan,
   ]);
 }

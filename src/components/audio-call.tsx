@@ -12,7 +12,6 @@ import {
   onPcmOut,
   setMicMuted,
   setNativeEar,
-  startScreenShare,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
@@ -59,7 +58,6 @@ export function AudioCall({
   loopback = false,
   onCallConnected,
   pingRef,
-  canShare = false,
   onNudge,
 }: {
   room: string;
@@ -71,7 +69,6 @@ export function AudioCall({
   loopback?: boolean;
   onCallConnected?: () => void;
   pingRef?: MutableRefObject<(() => void) | null>;
-  canShare?: boolean;
   onNudge?: () => void;
 }) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -89,7 +86,6 @@ export function AudioCall({
   const [remoteJpeg, setRemoteJpeg] = useState(false);
   const [localCam, setLocalCam] = useState(false);
   const [muted, setMuted] = useState(isMicMuted);
-  const [sharing, setSharing] = useState(false);
 
   function showLocal(media: MediaStream) {
     const video = media.getVideoTracks().some(isRealVideo);
@@ -258,14 +254,10 @@ export function AudioCall({
     if (!localCam) return;
     const el = localVideoRef.current;
     if (!el) return;
-    return startJpegSend(
-      el,
-      (buf) => p2pRef.current?.sendMedia(buf),
-      sharing ? { wide: 640, quality: 0.55, ms: 120 } : undefined,
-    );
-  }, [localCam, sharing]);
+    return startJpegSend(el, (buf) => p2pRef.current?.sendMedia(buf));
+  }, [localCam]);
 
-  const showStage = Boolean(allowCamera || sharing || remoteJpeg || remoteVideo);
+  const showStage = Boolean(allowCamera || remoteJpeg || remoteVideo);
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -326,47 +318,6 @@ export function AudioCall({
       >
         Mute
       </button>
-      {canShare ? (
-        <Btn
-          type="button"
-          kind={sharing ? "ink" : "line"}
-          className="h-12 w-full text-base"
-          onClick={() => {
-            void (async () => {
-              try {
-                if (sharing) {
-                  const media = await getLocalStream(wantCamera, loopback);
-                  setLocal(media);
-                  showLocal(media);
-                  p2pRef.current?.attachMedia(media);
-                  setSharing(false);
-                  return;
-                }
-                const media = await startScreenShare();
-                const track = media.getVideoTracks()[0];
-                if (track) {
-                  track.onended = () => {
-                    void getLocalStream(wantCamera, loopback).then((next) => {
-                      setLocal(next);
-                      showLocal(next);
-                      p2pRef.current?.attachMedia(next);
-                      setSharing(false);
-                    });
-                  };
-                }
-                setLocal(media);
-                showLocal(media);
-                p2pRef.current?.attachMedia(media);
-                setSharing(true);
-              } catch {
-                setErr("could not share the window");
-              }
-            })();
-          }}
-        >
-          {sharing ? "Stop sharing" : "Share window"}
-        </Btn>
-      ) : null}
       <MicMeter active={!muted && !!local} />
       <p className="text-base text-muted">
         {err ||

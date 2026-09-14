@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Btn } from "@/components/btn";
 import { Mark } from "@/components/mark";
 import { PageWash } from "@/components/page-wash";
-import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_MAX_MIN, PLUS_PRICE_LABEL } from "@/lib/plan";
+import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_MAX_MIN, PLUS_PRICE_LABEL, PRO_PRICE_LABEL } from "@/lib/plan";
 import { loadProfile } from "@/lib/profile";
 
 export const Route = createFileRoute("/about")({ component: About });
@@ -55,7 +55,7 @@ function About() {
           </ul>
         </section>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <section className="panel p-6">
             <p className="text-sm text-muted">Free</p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">Start here</h2>
@@ -72,8 +72,15 @@ function About() {
             <ul className="mt-4 flex flex-col gap-2 text-base text-ink/80">
               <li>Unlimited sessions</li>
               <li>Calls up to {PLUS_MAX_MIN / 60} hours</li>
-              <li>Share your entire window so your buddy can see the work</li>
-              <li>Same feed, same matching, no extra social layer</li>
+              <li>Same feed, same matching</li>
+            </ul>
+          </section>
+          <section className="panel p-6">
+            <p className="text-sm text-muted">Pro · {PRO_PRICE_LABEL}</p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight">Show the work</h2>
+            <ul className="mt-4 flex flex-col gap-2 text-base text-ink/80">
+              <li>Everything in Plus</li>
+              <li>Window share, when we turn it on</li>
             </ul>
           </section>
         </div>

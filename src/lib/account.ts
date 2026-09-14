@@ -66,10 +66,10 @@ export const readAccount = createServerFn({ method: "POST" })
   });
 
 export const startPlusCheckout = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ token: TOKEN }).parse(d))
+  .validator((d: unknown) => z.object({ token: TOKEN, plan: z.enum(["plus", "pro"]).optional() }).parse(d))
   .handler(async ({ data }) => {
     const { startPlusCheckout: start } = await import("./stripe.server");
-    return start(data.token);
+    return start(data.token, data.plan ?? "plus");
   });
 
 export const setRndMode = createServerFn({ method: "POST" })

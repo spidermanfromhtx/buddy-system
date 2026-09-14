@@ -13,7 +13,7 @@ import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
 import { inviteAdmin, listAdmins, readAccount, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
 import { CATEGORIES, categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
-import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
+import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, PRO_PRICE_LABEL, isPlus, maxSessionMin, planLabel, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
   claimBooking,
@@ -891,7 +891,7 @@ function Feed() {
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl">Buddy System</h1>
             <p className="mt-1.5 text-[11px] text-muted">
-              {plus ? "Plus" : limits ? `${left} left this week` : "R&D"}
+              {plus ? planLabel(me.plan) : limits ? `${left} left this week` : "R&D"}
             </p>
           </div>
         </div>
@@ -1137,16 +1137,41 @@ function Feed() {
                   </>
                 ) : null}
                 {plus ? (
-                  <p className="text-base text-muted">Plus. Unlimited sessions. Calls up to 2 hours. Share your entire window. During R&D, share is on so you can test it.</p>
+                  <div className="flex flex-col gap-3">
+                    <p className="text-base text-muted">
+                      {planLabel(me.plan)}. Unlimited sessions. Calls up to 2 hours.
+                    </p>
+                    {me.plan !== "pro" ? (
+                      <>
+                        <Btn
+                          kind="line"
+                          onClick={() => {
+                            void startPlusCheckout({ data: { token: me.sessionToken, plan: "pro" } }).then((res) => {
+                              if (!res.ok) {
+                                setNote(res.error);
+                                return;
+                              }
+                              window.location.href = res.url;
+                            });
+                          }}
+                        >
+                          Get Pro · {PRO_PRICE_LABEL}
+                        </Btn>
+                        <p className="text-sm text-muted">Pro will add window share. Not on yet.</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted">Window share for Pro is not on yet.</p>
+                    )}
+                  </div>
                 ) : limits ? (
                   <>
                     <p className="text-base text-muted">
-                      {left} of {FREE_SESSIONS} free 45-minute sessions left this week. {PLUS_PRICE_LABEL} unlocks unlimited sessions and calls longer than 45 minutes.
+                      {left} of {FREE_SESSIONS} free 45-minute sessions left this week.
                     </p>
                     <Btn
                       kind="fill"
                       onClick={() => {
-                        void startPlusCheckout({ data: { token: me.sessionToken } }).then((res) => {
+                        void startPlusCheckout({ data: { token: me.sessionToken, plan: "plus" } }).then((res) => {
                           if (!res.ok) {
                             setNote(res.error);
                             return;
@@ -1155,8 +1180,23 @@ function Feed() {
                         });
                       }}
                     >
-                      Get Plus · $5 a month
+                      Get Plus · {PLUS_PRICE_LABEL}
                     </Btn>
+                    <Btn
+                      kind="line"
+                      onClick={() => {
+                        void startPlusCheckout({ data: { token: me.sessionToken, plan: "pro" } }).then((res) => {
+                          if (!res.ok) {
+                            setNote(res.error);
+                            return;
+                          }
+                          window.location.href = res.url;
+                        });
+                      }}
+                    >
+                      Get Pro · {PRO_PRICE_LABEL}
+                    </Btn>
+                    <p className="text-sm text-muted">Plus is unlimited time. Pro will add window share.</p>
                   </>
                 ) : (
                   <p className="text-sm text-muted">R&D. Session limits are off.</p>
