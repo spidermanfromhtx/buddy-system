@@ -13,33 +13,18 @@ export type SignalKind = "offer" | "answer" | "ice" | "pcm";
 
 /**
  * Wire contract between this client and the signaling relay the app provides
- * at /api/rtc (see the multiplayer-p2p skill for a reference implementation).
- * The client only needs these shapes — the relay's storage is the app's choice.
+ * at /api/rtc (see signaling.server.ts). The client only needs these shapes.
  */
-export interface PeerRow {
-  id: string;
-  name: string;
-}
-export interface SignalRow {
-  id: number;
-  from: string;
-  kind: SignalKind;
-  payload: unknown;
-}
-export interface RtcPollResponse {
-  peers: PeerRow[];
-  signals: SignalRow[];
-}
+export interface PeerRow { id: string; name: string; }
+export interface SignalRow { id: number; from: string; kind: SignalKind; payload: unknown; }
+export interface RtcPollResponse { peers: PeerRow[]; signals: SignalRow[]; }
 
 export interface PeerInfo {
   id: string;
   name: string;
   connectionState: RTCPeerConnectionState;
-  /** Selected local ICE candidate type: host | srflx | prflx | relay. */
   candidateType: string | null;
-  /** Data-channel ping RTT (ms), measured every 2s once connected. */
   rttMs: number | null;
-  /** True once we have heard this peer (ICE or voice packets). */
   voice: boolean;
 }
 
@@ -47,16 +32,11 @@ export interface P2PRoomOptions {
   room: string;
   selfId: string;
   name?: string;
-  /** Defaults to VITE_STUN_URLS (comma-separated) or Google public STUN. */
   iceServers?: RTCIceServer[];
   onPeersChanged?: (peers: PeerInfo[]) => void;
-  /** Fires for both the unreliable "state" and reliable "reliable" channels. */
   onMessage?: (from: string, data: unknown, channel: "state" | "reliable") => void;
-  /** Fires once, on the first successful signaling poll (registration). */
   onConnected?: () => void;
-  /** Optional local mic/cam. Added to every new peer connection. */
   mediaStream?: MediaStream;
-  /** When false, no video m-line. Audio-only listings stay audio-only. */
   allowVideo?: boolean;
   onRemoteStream?: (peerId: string, stream: MediaStream) => void;
   onMediaData?: (peerId: string, data: ArrayBuffer) => void;
@@ -69,15 +49,10 @@ interface PeerSlot {
   media?: RTCDataChannel;
   makingOffer: boolean;
   ignoreOffer: boolean;
-  /** ICE candidates that arrived before the remote description (buffered). */
   pendingCandidates: RTCIceCandidateInit[];
-  /** Last time this pair made observable progress toward connected. */
   lastProgressAt: number;
-  /** Watchdog recreations (dialer) / stall windows (receiver) so far. */
   recoveryAttempts: number;
-  /** Gave up after MAX_RECOVERY_ATTEMPTS — excluded from fast-poll pressure. */
   terminal?: boolean;
-  /** One-shot: pc was already recreated to absorb a failing remote offer. */
   recreatedForOffer?: boolean;
   info: PeerInfo;
   pingSentAt?: number;
@@ -91,112 +66,45 @@ const STALL_MS = 20_000;
 const MAX_RECOVERY_ATTEMPTS = 4;
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];
 
-function bufToB64(buf: ArrayBuffer) {
-  const bytes = new Uint8Array(buf);
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i] ?? 0);
-  return btoa(s);
-}
-
-function b64ToBuf(b64: string) {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out.buffer;
-}
-
-function asSignalPayload(payload: unknown) {
-  if (typeof payload === "string") {
-    try {
-      return JSON.parse(payload) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  }
-  if (payload && typeof payload === "object") return payload as Record<string, unknown>;
-  return {};
-}
+function bufToB64(buf: ArrayBuffer) { const bytes = new Uint8Array(buf); let s = ""; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i] ?? 0); return btoa(s); }
+function b64ToBuf(b64: string) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out.buffer; }
+function asSignalPayload(payload: unknown) { if (typeof payload === "string") { try { return JSON.parse(payload) as Record<string, unknown>; } catch { return {}; } } if (payload && typeof payload === "object") return payload as Record<string, unknown>; return {}; }
 
 export function defaultIceServers(): RTCIceServer[] {
   return [
-    {
-      urls: [
-        "stun:stun.l.google.com:19302",
-        "stun:stun1.l.google.com:19302",
-        "stun:stun.cloudflare.com:3478",
-        "stun:stun.relay.metered.ca:80",
-      ],
-    },
-    {
-      urls: [
-        "turn:openrelay.metered.ca:80",
-        "turn:openrelay.metered.ca:80?transport=tcp",
-        "turn:openrelay.metered.ca:443",
-        "turns:openrelay.metered.ca:443?transport=tcp",
-      ],
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478", "stun:stun.relay.metered.ca:80"] },
+    { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443", "turns:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject" },
   ];
 }
-
 export async function loadIceServers(): Promise<RTCIceServer[]> {
   const base = defaultIceServers();
   try {
     const ttl = 86_400;
     const username = `${Math.floor(Date.now() / 1000) + ttl}:buddy`;
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode("openrelayprojectsecret"),
-      { name: "HMAC", hash: "SHA-1" },
-      false,
-      ["sign"],
-    );
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("openrelayprojectsecret"), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
     const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(username));
     const credential = btoa(String.fromCharCode(...new Uint8Array(sig)));
-    base.push({
-      urls: [
-        "turn:staticauth.openrelay.metered.ca:80",
-        "turn:staticauth.openrelay.metered.ca:80?transport=tcp",
-        "turn:staticauth.openrelay.metered.ca:443",
-        "turns:staticauth.openrelay.metered.ca:443?transport=tcp",
-      ],
-      username,
-      credential,
-    });
-  } catch {
-    // Static-auth TURN is extra. STUN + the classic openrelay block still apply.
-  }
+    base.push({ urls: ["turn:staticauth.openrelay.metered.ca:80", "turn:staticauth.openrelay.metered.ca:80?transport=tcp", "turn:staticauth.openrelay.metered.ca:443", "turns:staticauth.openrelay.metered.ca:443?transport=tcp"], username, credential });
+  } catch {}
   return base;
 }
 
-function senderFor(pc: RTCPeerConnection, kind: string) {
-  const live = pc.getSenders().find((s) => s.track?.kind === kind);
-  if (live) return live;
-  const tr = pc.getTransceivers().find((t) => (t.receiver.track?.kind ?? t.sender.track?.kind) === kind);
-  return tr?.sender;
-}
-
+function senderFor(pc: RTCPeerConnection, kind: string) { const live = pc.getSenders().find((s) => s.track?.kind === kind); if (live) return live; const tr = pc.getTransceivers().find((t) => (t.receiver.track?.kind ?? t.sender.track?.kind) === kind); return tr?.sender; }
 function bumpVideo(sender: RTCRtpSender, track: MediaStreamTrack) {
   if (track.kind !== "video") return;
   if ("contentHint" in track) (track as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
   try {
     const params = sender.getParameters();
     if (!params.encodings?.length) return;
-    for (const enc of params.encodings) {
-      enc.maxFramerate = 24;
-      enc.scaleResolutionDownBy = 1;
-    }
+    for (const enc of params.encodings) { enc.maxFramerate = 30; enc.scaleResolutionDownBy = 1; }
+    if ("degradationPreference" in params) (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = "maintain-framerate";
     void sender.setParameters(params);
-  } catch {
-    // optional
-  }
+  } catch {}
 }
 
 export class P2PRoom {
   private readonly opts: P2PRoomOptions;
   private readonly peers = new Map<string, PeerSlot>();
-  /** Per-remote-peer signal delivery chains (order-preserving). */
   private readonly signalQueues = new Map<string, Promise<void>>();
   private cursor = 0;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -206,673 +114,134 @@ export class P2PRoom {
   private lastPeersFingerprint = "";
   private sendAudio = true;
 
-  constructor(opts: P2PRoomOptions) {
-    this.opts = opts;
-  }
-
-  /**
-   * The first poll IS the join: it registers this peer and returns the
-   * roster. A failed first poll (cold DB, offline tab) must not strand the
-   * room: the loop and timers start regardless and the next poll retries.
-   */
-  async join(): Promise<void> {
-    try {
-      await this.pollOnce();
-    } catch {
-      // First poll can fail transiently; the scheduled loop below retries.
-    }
-    if (this.closed) return;
-    this.schedulePoll(this.anyPairConnecting() ? FAST_POLL_MS : IDLE_POLL_MS);
-    this.pingTimer = setInterval(() => {
-      this.pingAll();
-      this.watchdog();
-    }, PING_INTERVAL_MS);
-  }
-
+  constructor(opts: P2PRoomOptions) { this.opts = opts; }
+  async join(): Promise<void> { try { await this.pollOnce(); } catch {} if (this.closed) return; this.schedulePoll(this.anyPairConnecting() ? FAST_POLL_MS : IDLE_POLL_MS); this.pingTimer = setInterval(() => { this.pingAll(); this.watchdog(); }, PING_INTERVAL_MS); }
   close(leave = true): void {
-    this.closed = true;
-    if (this.pollTimer) clearTimeout(this.pollTimer);
-    if (this.pingTimer) clearInterval(this.pingTimer);
-    for (const slot of this.peers.values()) slot.pc.close();
-    this.peers.clear();
+    this.closed = true; if (this.pollTimer) clearTimeout(this.pollTimer); if (this.pingTimer) clearInterval(this.pingTimer);
+    for (const slot of this.peers.values()) slot.pc.close(); this.peers.clear();
     if (!leave) return;
-    void fetch("/api/rtc", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ op: "leave", room: this.opts.room, peer: this.opts.selfId }),
-      keepalive: true,
-    }).catch(() => {});
+    void fetch("/api/rtc", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "leave", room: this.opts.room, peer: this.opts.selfId }), keepalive: true }).catch(() => {});
   }
-
-  attachMedia(stream: MediaStream): void {
-    this.opts.mediaStream = stream;
-    for (const [peerId, slot] of this.peers) {
-      this.wireLocal(slot, peerId);
-    }
-  }
-
-  setSendAudio(on: boolean): void {
-    this.sendAudio = on;
-    for (const [peerId, slot] of this.peers) {
-      this.wireLocal(slot, peerId);
-    }
-  }
-
+  attachMedia(stream: MediaStream): void { this.opts.mediaStream = stream; for (const [peerId, slot] of this.peers) this.wireLocal(slot, peerId); }
+  setSendAudio(on: boolean): void { this.sendAudio = on; for (const [peerId, slot] of this.peers) this.wireLocal(slot, peerId); }
   private wireLocal(slot: PeerSlot, peerId: string) {
-    const stream = this.opts.mediaStream;
-    if (!stream) return;
+    const stream = this.opts.mediaStream; if (!stream) return;
     for (const track of stream.getTracks()) {
       if (track.readyState !== "live") continue;
       if (track.kind === "audio") track.enabled = this.sendAudio;
       const sender = senderFor(slot.pc, track.kind);
-      if (sender) {
-        if (sender.track !== track) void sender.replaceTrack(track).then(() => bumpVideo(sender, track));
-      } else if (track.kind !== "video" || this.opts.allowVideo) {
-        slot.pc.addTrack(track, stream);
-        if (track.kind === "video") void this.kickOffer(slot, peerId);
-      }
+      if (sender) { if (sender.track !== track) void sender.replaceTrack(track).then(() => bumpVideo(sender, track)); }
+      else if (track.kind !== "video" || this.opts.allowVideo) { slot.pc.addTrack(track, stream); if (track.kind === "video") void this.kickOffer(slot, peerId); }
     }
-    if (this.opts.allowVideo && !stream.getVideoTracks().some((t) => t.readyState === "live")) {
-      const vSender = senderFor(slot.pc, "video");
-      if (vSender?.track) void vSender.replaceTrack(null);
-    }
+    if (this.opts.allowVideo && !stream.getVideoTracks().some((t) => t.readyState === "live")) { const vSender = senderFor(slot.pc, "video"); if (vSender?.track) void vSender.replaceTrack(null); }
   }
-
   sendMedia(data: ArrayBuffer): void {
     let viaDc = false;
     for (const slot of this.peers.values()) {
-      const ch =
-        slot.media?.readyState === "open"
-          ? slot.media
-          : slot.reliable?.readyState === "open"
-            ? slot.reliable
-            : null;
+      const ch = slot.media?.readyState === "open" ? slot.media : slot.reliable?.readyState === "open" ? slot.reliable : null;
       if (!ch || ch.bufferedAmount > 128_000) continue;
-      try {
-        ch.send(data);
-        viaDc = true;
-      } catch {
-        // closed
-      }
+      try { ch.send(data); viaDc = true; } catch {}
     }
     if (viaDc) return;
-    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1;
-    const now = Date.now();
-    if (jpeg) {
-      if (now - this.lastJpegAt < 90) return;
-      this.lastJpegAt = now;
-    } else {
-      if (now - this.lastPcmAt < 60) return;
-      this.lastPcmAt = now;
-    }
-    const payload = { a: bufToB64(data) };
-    for (const id of this.peers.keys()) {
-      if (id === this.opts.selfId) continue;
-      void this.sendSignal(id, "pcm", payload);
-    }
+    const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1; const now = Date.now();
+    if (jpeg) { if (now - this.lastJpegAt < 90) return; this.lastJpegAt = now; } else { if (now - this.lastPcmAt < 60) return; this.lastPcmAt = now; }
+    const payload = { a: bufToB64(data) }; for (const id of this.peers.keys()) if (id !== this.opts.selfId) void this.sendSignal(id, "pcm", payload);
   }
+  private lastPcmAt = 0; private lastJpegAt = 0;
+  private async pushLocalTracks(slot: PeerSlot): Promise<void> { this.wireLocal(slot, slot.info.id); }
+  broadcast(data: unknown): void { const wire = JSON.stringify({ t: "d", d: data }); for (const slot of this.peers.values()) if (slot.state?.readyState === "open") slot.state.send(wire); }
+  send(data: unknown, peerId?: string): void { const wire = JSON.stringify({ t: "d", d: data }); const targets = peerId ? [this.peers.get(peerId)] : [...this.peers.values()]; for (const slot of targets) if (slot?.reliable?.readyState === "open") slot.reliable.send(wire); }
+  peerList(): PeerInfo[] { return [...this.peers.values()].map((s) => ({ ...s.info })); }
 
-  private lastPcmAt = 0;
-  private lastJpegAt = 0;
-
-  private async pushLocalTracks(slot: PeerSlot): Promise<void> {
-    this.wireLocal(slot, slot.info.id);
-  }
-
-  /** Send on the unreliable game-state channel (drops stale packets). */
-  broadcast(data: unknown): void {
-    const wire = JSON.stringify({ t: "d", d: data });
-    for (const slot of this.peers.values()) {
-      if (slot.state?.readyState === "open") slot.state.send(wire);
-    }
-  }
-
-  /** Send reliably (ordered) to one peer, or to all when peerId is omitted. */
-  send(data: unknown, peerId?: string): void {
-    const wire = JSON.stringify({ t: "d", d: data });
-    const targets = peerId ? [this.peers.get(peerId)] : [...this.peers.values()];
-    for (const slot of targets) {
-      if (slot?.reliable?.readyState === "open") slot.reliable.send(wire);
-    }
-  }
-
-  peerList(): PeerInfo[] {
-    return [...this.peers.values()].map((s) => ({ ...s.info }));
-  }
-
-  // ── signaling loop ─────────────────────────────────────────────────────────
-
-  private schedulePoll(delay: number): void {
-    if (this.closed) return;
-    if (this.pollTimer) clearTimeout(this.pollTimer);
-    this.pollTimer = setTimeout(() => void this.poll(), delay);
-  }
-
-  private anyPairConnecting(): boolean {
-    if (!this.peers.size) return false;
-    for (const s of this.peers.values()) {
-      if (s.terminal) continue;
-      const dc = s.media?.readyState === "open" || s.reliable?.readyState === "open";
-      if (!dc) return true;
-      if (s.info.connectionState !== "connected") return true;
-    }
-    return false;
-  }
-
+  private schedulePoll(delay: number): void { if (this.closed) return; if (this.pollTimer) clearTimeout(this.pollTimer); this.pollTimer = setTimeout(() => void this.poll(), delay); }
+  private anyPairConnecting(): boolean { if (!this.peers.size) return false; for (const s of this.peers.values()) { if (s.terminal) continue; if (s.info.connectionState !== "connected") return true; } return false; }
   private async pollOnce(): Promise<void> {
-    const params = new URLSearchParams({
-      room: this.opts.room,
-      peer: this.opts.selfId,
-      name: this.opts.name ?? "",
-      since: String(this.cursor),
-    });
-    const res = await fetch(`/api/rtc?${params}`);
-    if (this.closed) return;
-    if (!res.ok) throw new Error(`signaling poll failed: ${res.status}`);
-    const body = (await res.json()) as RtcPollResponse;
-    if (this.closed) return;
-    if (!this.everPolled) {
-      this.everPolled = true;
-      this.opts.onConnected?.();
-    }
-    this.reconcileRoster(body.peers);
-    const roster = new Set(body.peers.map((p) => p.id));
-    for (const sig of body.signals) {
-      this.cursor = Math.max(this.cursor, sig.id);
-      await this.onSignal(sig.from, sig.kind, sig.payload, roster);
-      if (this.closed) return;
-    }
+    const params = new URLSearchParams({ room: this.opts.room, peer: this.opts.selfId, name: this.opts.name ?? "", since: String(this.cursor) });
+    const res = await fetch(`/api/rtc?${params}`); if (this.closed) return; if (!res.ok) throw new Error(`signaling poll failed: ${res.status}`); const body = (await res.json()) as RtcPollResponse; if (this.closed) return;
+    if (!this.everPolled) { this.everPolled = true; this.opts.onConnected?.(); }
+    this.reconcileRoster(body.peers); const roster = new Set(body.peers.map((p) => p.id));
+    for (const sig of body.signals) { this.cursor = Math.max(this.cursor, sig.id); await this.onSignal(sig.from, sig.kind, sig.payload, roster); if (this.closed) return; }
   }
-
-  private async poll(): Promise<void> {
-    if (this.closed) return;
-    try {
-      await this.pollOnce();
-    } catch {
-      // Transient poll failures are expected (tab sleep, deploy roll); retry.
-    }
-    this.schedulePoll(this.anyPairConnecting() ? FAST_POLL_MS : IDLE_POLL_MS);
-  }
-
+  private async poll(): Promise<void> { if (this.closed) return; try { await this.pollOnce(); } catch {} this.schedulePoll(this.anyPairConnecting() ? FAST_POLL_MS : IDLE_POLL_MS); }
   private reconcileRoster(peers: { id: string; name: string }[]): void {
     const alive = new Set(peers.map((p) => p.id));
-    for (const p of peers) {
-      if (p.id === this.opts.selfId) continue;
-      const existing = this.peers.get(p.id);
-      if (existing) {
-        existing.info.name = p.name;
-      } else {
-        // Exactly one side dials each pair; the other waits for the offer.
-        this.connectTo(p.id, p.name, this.opts.selfId > p.id);
-      }
-    }
-    for (const [id, slot] of this.peers) {
-      if (!alive.has(id)) {
-        slot.pc.close();
-        this.peers.delete(id);
-      }
-    }
+    for (const p of peers) { if (p.id === this.opts.selfId) continue; const existing = this.peers.get(p.id); if (existing) existing.info.name = p.name; else this.connectTo(p.id, p.name, this.opts.selfId > p.id); }
+    for (const [id, slot] of this.peers) if (!alive.has(id)) { slot.pc.close(); this.peers.delete(id); }
     this.emitPeers();
   }
-
-  // ── per-pair connection ────────────────────────────────────────────────────
-
   private connectTo(peerId: string, name: string, initiator: boolean): PeerSlot | null {
     if (this.closed) return null;
-    const pc = new RTCPeerConnection({
-      iceServers: this.opts.iceServers ?? defaultIceServers(),
-      bundlePolicy: "max-bundle",
-      iceCandidatePoolSize: 4,
-    });
-    const slot: PeerSlot = {
-      pc,
-      makingOffer: false,
-      ignoreOffer: false,
-      pendingCandidates: [],
-      lastProgressAt: Date.now(),
-      recoveryAttempts: 0,
-      remote: new MediaStream(),
-      info: {
-        id: peerId,
-        name,
-        connectionState: pc.connectionState,
-        candidateType: null,
-        rttMs: null,
-        voice: false,
-      },
-    };
+    const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers ?? defaultIceServers(), bundlePolicy: "max-bundle", iceCandidatePoolSize: 4 });
+    const slot: PeerSlot = { pc, makingOffer: false, ignoreOffer: false, pendingCandidates: [], lastProgressAt: Date.now(), recoveryAttempts: 0, remote: new MediaStream(), info: { id: peerId, name, connectionState: pc.connectionState, candidateType: null, rttMs: null, voice: false } };
     this.peers.set(peerId, slot);
-
-    pc.onicecandidate = (e) => {
-      void this.sendSignal(peerId, "ice", e.candidate ? e.candidate.toJSON() : { candidate: "" });
-    };
-    pc.onconnectionstatechange = () => this.syncPair(slot);
-    pc.oniceconnectionstatechange = () => this.syncPair(slot);
-    pc.onicegatheringstatechange = () => {
-      if (pc.iceGatheringState === "gathering") slot.lastProgressAt = Date.now();
-    };
+    pc.onicecandidate = (e) => void this.sendSignal(peerId, "ice", e.candidate ? e.candidate.toJSON() : { candidate: "" });
+    pc.onconnectionstatechange = () => this.syncPair(slot); pc.oniceconnectionstatechange = () => this.syncPair(slot); pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === "gathering") slot.lastProgressAt = Date.now(); };
     pc.onnegotiationneeded = async () => {
-      if (this.closed || slot.makingOffer) return;
-      if (pc.signalingState !== "stable") return;
-      if (!initiator && !pc.currentRemoteDescription) return;
-      try {
-        slot.makingOffer = true;
-        const offer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: Boolean(this.opts.allowVideo),
-        });
-        if (this.closed || pc.signalingState !== "stable") return;
-        await pc.setLocalDescription(offer);
-        await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
-      } catch {
-        // A failed offer is retried on the next negotiationneeded.
-      } finally {
-        slot.makingOffer = false;
-      }
+      if (this.closed || slot.makingOffer || pc.signalingState !== "stable") return; if (!initiator && !pc.currentRemoteDescription) return;
+      try { slot.makingOffer = true; const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: Boolean(this.opts.allowVideo) }); if (this.closed || pc.signalingState !== "stable") return; await pc.setLocalDescription(offer); await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON()); } catch {} finally { slot.makingOffer = false; }
     };
-    pc.ondatachannel = (e) => {
-      if (e.channel.label === "media") this.attachMediaChannel(slot, e.channel);
-      else this.attachChannel(slot, e.channel);
-    };
-    pc.ontrack = (ev) => {
-      ev.track.enabled = true;
-      if (!slot.remote.getTracks().some((t) => t.id === ev.track.id)) {
-        slot.remote.addTrack(ev.track);
-      }
-      const fire = () => this.opts.onRemoteStream?.(peerId, slot.remote);
-      fire();
-      ev.track.onunmute = fire;
-      ev.track.onended = fire;
-    };
-
-    if (initiator) {
-      this.attachChannel(
-        slot,
-        pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 }),
-      );
-      this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true }));
-      this.attachMediaChannel(
-        slot,
-        pc.createDataChannel("media", { ordered: false, maxPacketLifeTime: 180 }),
-      );
-    }
-
-    const media = this.opts.mediaStream;
-    if (media) {
-      for (const track of media.getTracks()) {
-        if (track.readyState !== "live") continue;
-        if (track.kind === "audio" && !this.sendAudio) continue;
-        pc.addTrack(track, media);
-      }
-    }
-    const kinds = new Set(
-      pc.getTransceivers().map((tr) => tr.receiver.track?.kind ?? tr.sender.track?.kind),
-    );
-    if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" });
-    if (this.opts.allowVideo && !kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
-
-    if (initiator) void this.kickOffer(slot, peerId);
-    return slot;
+    pc.ondatachannel = (e) => { if (e.channel.label === "media") this.attachMediaChannel(slot, e.channel); else this.attachChannel(slot, e.channel); };
+    pc.ontrack = (ev) => { ev.track.enabled = true; if (!slot.remote.getTracks().some((t) => t.id === ev.track.id)) slot.remote.addTrack(ev.track); const fire = () => this.opts.onRemoteStream?.(peerId, slot.remote); fire(); ev.track.onunmute = fire; ev.track.onended = fire; };
+    if (initiator) { this.attachChannel(slot, pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 })); this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true })); this.attachMediaChannel(slot, pc.createDataChannel("media", { ordered: false, maxPacketLifeTime: 180 })); }
+    const media = this.opts.mediaStream; if (media) for (const track of media.getTracks()) { if (track.readyState !== "live") continue; if (track.kind === "audio" && !this.sendAudio) continue; pc.addTrack(track, media); }
+    const kinds = new Set(pc.getTransceivers().map((tr) => tr.receiver.track?.kind ?? tr.sender.track?.kind)); if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" }); if (this.opts.allowVideo && !kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
+    if (initiator) void this.kickOffer(slot, peerId); return slot;
   }
-
-  private async kickOffer(slot: PeerSlot, peerId: string): Promise<void> {
-    if (this.closed || slot.makingOffer) return;
-    if (slot.pc.signalingState !== "stable") return;
-    try {
-      slot.makingOffer = true;
-      const offer = await slot.pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: Boolean(this.opts.allowVideo),
-      });
-      if (this.closed || slot.pc.signalingState !== "stable") return;
-      await slot.pc.setLocalDescription(offer);
-      await this.sendSignal(peerId, "offer", slot.pc.localDescription!.toJSON());
-    } catch {
-      // onnegotiationneeded retries
-    } finally {
-      slot.makingOffer = false;
-    }
-  }
-
-  private attachMediaChannel(slot: PeerSlot, channel: RTCDataChannel): void {
-    slot.media = channel;
-    channel.binaryType = "arraybuffer";
-    channel.onopen = () => this.markLive(slot);
-    channel.onmessage = (e) => {
-      const data = e.data;
-      if (data instanceof ArrayBuffer) {
-        this.opts.onMediaData?.(slot.info.id, data);
-        return;
-      }
-      if (data instanceof Blob) {
-        void data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf));
-      }
-    };
-  }
-
+  private async kickOffer(slot: PeerSlot, peerId: string): Promise<void> { if (this.closed || slot.makingOffer || slot.pc.signalingState !== "stable") return; try { slot.makingOffer = true; const offer = await slot.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: Boolean(this.opts.allowVideo) }); if (this.closed || slot.pc.signalingState !== "stable") return; await slot.pc.setLocalDescription(offer); await this.sendSignal(peerId, "offer", slot.pc.localDescription!.toJSON()); } catch {} finally { slot.makingOffer = false; } }
+  private attachMediaChannel(slot: PeerSlot, channel: RTCDataChannel): void { slot.media = channel; channel.binaryType = "arraybuffer"; channel.onopen = () => this.syncPair(slot); channel.onmessage = (e) => { const data = e.data; if (data instanceof ArrayBuffer) { this.opts.onMediaData?.(slot.info.id, data); return; } if (data instanceof Blob) void data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf)); }; }
   private attachChannel(slot: PeerSlot, channel: RTCDataChannel): void {
-    channel.binaryType = "arraybuffer";
-    if (channel.label === "state") slot.state = channel;
-    else slot.reliable = channel;
-    channel.onopen = () => this.markLive(slot);
+    channel.binaryType = "arraybuffer"; if (channel.label === "state") slot.state = channel; else slot.reliable = channel; channel.onopen = () => this.syncPair(slot);
     channel.onmessage = (e) => {
-      if (e.data instanceof ArrayBuffer) {
-        this.opts.onMediaData?.(slot.info.id, e.data);
-        return;
-      }
-      if (e.data instanceof Blob) {
-        void e.data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf));
-        return;
-      }
-      let msg: { t: string; d?: unknown };
-      try {
-        msg = JSON.parse(e.data as string) as { t: string; d?: unknown };
-      } catch {
-        return;
-      }
-      if (msg.t === "ping") {
-        if (slot.state?.readyState === "open") {
-          slot.state.send(JSON.stringify({ t: "pong" }));
-        }
-      } else if (msg.t === "pong") {
-        if (slot.pingSentAt) {
-          slot.info.rttMs = Math.round(performance.now() - slot.pingSentAt);
-          slot.pingSentAt = undefined;
-          this.emitPeers();
-        }
-      } else {
-        this.opts.onMessage?.(
-          slot.info.id,
-          msg.d,
-          channel.label === "state" ? "state" : "reliable",
-        );
-      }
+      if (e.data instanceof ArrayBuffer) { this.opts.onMediaData?.(slot.info.id, e.data); return; }
+      if (e.data instanceof Blob) { void e.data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf)); return; }
+      let msg: { t: string; d?: unknown }; try { msg = JSON.parse(e.data as string) as { t: string; d?: unknown }; } catch { return; }
+      if (msg.t === "ping") { if (slot.state?.readyState === "open") slot.state.send(JSON.stringify({ t: "pong" })); } else if (msg.t === "pong") { if (slot.pingSentAt) { slot.info.rttMs = Math.round(performance.now() - slot.pingSentAt); slot.pingSentAt = undefined; this.emitPeers(); } } else this.opts.onMessage?.(slot.info.id, msg.d, channel.label === "state" ? "state" : "reliable");
     };
   }
-
-  /** Apply buffered ICE candidates once a remote description is in place. */
-  private async flushPendingCandidates(slot: PeerSlot): Promise<void> {
-    while (slot.pendingCandidates.length > 0) {
-      const candidate = slot.pendingCandidates.shift()!;
-      try {
-        await slot.pc.addIceCandidate(candidate);
-      } catch (err) {
-        if (!slot.ignoreOffer) console.warn("[p2p] addIceCandidate failed:", err);
-      }
-      if (this.closed) return;
-    }
-  }
-
-  private async onSignal(
-    from: string,
-    kind: SignalKind,
-    payload: unknown,
-    roster: Set<string>,
-  ): Promise<void> {
-    if (this.closed) return;
-    let slot = this.peers.get(from);
-    if (!slot) {
-      // New peers dial us in the same poll that adds them to the roster.
-      // Signals outlive membership, so drop senders the roster doesn't vouch for.
-      if (!roster.has(from)) return;
-      const created = this.connectTo(from, "", false);
-      if (!created) return;
-      slot = created;
-    }
+  private async flushPendingCandidates(slot: PeerSlot): Promise<void> { while (slot.pendingCandidates.length > 0) { const candidate = slot.pendingCandidates.shift()!; try { await slot.pc.addIceCandidate(candidate); } catch (err) { if (!slot.ignoreOffer) console.warn("[p2p] addIceCandidate failed:", err); } if (this.closed) return; } }
+  private async onSignal(from: string, kind: SignalKind, payload: unknown, roster: Set<string>): Promise<void> {
+    if (this.closed) return; let slot = this.peers.get(from); if (!slot) { if (!roster.has(from)) return; const created = this.connectTo(from, "", false); if (!created) return; slot = created; }
     const polite = this.opts.selfId < from;
-
     try {
-      if (kind === "pcm") {
-        const raw = asSignalPayload(payload);
-        const a = typeof raw.a === "string" ? raw.a : "";
-        if (a) {
-          slot.info.voice = true;
-          this.opts.onMediaData?.(from, b64ToBuf(a));
-          this.emitPeers();
-        }
-        return;
-      }
+      if (kind === "pcm") { const raw = asSignalPayload(payload); const a = typeof raw.a === "string" ? raw.a : ""; if (a) { slot.info.voice = true; this.opts.onMediaData?.(from, b64ToBuf(a)); this.emitPeers(); } return; }
       if (kind === "offer" || kind === "answer") {
-        const description = asSignalPayload(payload) as unknown as RTCSessionDescriptionInit;
-        const collision =
-          kind === "offer" && (slot.makingOffer || slot.pc.signalingState !== "stable");
-        slot.ignoreOffer = !polite && collision;
-        if (slot.ignoreOffer) return;
-        try {
-          await slot.pc.setRemoteDescription(description); // implicit rollback when polite
-        } catch (err) {
-          // A pc resumed from suspend can be unable to take any new remote
-          // offer (stale DTLS fingerprint). Rebuild the pair once and apply
-          // the same offer to the fresh pc before giving up.
-          if (kind !== "offer" || slot.recreatedForOffer) throw err;
-          const attempts = slot.recoveryAttempts;
-          const name = slot.info.name;
-          slot.pc.close();
-          this.peers.delete(from);
-          const fresh = this.connectTo(from, name, false);
-          if (!fresh) return;
-          fresh.recoveryAttempts = attempts;
-          fresh.recreatedForOffer = true;
-          slot = fresh;
-          await slot.pc.setRemoteDescription(description);
-        }
-        if (this.closed) return;
-        await this.flushPendingCandidates(slot);
-        if (this.closed) return;
-        if (kind === "offer") {
-          await this.pushLocalTracks(slot);
-          const answer = await slot.pc.createAnswer();
-          await slot.pc.setLocalDescription(answer);
-          if (this.closed) return;
-          await this.sendSignal(from, "answer", slot.pc.localDescription!.toJSON());
-        }
+        const description = asSignalPayload(payload) as unknown as RTCSessionDescriptionInit; const collision = kind === "offer" && (slot.makingOffer || slot.pc.signalingState !== "stable"); slot.ignoreOffer = !polite && collision; if (slot.ignoreOffer) return;
+        try { await slot.pc.setRemoteDescription(description); } catch (err) { if (kind !== "offer" || slot.recreatedForOffer) throw err; const attempts = slot.recoveryAttempts; const name = slot.info.name; slot.pc.close(); this.peers.delete(from); const fresh = this.connectTo(from, name, false); if (!fresh) return; fresh.recoveryAttempts = attempts; fresh.recreatedForOffer = true; slot = fresh; await slot.pc.setRemoteDescription(description); }
+        if (this.closed) return; await this.flushPendingCandidates(slot); if (this.closed) return;
+        if (kind === "offer") { await this.pushLocalTracks(slot); const answer = await slot.pc.createAnswer(); await slot.pc.setLocalDescription(answer); if (this.closed) return; await this.sendSignal(from, "answer", slot.pc.localDescription!.toJSON()); }
       } else if (kind === "ice") {
-        const candidate = asSignalPayload(payload) as unknown as RTCIceCandidateInit;
-        if (!slot.pc.remoteDescription) {
-          // Candidate raced ahead of its SDP — hold it until the description
-          // lands (flushed after every successful setRemoteDescription).
-          slot.pendingCandidates.push(candidate);
-          return;
-        }
-        try {
-          await slot.pc.addIceCandidate(candidate);
-        } catch (err) {
-          // The enclosing catch would swallow a rethrow; log the real signal.
-          if (!slot.ignoreOffer) console.warn("[p2p] addIceCandidate failed:", err);
-        }
+        const candidate = asSignalPayload(payload) as unknown as RTCIceCandidateInit; if (!slot.pc.remoteDescription) { slot.pendingCandidates.push(candidate); return; } try { await slot.pc.addIceCandidate(candidate); } catch (err) { if (!slot.ignoreOffer) console.warn("[p2p] addIceCandidate failed:", err); }
       }
-    } catch {
-      // Negotiation errors resolve on the next offer cycle; state is visible
-      // to the app via connectionState.
-    }
+    } catch {}
   }
-
-  /**
-   * Signals are serialized per remote peer (a candidate must never overtake
-   * its SDP into the DB) and retried on failure with short backoff.
-   */
-  private sendSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> {
-    const prev = this.signalQueues.get(to) ?? Promise.resolve();
-    const next = prev.then(() => this.postSignal(to, kind, payload));
-    this.signalQueues.set(
-      to,
-      next.catch(() => {}),
-    );
-    return next;
-  }
-
-  private async postSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> {
-    for (let attempt = 0; ; attempt++) {
-      if (this.closed) return;
-      try {
-        const res = await fetch("/api/rtc", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            op: "signal",
-            room: this.opts.room,
-            from: this.opts.selfId,
-            to,
-            kind,
-            payload,
-          }),
-        });
-        if (res.ok) return;
-        throw new Error(`signal POST failed: ${res.status}`);
-      } catch (err) {
-        if (attempt >= SIGNAL_RETRY_DELAYS_MS.length) {
-          // Delivery gave up; the pair converges on the next offer cycle (or
-          // the watchdog rebuilds it). Logged once so failures are visible.
-          console.warn(`[p2p] signal ${kind} to ${to} failed after retries`, err);
-          return;
-        }
-        await new Promise((r) => setTimeout(r, SIGNAL_RETRY_DELAYS_MS[attempt]));
-      }
-    }
-  }
-
-  // ── diagnostics + recovery ─────────────────────────────────────────────────
-
-  private pingAll(): void {
-    const wire = JSON.stringify({ t: "ping" });
-    for (const slot of this.peers.values()) {
-      if (slot.state?.readyState !== "open") continue;
-      const stale =
-        slot.pingSentAt !== undefined && performance.now() - slot.pingSentAt > 2 * PING_INTERVAL_MS;
-      if (slot.pingSentAt === undefined || stale) {
-        // A lost pong must not freeze rttMs forever: expire and re-ping.
-        slot.pingSentAt = performance.now();
-        slot.state.send(wire);
-      }
-    }
-  }
-
-  /**
-   * Stuck-pair recovery, piggybacked on the ping interval. A pair that has
-   * made no progress for STALL_MS gets rebuilt by the dialer with a FRESH
-   * RTCPeerConnection (new DTLS identity — fixes the suspend/resume
-   * fingerprint wedge). After MAX_RECOVERY_ATTEMPTS the pair is terminal:
-   * visible to the app as its last connectionState, ignored by fast-poll.
-   */
-  private pairIsUp(slot: PeerSlot): boolean {
-    const ice = slot.pc.iceConnectionState;
-    const dcOpen = [slot.state, slot.reliable, slot.media].some((ch) => ch?.readyState === "open");
-    return (
-      slot.pc.connectionState === "connected" ||
-      ice === "connected" ||
-      ice === "completed" ||
-      dcOpen
-    );
-  }
-
+  private sendSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> { const prev = this.signalQueues.get(to) ?? Promise.resolve(); const next = prev.then(() => this.postSignal(to, kind, payload)); this.signalQueues.set(to, next.catch(() => {})); return next; }
+  private async postSignal(to: string, kind: SignalKind, payload: unknown): Promise<void> { for (let attempt = 0;; attempt++) { if (this.closed) return; try { const res = await fetch("/api/rtc", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "signal", room: this.opts.room, from: this.opts.selfId, to, kind, payload }) }); if (res.ok) return; throw new Error(`signal POST failed: ${res.status}`); } catch (err) { if (attempt >= SIGNAL_RETRY_DELAYS_MS.length) { console.warn(`[p2p] signal ${kind} to ${to} failed after retries`, err); return; } await new Promise((r) => setTimeout(r, SIGNAL_RETRY_DELAYS_MS[attempt])); } } }
+  private pingAll(): void { const wire = JSON.stringify({ t: "ping" }); for (const slot of this.peers.values()) { if (slot.state?.readyState !== "open") continue; const stale = slot.pingSentAt !== undefined && performance.now() - slot.pingSentAt > 2 * PING_INTERVAL_MS; if (slot.pingSentAt === undefined || stale) { slot.pingSentAt = performance.now(); slot.state.send(wire); } } }
+  private pairIsUp(slot: PeerSlot): boolean { const ice = slot.pc.iceConnectionState; return slot.pc.connectionState === "connected" || ice === "connected" || ice === "completed"; }
   private markLive(slot: PeerSlot): void {
-    slot.lastProgressAt = Date.now();
-    if (slot.info.connectionState === "connected" && slot.info.voice) return;
-    slot.info.connectionState = "connected";
-    slot.info.voice = true;
-    slot.recoveryAttempts = 0;
-    slot.terminal = false;
-    this.emitPeers();
-    void this.readCandidateType(slot);
-    void this.pushLocalTracks(slot);
+    slot.lastProgressAt = Date.now(); if (slot.info.connectionState === "connected") return; slot.info.connectionState = "connected";
+    slot.recoveryAttempts = 0; slot.terminal = false; this.emitPeers(); void this.readCandidateType(slot); void this.pushLocalTracks(slot);
   }
-
   private syncPair(slot: PeerSlot): void {
-    const live = slot.pc.connectionState;
-    const ice = slot.pc.iceConnectionState;
-    if (this.pairIsUp(slot)) {
-      this.markLive(slot);
-      return;
-    }
-    if (live === "connecting" || ice === "checking" || ice === "connected") {
-      slot.lastProgressAt = Date.now();
-    }
-    if (live !== slot.info.connectionState && slot.info.connectionState !== "connected") {
-      slot.info.connectionState = live;
-      this.emitPeers();
-    }
-    if (live === "failed") {
-      try {
-        slot.pc.restartIce();
-      } catch {
-        // next watchdog rebuilds
-      }
-    }
+    const live = slot.pc.connectionState; const ice = slot.pc.iceConnectionState;
+    if (this.pairIsUp(slot)) { this.markLive(slot); return; }
+    if (live === "connecting" || ice === "checking" || ice === "connected") slot.lastProgressAt = Date.now();
+    if (live !== slot.info.connectionState && slot.info.connectionState !== "connected") { slot.info.connectionState = live; this.emitPeers(); }
+    if (live === "failed") { try { slot.pc.restartIce(); } catch {} }
     if (live === "failed" || live === "disconnected") this.schedulePoll(FAST_POLL_MS);
   }
-
   private watchdog(): void {
-    if (this.closed) return;
-    const now = Date.now();
+    if (this.closed) return; const now = Date.now();
     for (const [peerId, slot] of this.peers) {
-      // pc.close() and some suspend/resume wedges never fire
-      // connectionstatechange — read the LIVE state so a silently-dead pc
-      // still trips the stall timer instead of hiding behind a cached
-      // "connected". Only live progress states refresh the stall clock.
       const live = slot.pc.connectionState;
-      const ice = slot.pc.iceConnectionState;
-      if (this.pairIsUp(slot)) {
-        this.markLive(slot);
-        continue;
-      }
-      if (live !== slot.info.connectionState && slot.info.connectionState !== "connected") {
-        slot.info.connectionState = live;
-        this.emitPeers();
-      }
-      if (slot.terminal) continue;
-      if (now - slot.lastProgressAt <= STALL_MS) continue;
-      if (slot.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
-        slot.terminal = true;
-        this.emitPeers();
-        continue;
-      }
-      slot.recoveryAttempts += 1;
-      slot.lastProgressAt = now; // re-arm the stall window
-      if (this.opts.selfId > peerId) {
-        // We are the dialer: rebuild the pair from scratch.
-        const { name } = slot.info;
-        const attempts = slot.recoveryAttempts;
-        slot.pc.close();
-        this.peers.delete(peerId);
-        const fresh = this.connectTo(peerId, name, true);
-        if (fresh) fresh.recoveryAttempts = attempts;
-        this.schedulePoll(FAST_POLL_MS);
-      }
-      // Receiver side: count the stall window and wait for the dialer's
-      // fresh offer (onSignal absorbs it, recreating our pc if needed).
+      if (this.pairIsUp(slot)) { this.markLive(slot); continue; }
+      if (live !== slot.info.connectionState && slot.info.connectionState !== "connected") { slot.info.connectionState = live; this.emitPeers(); }
+      if (slot.terminal || now - slot.lastProgressAt <= STALL_MS) continue;
+      if (slot.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) { slot.terminal = true; this.emitPeers(); continue; }
+      slot.recoveryAttempts += 1; slot.lastProgressAt = now;
+      if (this.opts.selfId > peerId) { const { name } = slot.info; const attempts = slot.recoveryAttempts; slot.pc.close(); this.peers.delete(peerId); const fresh = this.connectTo(peerId, name, true); if (fresh) fresh.recoveryAttempts = attempts; this.schedulePoll(FAST_POLL_MS); }
     }
   }
-
-  private async readCandidateType(slot: PeerSlot): Promise<void> {
-    // relay = TURN (none configured by default); srflx/host = direct path.
-    try {
-      const stats = await slot.pc.getStats();
-      let selected: RTCIceCandidatePairStats | undefined;
-      stats.forEach((s) => {
-        if (s.type === "candidate-pair" && (s as RTCIceCandidatePairStats).nominated) {
-          selected = s as RTCIceCandidatePairStats;
-        }
-      });
-      const localId = selected?.localCandidateId;
-      if (localId) {
-        const local = stats.get(localId) as { candidateType?: string } | undefined;
-        slot.info.candidateType = local?.candidateType ?? null;
-        this.emitPeers();
-      }
-    } catch {
-      // getStats is best-effort diagnostics only.
-    }
-  }
-
-  private emitPeers(): void {
-    // Only notify when something observable actually changed — React state
-    // setters otherwise re-render consumers on every poll/ping.
-    const list = this.peerList();
-    const fingerprint = JSON.stringify(
-      list.map((p) => [p.id, p.name, p.connectionState, p.candidateType, p.rttMs, p.voice]),
-    );
-    if (fingerprint === this.lastPeersFingerprint) return;
-    this.lastPeersFingerprint = fingerprint;
-    this.opts.onPeersChanged?.(list);
-  }
+  private async readCandidateType(slot: PeerSlot): Promise<void> { try { const stats = await slot.pc.getStats(); let selected: RTCIceCandidatePairStats | undefined; stats.forEach((s) => { if (s.type === "candidate-pair" && (s as RTCIceCandidatePairStats).nominated) selected = s as RTCIceCandidatePairStats; }); const localId = selected?.localCandidateId; if (localId) { const local = stats.get(localId) as { candidateType?: string } | undefined; slot.info.candidateType = local?.candidateType ?? null; this.emitPeers(); } } catch {} }
+  private emitPeers(): void { const list = this.peerList(); const fingerprint = JSON.stringify(list.map((p) => [p.id, p.name, p.connectionState, p.candidateType, p.rttMs, p.voice])); if (fingerprint === this.lastPeersFingerprint) return; this.lastPeersFingerprint = fingerprint; this.opts.onPeersChanged?.(list); }
 }
