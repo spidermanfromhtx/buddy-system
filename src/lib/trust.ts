@@ -21,8 +21,23 @@ export const leaveReview = createServerFn({ method: "POST" })
     return run(data);
   });
 
-export const listReviews = createServerFn({ method: "GET" }).handler(async () => {
-  const { listReviews: run } = await import("./trust.server");
+export const leaveAppReview = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        token: TOKEN,
+        rating: z.number().int().min(1).max(5),
+        body: z.string().min(1).max(280),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { leaveAppReview: run } = await import("./trust.server");
+    return run(data);
+  });
+
+export const listAppReviews = createServerFn({ method: "GET" }).handler(async () => {
+  const { listAppReviews: run } = await import("./trust.server");
   return run();
 });
 

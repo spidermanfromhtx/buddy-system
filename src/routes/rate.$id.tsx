@@ -73,7 +73,7 @@ function Rate() {
           <p className="text-sm text-muted">Loading the call…</p>
         )}
         <fieldset>
-          <legend className="text-sm font-medium">Anonymous rating. They will not see it was you. Other users will see the score.</legend>
+          <legend className="text-sm font-medium">Anonymous rating. They will not see it was you.</legend>
           <div className="mt-3 flex gap-2">
             {[1, 2, 3, 4, 5].map((n) => (
               <Btn key={n} type="button" kind={rating === n ? "fill" : "line"} className="h-10 flex-1 px-0" onClick={() => setRating(n)}>

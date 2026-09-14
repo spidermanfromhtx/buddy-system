@@ -73,7 +73,6 @@ function Card({
 }) {
   const due = formatDue(dueDate);
   const bits = [
-    ratingCount ? `${ratingAvg?.toFixed(1)} (${ratingCount})` : "",
     `${lengthMin} min`,
     category ? categoryLabel(category) : "",
     offerCamera ? "camera" : "",
@@ -679,18 +678,16 @@ function Feed() {
           scheduled.map((row) => (
             <Card
               key={row.id}
-              name={row.name}
+              name={row.matchPeerName || row.name}
               color={row.color}
-              photo={row.photo}
+              photo={row.matchPeerName ? null : row.photo}
               task={row.task}
               urgent={row.urgent}
               dueDate={row.dueDate}
               lengthMin={row.lengthMin}
               category={row.category}
               offerCamera={row.camera}
-              extra={[row.windowLabel, row.matchPeerName ? `matched · ${row.matchPeerName}` : "match pending"]
-                .filter(Boolean)
-                .join(" · ")}
+              extra={[row.windowLabel, row.matchPeerName ? "matched" : "match pending"].filter(Boolean).join(" · ")}
               action={
                 <div className="flex flex-col items-end gap-1">
                   {row.matchPeerName ? (
