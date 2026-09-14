@@ -1,6 +1,6 @@
 export const NONE = "";
-export const HOUSE = "#d06b55";
-export const HOUSE_INK = "#2b2420";
+export const HOUSE = "#6b5cff";
+export const HOUSE_INK = "#1c1933";
 
 export const COLOR_THEMES = [
   { id: "red", color: "#e7a6a6", label: "Red" },

@@ -60,7 +60,7 @@ export function InstallApp({ className }: { className?: string }) {
 
   return (
     <>
-      <Btn className={className ?? "h-10 text-sm"} onClick={() => void onClick()}>
+      <Btn className={className ?? "h-10 rounded-full border border-ink/15 bg-transparent px-4 text-sm text-ink hover:bg-paper-2"} kind="line" onClick={() => void onClick()}>
         Download app
       </Btn>
       {open ? (
