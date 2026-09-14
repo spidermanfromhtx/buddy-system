@@ -5,10 +5,12 @@ import {
   getLocalStream,
   hasLiveMic,
   hearPcm,
+  isMicMuted,
   isRealVideo,
   micHint,
   onPcmOut,
   playRemote,
+  setMicMuted,
   unlockOutput,
 } from "@/lib/media";
 import { P2PRoom, loadIceServers, type PeerInfo } from "@/lib/multiplayer";
@@ -88,6 +90,7 @@ export function AudioCall({
   const [err, setErr] = useState("");
   const [remoteVideo, setRemoteVideo] = useState(false);
   const [localCam, setLocalCam] = useState(false);
+  const [muted, setMuted] = useState(isMicMuted);
 
   function showLocal(media: MediaStream) {
     const el = localVideoRef.current;
@@ -234,6 +237,18 @@ export function AudioCall({
           </Btn>
         </div>
       ) : null}
+      <Btn
+        type="button"
+        kind={muted ? "line" : "ink"}
+        className="w-full"
+        onClick={() => {
+          const next = !muted;
+          setMicMuted(next);
+          setMuted(next);
+        }}
+      >
+        {muted ? "Mic off" : "Mic on"}
+      </Btn>
       <MicMeter stream={local} />
       <p className="text-sm text-muted">
         {err ||

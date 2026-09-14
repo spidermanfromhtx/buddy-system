@@ -8,6 +8,7 @@ import { parseCallSearch } from "@/lib/call-search";
 import { getCall, setCallStatus } from "@/lib/listings";
 import { stopLocalStream } from "@/lib/media";
 import { loadProfile } from "@/lib/profile";
+import { pingBreak } from "@/lib/ring";
 import { formatMmSs } from "@/lib/utils";
 
 export const Route = createFileRoute("/call/$id")({
@@ -55,6 +56,13 @@ function CallScreen() {
       setBreakOn(true);
     }
   }, [sec, breakEvery]);
+
+  useEffect(() => {
+    if (!breakOn) return;
+    pingBreak();
+    const t = setInterval(pingBreak, 3500);
+    return () => clearInterval(t);
+  }, [breakOn]);
 
   useEffect(() => {
     if (!dummy && q.data?.status === "done") {

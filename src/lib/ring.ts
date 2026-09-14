@@ -121,3 +121,29 @@ export function stopRing() {
     bell.currentTime = 0;
   }
 }
+
+function tone(freq: number, when: number, dur: number) {
+  if (!ctx) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = "triangle";
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(0.22, when + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start(when);
+  o.stop(when + dur + 0.02);
+}
+
+export function pingBreak() {
+  void armRing().then(() => {
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    tone(784, now, 0.22);
+    tone(988, now + 0.18, 0.28);
+    tone(1174, now + 0.4, 0.35);
+  });
+}
+

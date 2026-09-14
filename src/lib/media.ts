@@ -8,6 +8,20 @@ let keepAliveOsc: OscillatorNode | null = null;
 let capture: { src: MediaStreamAudioSourceNode; proc: ScriptProcessorNode; mute: GainNode } | null = null;
 let playBag: { ctx: AudioContext; next: number } | null = null;
 const pcmSinks = new Set<(buf: ArrayBuffer) => void>();
+let micMuted = false;
+
+export function isMicMuted() {
+  return micMuted;
+}
+
+function applyMicMute() {
+  for (const t of stream?.getAudioTracks() ?? []) t.enabled = !micMuted;
+}
+
+export function setMicMuted(muted: boolean) {
+  micMuted = muted;
+  applyMicMute();
+}
 
 export function hasLiveMic() {
   return Boolean(stream?.getAudioTracks().some((t) => t.readyState === "live"));
@@ -109,7 +123,7 @@ function startCapture() {
   proc.connect(mute);
   mute.connect(output.destination);
   proc.onaudioprocess = (ev) => {
-    if (!pcmSinks.size) return;
+    if (!pcmSinks.size || micMuted) return;
     const input = ev.inputBuffer.getChannelData(0);
     const buf = packPcm(output?.sampleRate || 48000, input);
     for (const cb of pcmSinks) cb(buf);
@@ -204,7 +218,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
       } catch {
         // audio-only is fine
       }
-      for (const t of stream.getAudioTracks()) t.enabled = true;
+      applyMicMute();
       keepLocalAlive(stream);
       startCapture();
       return stream;
@@ -216,7 +230,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
         stream.removeTrack(t);
       }
     }
-    for (const t of stream.getAudioTracks()) t.enabled = true;
+    applyMicMute();
     keepLocalAlive(stream);
     startCapture();
     return stream;
@@ -235,6 +249,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
     try {
       stream = await navigator.mediaDevices.getUserMedia(c);
       for (const t of stream.getTracks()) t.enabled = true;
+      applyMicMute();
       keepLocalAlive(stream);
       startCapture();
       return stream;
@@ -247,6 +262,7 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
 
 export function stopLocalStream() {
   stopCapture();
+  micMuted = false;
   const extra: MediaStream[] = [];
   if (stream) extra.push(stream);
   if (keep?.srcObject instanceof MediaStream) extra.push(keep.srcObject);
