@@ -2,12 +2,12 @@ import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes } from "react";
 
 const KIND = {
-  fill: "bg-rust text-on-rust shadow-[inset_0_2px_4px_rgba(20,17,14,0.28)] hover:opacity-90",
-  paper: "bg-paper text-night hover:bg-paper-2",
-  rust: "bg-rust text-on-rust shadow-[inset_0_2px_4px_rgba(20,17,14,0.28)] hover:opacity-90",
-  ink: "bg-rust text-on-rust shadow-[inset_0_2px_4px_rgba(20,17,14,0.28)] hover:opacity-90",
-  line: "border border-ink/15 bg-cream text-ink shadow-sm hover:bg-paper",
-  night: "border border-paper/20 bg-transparent text-paper hover:bg-paper/10",
+  fill: "bg-rust text-on-rust hover:opacity-90",
+  paper: "bg-paper text-ink hover:bg-paper-2",
+  rust: "bg-rust text-on-rust hover:opacity-90",
+  ink: "bg-rust text-on-rust hover:opacity-90",
+  line: "border border-ink/15 bg-paper text-ink hover:bg-paper-2",
+  night: "border border-ink/15 bg-transparent text-ink hover:bg-paper-2",
 } as const;
 
 export function Btn({

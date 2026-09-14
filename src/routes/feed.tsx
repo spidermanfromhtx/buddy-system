@@ -10,7 +10,7 @@ import { MonthCal } from "@/components/month-cal";
 import { CampusVerify } from "@/components/campus-verify";
 import { JoinForm } from "@/components/join-form";
 import { readAccount, saveAccount, startPlusCheckout } from "@/lib/account";
-import { categoryLabel } from "@/lib/categories";
+import { categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, isPlus, maxSessionMin, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
@@ -106,11 +106,11 @@ function Feed() {
   const [windowEnd, setWindowEnd] = useState("22:00");
   const [similar, setSimilar] = useState<"similar" | "different" | "either">("either");
   const [dueDate, setDueDate] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [liveId, setLiveId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "school">("all");
-  const [feedCat, setFeedCat] = useState("");
+  const [feedCat, setFeedCat] = useState<string[]>([]);
   const [pane, setPane] = useState<"live" | "book">("live");
   const [reportFor, setReportFor] = useState<Listing | null>(null);
   const [reportBody, setReportBody] = useState("");
@@ -119,7 +119,7 @@ function Feed() {
     const p = loadProfile();
     if (p) {
       setMe(p);
-      if (p.categories[0]) setCategory(p.categories[0]);
+      if (p.categories.length) setCategory(p.categories);
     }
   }, []);
 
@@ -185,8 +185,8 @@ function Feed() {
       const campus = me.school.toLowerCase();
       rows = rows.filter((l) => (l.school || "").toLowerCase() === campus);
     }
-    if (feedCat) {
-      rows = rows.filter((l) => l.category === feedCat || l.peerId === me?.id);
+    if (feedCat.length) {
+      rows = rows.filter((l) => parseCategories(l.category).some((id) => feedCat.includes(id)) || l.peerId === me?.id);
     }
     return rows;
   }, [q.data, tab, me?.school, me?.id, feedCat]);
@@ -215,7 +215,8 @@ function Feed() {
   const goOpen = useMutation({
     mutationFn: async () => {
       if (!me) return;
-      if (!task.trim()) throw new Error("Write a one-line task first.");
+      if (!task.trim()) throw new Error("Write a task description first.");
+      if (!category.length) throw new Error("Pick at least one category.");
       try {
         await getLocalStream(camera);
       } catch (e) {
@@ -237,7 +238,7 @@ function Feed() {
           camera,
           dueDate: dueDate || undefined,
           school: me.school ?? undefined,
-          category: category || undefined,
+          category: serializeCategories(category) || undefined,
         },
       }).then((res) => {
         if (res && "ok" in res && res.ok === false) throw new Error(res.error);
@@ -282,6 +283,7 @@ function Feed() {
   const goBook = useMutation({
     mutationFn: async () => {
       if (!me || !task.trim()) return;
+      if (!category.length) throw new Error("Pick at least one category.");
       const range = windowRange(windowDate, windowStart, windowEnd);
       const id = newId("book");
       await armRing();
@@ -302,7 +304,7 @@ function Feed() {
           windowEnd: range.end,
           dueDate: dueDate || undefined,
           school: me.school ?? undefined,
-          category: category || undefined,
+          category: serializeCategories(category) || undefined,
         },
       }).then((res) => {
         if (res && "ok" in res && res.ok === false) throw new Error(res.error);
@@ -467,12 +469,12 @@ function Feed() {
             value={task}
             onChange={(e) => setTask(e.target.value)}
           />
-          <span className="text-xs font-normal text-muted">One line. Not an assignment.</span>
+          <span className="text-xs font-normal text-muted">A task description. Not an assignment.</span>
         </label>
         <fieldset>
-          <legend className="text-sm font-medium">Category</legend>
-          <p className="mt-1 text-xs text-muted">What kind of task this is. Matching uses this.</p>
-          <CategoryPicker value={category ? [category] : []} onChange={(ids) => setCategory(ids[0] ?? "")} />
+          <legend className="text-sm font-medium">Categories</legend>
+          <p className="mt-1 text-xs text-muted">Pick every one that fits. Some overlap.</p>
+          <CategoryPicker multiple value={category} onChange={setCategory} />
         </fieldset>
         <div className="grid grid-cols-2 gap-6">
           <fieldset>
@@ -534,24 +536,29 @@ function Feed() {
   const liveOn = Boolean(mine);
 
   const compose = (
-    <div className="rounded-3xl bg-night p-4 text-paper">
-      <label className="block text-sm font-medium text-paper">
-        Enter task here
+    <div className="rounded-2xl border border-ink/10 bg-paper-2 p-4">
+      <label className="block text-sm font-medium">
+        Task description
         <input
           placeholder="finish the email"
-          className="mt-2 h-12 w-full bg-transparent text-lg font-normal text-paper outline-none placeholder:text-paper/40"
+          className="mt-2 h-12 w-full bg-transparent text-lg font-normal outline-none placeholder:text-muted"
           value={task}
           onChange={(e) => setTask(e.target.value)}
         />
       </label>
+      <fieldset className="mt-4">
+        <legend className="text-sm font-medium">Categories</legend>
+        <p className="mt-1 text-xs text-muted">Pick every one that fits.</p>
+        <CategoryPicker multiple value={category} onChange={setCategory} />
+      </fieldset>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <fieldset>
           <legend className="text-sm font-medium">Urgent or not urgent</legend>
           <div className="mt-2 flex gap-2">
-            <Btn type="button" kind={urgent ? "fill" : "night"} className="h-10 flex-1" onClick={() => setUrgent(true)}>
+            <Btn type="button" kind={urgent ? "fill" : "line"} className="h-10 flex-1" onClick={() => setUrgent(true)}>
               Urgent
             </Btn>
-            <Btn type="button" kind={!urgent ? "fill" : "night"} className="h-10 flex-1" onClick={() => setUrgent(false)}>
+            <Btn type="button" kind={!urgent ? "fill" : "line"} className="h-10 flex-1" onClick={() => setUrgent(false)}>
               Not urgent
             </Btn>
           </div>
@@ -559,10 +566,10 @@ function Feed() {
         <fieldset>
           <legend className="text-sm font-medium">Camera on and off</legend>
           <div className="mt-2 flex gap-2">
-            <Btn type="button" kind={camera ? "fill" : "night"} className="h-10 flex-1" onClick={() => setCamera(true)}>
+            <Btn type="button" kind={camera ? "fill" : "line"} className="h-10 flex-1" onClick={() => setCamera(true)}>
               Camera on
             </Btn>
-            <Btn type="button" kind={!camera ? "fill" : "night"} className="h-10 flex-1" onClick={() => setCamera(false)}>
+            <Btn type="button" kind={!camera ? "fill" : "line"} className="h-10 flex-1" onClick={() => setCamera(false)}>
               Camera off
             </Btn>
           </div>
@@ -570,7 +577,7 @@ function Feed() {
       </div>
       <label className="mt-4 block text-sm font-medium">
         Set session length
-        <p className="mt-1 text-xs font-normal text-paper/60">{lengthMin} minutes</p>
+        <p className="mt-1 text-xs font-normal text-muted">{lengthMin} minutes</p>
         <input
           type="range"
           min={5}
@@ -582,7 +589,7 @@ function Feed() {
       </label>
       <div className="mt-4">
         {liveOn ? (
-          <Btn kind="paper" className="h-11 w-full" onClick={closeMe}>
+          <Btn kind="line" className="h-11 w-full" onClick={closeMe}>
             End live
           </Btn>
         ) : (
@@ -591,7 +598,7 @@ function Feed() {
           </Btn>
         )}
       </div>
-      {note ? <p className="mt-3 text-sm text-paper/70">{note}</p> : null}
+      {note ? <p className="mt-3 text-sm text-muted">{note}</p> : null}
     </div>
   );
 
@@ -626,14 +633,14 @@ function Feed() {
       ) : (
         <>
           <div className="mt-3">
-            <CategoryPicker allowAll value={feedCat ? [feedCat] : []} onChange={(ids) => setFeedCat(ids[0] ?? "")} />
+            <CategoryPicker allowAll multiple value={feedCat} onChange={setFeedCat} />
           </div>
           <ul className="mt-3 flex flex-col gap-2">
             {live.length === 0 ? (
               <li className="rounded-2xl bg-paper-2 px-4 py-5 text-sm text-muted">
                 {tab === "school"
-                  ? `Nobody from ${me.school} is live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}.`
-                  : `Nobody live${feedCat ? ` in ${categoryLabel(feedCat)}` : ""}. Write a one-liner below.`}
+                  ? `Nobody from ${me.school} is live${feedCat.length ? ` in ${categoryLabel(feedCat.join(","))}` : ""}.`
+                  : `Nobody live${feedCat.length ? ` in ${categoryLabel(feedCat.join(","))}` : ""}. Write a task description below.`}
               </li>
             ) : null}
             {live.map((row) => {
@@ -841,7 +848,7 @@ function Feed() {
                   onChange={(ids) => {
                     const next = saveProfile({ ...me, categories: ids });
                     setMe(next);
-                    if (ids[0] && !category) setCategory(ids[0]);
+                    if (ids.length && !category.length) setCategory(ids);
                     void saveAccount({ data: { token: me.sessionToken, categories: ids } });
                   }}
                 />

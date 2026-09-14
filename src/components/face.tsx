@@ -13,7 +13,7 @@ export function Face({
   size?: "sm" | "md" | "lg";
   ringing?: boolean;
 }) {
-  const fill = color || "#151822";
+  const fill = color || "#1a1a1a";
   const dim = size === "lg" ? "size-28" : size === "sm" ? "size-12" : "size-16";
   return (
     <div
@@ -30,11 +30,11 @@ export function Face({
       ) : (
         <svg viewBox="0 0 64 64" className="relative size-full" aria-hidden>
           <circle cx="32" cy="32" r="32" fill={fill} />
-          <circle cx="23" cy="26" r="4.2" fill={color ? "#14110e" : "#f5f3ef"} />
-          <circle cx="41" cy="26" r="4.2" fill={color ? "#14110e" : "#f5f3ef"} />
+          <circle cx="23" cy="26" r="4.2" fill={color ? "#1a1a1a" : "#f6f5f1"} />
+          <circle cx="41" cy="26" r="4.2" fill={color ? "#1a1a1a" : "#f6f5f1"} />
           <path
             d="M23 41c5 7 13 7 18 0"
-            stroke={color ? "#14110e" : "#f5f3ef"}
+            stroke={color ? "#1a1a1a" : "#f6f5f1"}
             strokeWidth="3"
             fill="none"
             strokeLinecap="round"

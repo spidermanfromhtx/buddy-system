@@ -35,8 +35,11 @@ export function tasksSimilar(a: string, b: string) {
   return taskTokens(b).some((w) => left.has(w));
 }
 
+import { categoriesOverlap } from "./categories";
+
 export function listingsSimilar(a: { task: string; category?: string | null }, b: { task: string; category?: string | null }) {
-  if (a.category && b.category) return a.category === b.category;
+  if (a.category && b.category && categoriesOverlap(a.category, b.category)) return true;
+  if (a.category && b.category) return false;
   return tasksSimilar(a.task, b.task);
 }
 

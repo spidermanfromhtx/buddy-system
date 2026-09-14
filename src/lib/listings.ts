@@ -143,7 +143,7 @@ export const upsertLive = createServerFn({ method: "POST" })
         camera: z.boolean(),
         dueDate: z.string().max(20).optional(),
         school: z.string().max(80).optional(),
-        category: z.string().max(20).optional(),
+        category: z.string().max(120).optional(),
       })
       .parse(d),
   )
@@ -210,7 +210,7 @@ export const bookWindow = createServerFn({ method: "POST" })
         windowEnd: z.string().max(40),
         dueDate: z.string().max(20).optional(),
         school: z.string().max(80).optional(),
-        category: z.string().max(20).optional(),
+        category: z.string().max(120).optional(),
       })
       .parse(d),
   )

@@ -61,19 +61,19 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
 
   return (
     <main className="min-h-dvh bg-paper text-ink md:grid md:grid-cols-2">
-      <section className="bg-night px-6 py-5 text-paper md:flex md:min-h-dvh md:flex-col md:justify-center md:px-12 md:py-12">
+      <section className="px-6 py-6 md:flex md:min-h-dvh md:flex-col md:justify-center md:px-12 md:py-12">
         <div className="flex items-center gap-3">
-          <Mark onDark className="size-10" />
+          <Mark className="size-10" />
           <p className="font-display text-xl tracking-tight">Buddy System</p>
         </div>
-        <h1 className="mt-3 font-display text-2xl tracking-tight md:mt-10 md:text-6xl">
+        <h1 className="mt-4 font-display text-3xl tracking-tight md:mt-10 md:text-6xl">
           The phone rings. You work. You hang up.
         </h1>
-        <p className="mt-2 hidden max-w-sm text-base text-paper/60 md:mt-5 md:block">
+        <p className="mt-3 max-w-sm text-sm text-muted md:mt-5 md:text-base">
           Find a live buddy. Schedule a buddy. Be a buddy. 18+.
         </p>
       </section>
-      <section className="px-6 py-8 md:flex md:min-h-dvh md:items-start md:px-12 md:py-16">
+      <section className="border-t border-ink/10 px-6 py-8 md:flex md:min-h-dvh md:items-start md:border-l md:border-t-0 md:px-12 md:py-16">
         <div className="mx-auto w-full max-w-md">
         {!pending ? (
           <EmailCodeForm

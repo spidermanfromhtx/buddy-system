@@ -1,13 +1,13 @@
 export const NONE = "";
 
 export const COLOR_THEMES = [
-  { id: "coral", color: "#e56b5a", label: "Coral" },
-  { id: "pink", color: "#e05a84", label: "Pink" },
-  { id: "lavender", color: "#8b7cc8", label: "Lavender" },
-  { id: "blue", color: "#4a7fd4", label: "Blue" },
-  { id: "sky", color: "#4aa3c4", label: "Sky" },
-  { id: "apricot", color: "#e8894a", label: "Apricot" },
-  { id: "berry", color: "#c45a78", label: "Berry" },
+  { id: "red", color: "#e7a6a6", label: "Red" },
+  { id: "orange", color: "#efc39a", label: "Orange" },
+  { id: "yellow", color: "#e6d59a", label: "Yellow" },
+  { id: "green", color: "#a9d4b8", label: "Green" },
+  { id: "blue", color: "#a7c6ea", label: "Blue" },
+  { id: "indigo", color: "#b4b0e0", label: "Indigo" },
+  { id: "violet", color: "#d2b5d8", label: "Violet" },
 ] as const;
 
 export type ThemeId = (typeof COLOR_THEMES)[number]["id"];
@@ -15,25 +15,27 @@ export type ThemeId = (typeof COLOR_THEMES)[number]["id"];
 export const COLORS = COLOR_THEMES.map((t) => t.color);
 
 const OLD: Record<string, string> = {
-  "#e56b5a": "#e56b5a",
-  "#c45c3e": "#e56b5a",
-  "#b85c38": "#e56b5a",
-  "#8a4a32": "#e56b5a",
-  "#8b5e3c": "#e56b5a",
-  "#e05a84": "#e05a84",
-  "#7a3e5c": "#e05a84",
-  "#8b7cc8": "#8b7cc8",
-  "#5c6b3a": "#8b7cc8",
-  "#4a7fd4": "#4a7fd4",
-  "#3d6ea8": "#4a7fd4",
-  "#3f5f8a": "#4a7fd4",
-  "#4aa3c4": "#4aa3c4",
-  "#4a7c8c": "#4aa3c4",
-  "#e8894a": "#e8894a",
-  "#c9a227": "#e8894a",
-  "#a67c52": "#e8894a",
-  "#c45a78": "#c45a78",
-  "#2f6f5e": "#4aa3c4",
+  "#e7a6a6": "#e7a6a6",
+  "#efc39a": "#efc39a",
+  "#e6d59a": "#e6d59a",
+  "#a9d4b8": "#a9d4b8",
+  "#a7c6ea": "#a7c6ea",
+  "#b4b0e0": "#b4b0e0",
+  "#d2b5d8": "#d2b5d8",
+  "#e56b5a": "#e7a6a6",
+  "#c45c3e": "#e7a6a6",
+  "#e05a84": "#d2b5d8",
+  "#8b7cc8": "#b4b0e0",
+  "#4a7fd4": "#a7c6ea",
+  "#3d6ea8": "#a7c6ea",
+  "#4aa3c4": "#a7c6ea",
+  "#e8894a": "#efc39a",
+  "#c9a227": "#e6d59a",
+  "#c45a78": "#d2b5d8",
+  "#2f6f5e": "#a9d4b8",
+  "#7a3e5c": "#d2b5d8",
+  "#4a7c8c": "#a7c6ea",
+  "#5c6b3a": "#a9d4b8",
 };
 
 export function normalizeColor(color: string | null | undefined) {
