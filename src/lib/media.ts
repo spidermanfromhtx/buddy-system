@@ -14,13 +14,8 @@ export function isMicMuted() {
   return micMuted;
 }
 
-function applyMicMute() {
-  for (const t of stream?.getAudioTracks() ?? []) t.enabled = !micMuted;
-}
-
 export function setMicMuted(muted: boolean) {
   micMuted = muted;
-  applyMicMute();
 }
 
 export function hasLiveMic() {
@@ -31,16 +26,12 @@ export function currentStream() {
   return hasLiveMic() ? stream : null;
 }
 
-export function isHoldVideo(track: MediaStreamTrack) {
-  const w = track.getSettings().width;
-  return track.kind === "video" && typeof w === "number" && w > 0 && w <= 32;
+export function isHoldVideo(_track: MediaStreamTrack) {
+  return false;
 }
 
 export function isRealVideo(track: MediaStreamTrack) {
-  if (track.kind !== "video") return false;
-  if (track.readyState === "ended") return false;
-  if (isHoldVideo(track)) return false;
-  return true;
+  return track.kind === "video" && track.readyState !== "ended";
 }
 
 export function streamHasVideo(media: MediaStream | null | undefined) {
@@ -218,19 +209,17 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
       } catch {
         // audio-only is fine
       }
-      applyMicMute();
       keepLocalAlive(stream);
       startCapture();
       return stream;
     }
     if (!wantCamera && liveVideo.length) {
       for (const t of liveVideo) {
-        t.enabled = false;
         t.stop();
         stream.removeTrack(t);
       }
     }
-    applyMicMute();
+    keepLocalAlive(stream);
     keepLocalAlive(stream);
     startCapture();
     return stream;
@@ -249,7 +238,6 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
     try {
       stream = await navigator.mediaDevices.getUserMedia(c);
       for (const t of stream.getTracks()) t.enabled = true;
-      applyMicMute();
       keepLocalAlive(stream);
       startCapture();
       return stream;

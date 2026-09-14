@@ -212,7 +212,7 @@ export function AudioCall({
           className={
             remoteVideo
               ? "size-full rounded-3xl bg-paper-2 object-cover"
-              : "pointer-events-none absolute h-px w-px opacity-0"
+              : "pointer-events-none absolute left-2 top-2 h-40 w-40 opacity-0"
           }
           autoPlay
           playsInline
@@ -252,12 +252,13 @@ export function AudioCall({
         onClick={() => {
           const next = !muted;
           setMicMuted(next);
+          p2pRef.current?.setSendAudio(!next);
           setMuted(next);
         }}
       >
         {muted ? "Mic off" : "Mic on"}
       </Btn>
-      <MicMeter stream={local} />
+      <MicMeter stream={muted ? null : local} />
       <p className="text-sm text-muted">
         {err ||
           (status === "connected"

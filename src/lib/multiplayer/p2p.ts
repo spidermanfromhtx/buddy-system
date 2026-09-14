@@ -202,6 +202,7 @@ export class P2PRoom {
   private closed = false;
   private everPolled = false;
   private lastPeersFingerprint = "";
+  private sendAudio = true;
 
   constructor(opts: P2PRoomOptions) {
     this.opts = opts;
@@ -243,19 +244,41 @@ export class P2PRoom {
 
   attachMedia(stream: MediaStream): void {
     this.opts.mediaStream = stream;
-    for (const slot of this.peers.values()) {
-      for (const track of stream.getTracks()) {
-        if (track.readyState !== "live") continue;
-        track.enabled = true;
-        const sender = senderFor(slot.pc, track.kind);
-        if (sender) void sender.replaceTrack(track).then(() => bumpVideo(sender, track));
-        else slot.pc.addTrack(track, stream);
+    for (const [peerId, slot] of this.peers) {
+      this.wireLocal(slot, peerId);
+    }
+  }
+
+  setSendAudio(on: boolean): void {
+    this.sendAudio = on;
+    for (const [peerId, slot] of this.peers) {
+      this.wireLocal(slot, peerId);
+    }
+  }
+
+  private wireLocal(slot: PeerSlot, peerId: string) {
+    const stream = this.opts.mediaStream;
+    if (!stream) return;
+    const audio = stream.getAudioTracks().find((t) => t.readyState === "live");
+    const video = stream.getVideoTracks().find((t) => t.readyState === "live");
+    const aSender = senderFor(slot.pc, "audio");
+    if (aSender) void aSender.replaceTrack(this.sendAudio && audio ? audio : null);
+    else if (this.sendAudio && audio) slot.pc.addTrack(audio, stream);
+    const vSender = senderFor(slot.pc, "video");
+    if (video) {
+      if ("contentHint" in video) (video as MediaStreamTrack & { contentHint: string }).contentHint = "motion";
+      if (vSender) {
+        const wasEmpty = !vSender.track;
+        void vSender.replaceTrack(video).then(() => {
+          bumpVideo(vSender, video);
+          if (wasEmpty) void this.kickOffer(slot, peerId);
+        });
+      } else {
+        slot.pc.addTrack(video, stream);
+        void this.kickOffer(slot, peerId);
       }
-      const liveVideo = stream.getVideoTracks().some((t) => t.readyState === "live");
-      if (!liveVideo) {
-        const videoSender = senderFor(slot.pc, "video");
-        if (videoSender?.track) void videoSender.replaceTrack(null);
-      }
+    } else if (vSender?.track) {
+      void vSender.replaceTrack(null);
     }
   }
 
@@ -292,36 +315,7 @@ export class P2PRoom {
   }
 
   private async pushLocalTracks(slot: PeerSlot): Promise<void> {
-    const stream = this.opts.mediaStream;
-    if (!stream) return;
-    for (const track of stream.getTracks()) {
-      if (track.readyState !== "live") continue;
-      track.enabled = true;
-      const tr = slot.pc.getTransceivers().find((t) => {
-        const kind = t.sender.track?.kind ?? t.receiver.track?.kind;
-        return kind === track.kind;
-      });
-      if (tr) {
-        try {
-          tr.direction = "sendrecv";
-        } catch {
-          // direction is read-only on some browsers after negotiation
-        }
-        if (tr.sender.track !== track) {
-          try {
-            await tr.sender.replaceTrack(track);
-          } catch {
-            // replaceTrack can fail while closed
-          }
-        }
-      } else {
-        try {
-          slot.pc.addTrack(track, stream);
-        } catch {
-          // already added
-        }
-      }
-    }
+    this.wireLocal(slot, slot.info.id);
   }
 
   /** Send on the unreliable game-state channel (drops stale packets). */
@@ -460,7 +454,7 @@ export class P2PRoom {
       if (!initiator && !pc.currentRemoteDescription) return;
       try {
         slot.makingOffer = true;
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
         if (this.closed || pc.signalingState !== "stable") return;
         await pc.setLocalDescription(offer);
         await this.sendSignal(peerId, "offer", pc.localDescription!.toJSON());
@@ -501,7 +495,7 @@ export class P2PRoom {
     if (media) {
       for (const track of media.getTracks()) {
         if (track.readyState !== "live") continue;
-        track.enabled = true;
+        if (track.kind === "audio" && !this.sendAudio) continue;
         pc.addTrack(track, media);
       }
     }
@@ -520,7 +514,7 @@ export class P2PRoom {
     if (slot.pc.signalingState !== "stable") return;
     try {
       slot.makingOffer = true;
-      const offer = await slot.pc.createOffer();
+      const offer = await slot.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       if (this.closed || slot.pc.signalingState !== "stable") return;
       await slot.pc.setLocalDescription(offer);
       await this.sendSignal(peerId, "offer", slot.pc.localDescription!.toJSON());
