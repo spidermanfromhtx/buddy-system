@@ -23,14 +23,14 @@
 [data-theme="default"] {
   --night: #0f3a44;
   --ink: #0f3a44;
-  --paper: #f7f4f1;
-  --paper-2: #e6f5f3;
+  --paper: #e8e1d8;
+  --paper-2: #d4ebe8;
   --muted: #4d6d72;
-  --line: #ddd6cf;
+  --line: #d0c8be;
   --rust: #ff6b81;
   --sage: #7fe3dc;
   --tri: #ffb3c0;
-  --cream: #fbf8f5;
+  --cream: #efe8df;
   --on-rust: #ffffff;
 }
 

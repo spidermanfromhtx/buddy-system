@@ -34,7 +34,7 @@ export function EmailCodeForm({
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const field = hero
-    ? "h-14 w-full rounded-2xl border-0 bg-paper/80 px-5 text-base outline-none placeholder:text-muted"
+    ? "h-16 w-full rounded-2xl border-0 bg-paper/80 px-5 text-lg outline-none placeholder:text-muted"
     : onDark
       ? "mt-2 h-12 w-full rounded-2xl border-0 bg-paper/10 px-4 text-paper outline-none"
       : "mt-2 h-12 w-full rounded-2xl border-0 bg-paper/80 px-4 font-normal outline-none";
@@ -98,7 +98,7 @@ export function EmailCodeForm({
             }
           }}
         />
-        <Btn type="button" kind="fill" className="h-12 self-start px-6" disabled={busy} onClick={() => void sendCode()}>
+        <Btn type="button" kind="fill" className="h-14 self-start px-7 text-base" disabled={busy} onClick={() => void sendCode()}>
           {sent ? "Send new code" : sendLabel}
           <span className="ml-2" aria-hidden>
             →
@@ -106,8 +106,8 @@ export function EmailCodeForm({
         </Btn>
         {sent ? (
           <>
-            <p className="text-sm text-muted">Check that inbox. The code expires in 10 minutes.</p>
-            <label className="text-sm font-medium" htmlFor={codeId}>
+            <p className="text-base text-muted">Check that inbox. The code expires in 10 minutes.</p>
+            <label className="text-base font-medium" htmlFor={codeId}>
               6-digit code
               <input
                 id={codeId}
@@ -120,7 +120,7 @@ export function EmailCodeForm({
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               />
             </label>
-            <Btn type="button" kind="fill" className="h-12 self-start px-6" disabled={busy} onClick={() => void check()}>
+            <Btn type="button" kind="fill" className="h-14 self-start px-7 text-base" disabled={busy} onClick={() => void check()}>
               {verifyLabel}
             </Btn>
           </>

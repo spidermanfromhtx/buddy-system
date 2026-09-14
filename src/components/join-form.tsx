@@ -65,27 +65,27 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
     <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
       <PageWash />
       <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
-        <div className="flex min-w-0 items-center gap-2">
-          <Mark />
-          <p className="truncate text-lg font-semibold tracking-tight md:text-xl">Buddy System</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Mark className="h-12 w-8" />
+          <p className="truncate text-xl font-semibold tracking-tight md:text-2xl">Buddy System</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <a href="/reviews" className="text-sm font-medium text-ink underline-offset-4 hover:underline">
+          <a href="/reviews" className="text-base font-medium text-ink underline-offset-4 hover:underline">
             Reviews
           </a>
-          <InstallApp className="h-9 shrink-0 rounded-md px-3 text-sm" />
+          <InstallApp className="h-11 shrink-0 rounded-2xl px-4 text-base" />
         </div>
       </header>
       <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:grid-cols-2 md:px-10 md:pt-16">
         <div>
           {!pending ? (
             <>
-              <h1 className="max-w-xl text-[2.15rem] font-semibold leading-[1.08] tracking-tight sm:text-4xl md:text-6xl">
+              <h1 className="max-w-xl text-[2.5rem] font-semibold leading-[1.08] tracking-tight sm:text-5xl md:text-7xl">
                 The call rings.
                 <br />
                 You work. You hang up.
               </h1>
-              <p className="mt-4 max-w-md text-[15px] text-muted md:mt-5 md:text-lg">
+              <p className="mt-4 max-w-md text-lg text-muted md:mt-5 md:text-xl">
                 Find a live buddy. Schedule a buddy. Be a buddy. 18+.
               </p>
               <div className="mt-6 max-w-md md:mt-8">
@@ -108,7 +108,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                   }}
                 />
               </div>
-              <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted md:mt-14 md:gap-x-8">
+              <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-base text-muted md:mt-14 md:gap-x-8">
                 <li className="flex items-center gap-2">
                   <Bolt />
                   Real people
@@ -207,9 +207,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
             <div className="absolute -right-8 -top-8 size-56 rounded-full bg-sage opacity-70 blur-2xl" />
             <div className="relative rounded-[2.6rem] bg-ink p-3 shadow-[0_30px_60px_-20px_rgba(28,25,51,0.45)]">
               <div className="rounded-[2.1rem] bg-paper px-8 pb-10 pt-16 text-center">
-                <Mark className="mx-auto h-20 w-14" />
-                <p className="mt-5 text-lg font-semibold tracking-tight">Buddy System</p>
-                <p className="mt-8 text-sm text-muted">The call rings. You work. You hang up.</p>
+                <Mark className="mx-auto h-24 w-[4.25rem]" />
+                <p className="mt-5 text-xl font-semibold tracking-tight">Buddy System</p>
+                <p className="mt-8 text-base text-muted">The call rings. You work. You hang up.</p>
               </div>
             </div>
           </div>
@@ -221,7 +221,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
 
 function Bolt() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4 text-rust" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <svg viewBox="0 0 24 24" className="size-5 text-rust" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <path d="M13 2L4 14h7l-1 8 10-14h-7l0-6z" strokeLinejoin="round" />
     </svg>
   );
@@ -229,7 +229,7 @@ function Bolt() {
 
 function Cal() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4 text-rust" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <svg viewBox="0 0 24 24" className="size-5 text-rust" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <rect x="4" y="5" width="16" height="15" rx="2" />
       <path d="M8 3v4M16 3v4M4 10h16" />
     </svg>
@@ -238,7 +238,7 @@ function Cal() {
 
 function Folk() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4 text-rust" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <svg viewBox="0 0 24 24" className="size-5 text-rust" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <circle cx="9" cy="8" r="3" />
       <path d="M4 19c.5-3 2.5-5 5-5s4.5 2 5 5" />
       <circle cx="17" cy="9" r="2.2" />
