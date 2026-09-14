@@ -122,27 +122,41 @@ export class P2PRoom {
     if (!leave) return;
     void fetch("/api/rtc", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ op: "leave", room: this.opts.room, peer: this.opts.selfId }), keepalive: true }).catch(() => {});
   }
-  attachMedia(stream: MediaStream): void { this.opts.mediaStream = stream; for (const [peerId, slot] of this.peers) this.wireLocal(slot, peerId); }
-  setSendAudio(on: boolean): void {
-    this.sendAudio = on;
-    for (const slot of this.peers.values()) {
-      const sender = senderFor(slot.pc, "audio");
-      const track = this.sendAudio
-        ? this.opts.mediaStream?.getAudioTracks().find((t) => t.readyState === "live") ?? null
-        : null;
-      if (sender) void sender.replaceTrack(track);
+  attachMedia(stream: MediaStream): void {
+    this.opts.mediaStream = stream;
+    for (const [peerId, slot] of this.peers) {
+      this.wireLocal(slot, peerId);
+      if (this.opts.selfId > peerId && slot.pc.signalingState === "stable") void this.kickOffer(slot, peerId);
     }
   }
+  setSendAudio(on: boolean): void {
+    this.sendAudio = on;
+    for (const slot of this.peers.values()) this.wireLocal(slot, slot.info.id);
+  }
   private wireLocal(slot: PeerSlot, peerId: string) {
-    const stream = this.opts.mediaStream; if (!stream) return;
-    for (const track of stream.getTracks()) {
-      if (track.readyState !== "live") continue;
-      if (track.kind === "audio" && !this.sendAudio) continue;
-      const sender = senderFor(slot.pc, track.kind);
-      if (sender) { if (sender.track !== track) void sender.replaceTrack(track).then(() => bumpVideo(sender, track)); }
-      else if (track.kind !== "video" || this.opts.allowVideo) { slot.pc.addTrack(track, stream); if (track.kind === "video") void this.kickOffer(slot, peerId); }
-    }
-    if (this.opts.allowVideo && !stream.getVideoTracks().some((t) => t.readyState === "live")) { const vSender = senderFor(slot.pc, "video"); if (vSender?.track) void vSender.replaceTrack(null); }
+    const stream = this.opts.mediaStream;
+    if (!stream) return;
+    const audio = this.sendAudio ? stream.getAudioTracks().find((t) => t.readyState === "live") ?? null : null;
+    const video = this.opts.allowVideo ? stream.getVideoTracks().find((t) => t.readyState === "live") ?? null : null;
+    const put = (kind: "audio" | "video", track: MediaStreamTrack | null) => {
+      const sender = senderFor(slot.pc, kind);
+      if (sender) {
+        if (sender.track !== track) {
+          void sender.replaceTrack(track).then(() => {
+            if (track && kind === "video") bumpVideo(sender, track);
+          });
+        }
+        return;
+      }
+      if (track) {
+        slot.pc.addTransceiver(track, { direction: "sendrecv", streams: [stream] });
+        if (kind === "video") void this.kickOffer(slot, peerId);
+        return;
+      }
+      if (kind === "audio" || this.opts.allowVideo) slot.pc.addTransceiver(kind, { direction: "sendrecv" });
+    };
+    put("audio", audio);
+    if (this.opts.allowVideo) put("video", video);
   }
   sendMedia(data: ArrayBuffer): void {
     const jpeg = data.byteLength > 0 && new DataView(data).getUint8(0) === 1;
@@ -159,7 +173,7 @@ export class P2PRoom {
           : slot.reliable?.readyState === "open"
             ? slot.reliable
             : null;
-      if (!ch || ch.bufferedAmount > (jpeg ? 80_000 : 16_000)) continue;
+      if (!ch || ch.bufferedAmount > (jpeg ? 80_000 : 24_000)) continue;
       try {
         ch.send(data);
         viaDc = true;
@@ -167,15 +181,35 @@ export class P2PRoom {
         // closed
       }
     }
-    if (viaDc || jpeg) return;
+    if (viaDc) return;
     const now = Date.now();
-    if (now - this.lastPcmAt < 80) return;
-    this.lastPcmAt = now;
+    if (jpeg) {
+      if (now - this.lastJpegAt < 120) return;
+      this.lastJpegAt = now;
+    } else {
+      if (now - this.lastPcmAt < 50) return;
+      this.lastPcmAt = now;
+    }
     const payload = { a: bufToB64(data) };
     for (const id of this.peers.keys()) if (id !== this.opts.selfId) void this.sendSignal(id, "pcm", payload);
   }
   private lastPcmAt = 0; private lastJpegAt = 0;
-  private async pushLocalTracks(slot: PeerSlot): Promise<void> { this.wireLocal(slot, slot.info.id); }
+  private async pushLocalTracks(slot: PeerSlot): Promise<void> {
+    this.wireLocal(slot, slot.info.id);
+    const stream = this.opts.mediaStream;
+    const audio = this.sendAudio ? stream?.getAudioTracks().find((t) => t.readyState === "live") ?? null : null;
+    const video = this.opts.allowVideo ? stream?.getVideoTracks().find((t) => t.readyState === "live") ?? null : null;
+    const a = senderFor(slot.pc, "audio");
+    const v = senderFor(slot.pc, "video");
+    await Promise.all([
+      a && a.track !== audio ? a.replaceTrack(audio) : Promise.resolve(),
+      v && v.track !== video
+        ? v.replaceTrack(video).then(() => {
+            if (video) bumpVideo(v, video);
+          })
+        : Promise.resolve(),
+    ]);
+  }
   broadcast(data: unknown): void { const wire = JSON.stringify({ t: "d", d: data }); for (const slot of this.peers.values()) if (slot.state?.readyState === "open") slot.state.send(wire); }
   send(data: unknown, peerId?: string): void { const wire = JSON.stringify({ t: "d", d: data }); const targets = peerId ? [this.peers.get(peerId)] : [...this.peers.values()]; for (const slot of targets) if (slot?.reliable?.readyState === "open") slot.reliable.send(wire); }
   peerList(): PeerInfo[] { return [...this.peers.values()].map((s) => ({ ...s.info })); }
@@ -209,10 +243,14 @@ export class P2PRoom {
     };
     pc.ondatachannel = (e) => { if (e.channel.label === "media") this.attachMediaChannel(slot, e.channel); else this.attachChannel(slot, e.channel); };
     pc.ontrack = (ev) => { ev.track.enabled = true; if (!slot.remote.getTracks().some((t) => t.id === ev.track.id)) slot.remote.addTrack(ev.track); const fire = () => this.opts.onRemoteStream?.(peerId, slot.remote); fire(); ev.track.onunmute = fire; ev.track.onended = fire; };
-    if (initiator) { this.attachChannel(slot, pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 })); this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true })); this.attachMediaChannel(slot, pc.createDataChannel("media", { ordered: false, maxPacketLifeTime: 180 })); }
-    const media = this.opts.mediaStream; if (media) for (const track of media.getTracks()) { if (track.readyState !== "live") continue; if (track.kind === "audio" && !this.sendAudio) continue; pc.addTrack(track, media); }
-    const kinds = new Set(pc.getTransceivers().map((tr) => tr.receiver.track?.kind ?? tr.sender.track?.kind)); if (!kinds.has("audio")) pc.addTransceiver("audio", { direction: "sendrecv" }); if (this.opts.allowVideo && !kinds.has("video")) pc.addTransceiver("video", { direction: "sendrecv" });
-    if (initiator) void this.kickOffer(slot, peerId); return slot;
+    if (initiator) {
+      this.attachChannel(slot, pc.createDataChannel("state", { ordered: false, maxRetransmits: 0 }));
+      this.attachChannel(slot, pc.createDataChannel("reliable", { ordered: true }));
+      this.attachMediaChannel(slot, pc.createDataChannel("media", { ordered: false, maxPacketLifeTime: 180 }));
+    }
+    this.wireLocal(slot, peerId);
+    if (initiator) void this.kickOffer(slot, peerId);
+    return slot;
   }
   private async kickOffer(slot: PeerSlot, peerId: string): Promise<void> { if (this.closed || slot.makingOffer || slot.pc.signalingState !== "stable") return; try { slot.makingOffer = true; const offer = await slot.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: Boolean(this.opts.allowVideo) }); if (this.closed || slot.pc.signalingState !== "stable") return; await slot.pc.setLocalDescription(offer); await this.sendSignal(peerId, "offer", slot.pc.localDescription!.toJSON()); } catch {} finally { slot.makingOffer = false; } }
   private attachMediaChannel(slot: PeerSlot, channel: RTCDataChannel): void { slot.media = channel; channel.binaryType = "arraybuffer"; channel.onopen = () => this.syncPair(slot); channel.onmessage = (e) => { const data = e.data; if (data instanceof ArrayBuffer) { this.opts.onMediaData?.(slot.info.id, data); return; } if (data instanceof Blob) void data.arrayBuffer().then((buf) => this.opts.onMediaData?.(slot.info.id, buf)); }; }

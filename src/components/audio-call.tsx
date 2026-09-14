@@ -104,7 +104,6 @@ export function AudioCall({
     void el.play().catch(() => {});
     const check = () => {
       if (el.videoWidth > 16) setRemoteVideo(true);
-      if (el.currentTime > 0.08) setNativeEar(true);
     };
     el.onloadedmetadata = check;
     el.ontimeupdate = check;
@@ -112,7 +111,9 @@ export function AudioCall({
       t.enabled = true;
       t.onunmute = () => {
         void el.play().catch(() => {});
-        window.setTimeout(check, 300);
+        window.setTimeout(() => {
+          if (el.currentTime > 0.2) setNativeEar(true);
+        }, 400);
       };
     }
     for (const t of remote.getVideoTracks()) {

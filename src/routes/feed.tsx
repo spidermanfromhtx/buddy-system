@@ -227,12 +227,6 @@ function Feed() {
       if (!me) return;
       if (!task.trim()) throw new Error("Write a task description first.");
       if (!category.length) throw new Error("Pick at least one category.");
-      try {
-        await getLocalStream(false);
-        stopLocalStream();
-      } catch (e) {
-        throw new Error(micHint(e));
-      }
       void unlockOutput();
       void armRing();
       const id = liveId ?? newId("live");
@@ -347,7 +341,7 @@ function Feed() {
     if (!me) return;
     if (row.peerId === me.id) return;
     try {
-      await getLocalStream(false);
+      await getLocalStream(row.camera);
     } catch (e) {
       setNote(micHint(e));
       return;

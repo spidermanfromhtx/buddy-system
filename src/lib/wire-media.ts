@@ -7,18 +7,17 @@ let pcmSeq = 1;
 export function packPcm(sampleRate: number, samples: Float32Array): ArrayBuffer {
   const target = 16000;
   const data = sampleRate === target ? samples : resample(samples, sampleRate, target);
-  const out = new ArrayBuffer(8 + data.length * 2);
-  const view = new DataView(out);
+  const bytes = new Uint8Array(8 + data.length * 2);
+  const view = new DataView(bytes.buffer);
   view.setUint8(0, AUDIO);
   view.setUint16(1, pcmSeq & 0xffff, true);
   pcmSeq += 1;
   view.setUint32(4, target, true);
-  const pcm = new Int16Array(out, 8);
   for (let i = 0; i < data.length; i++) {
     const s = Math.max(-1, Math.min(1, data[i] ?? 0));
-    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    view.setInt16(8 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
   }
-  return out;
+  return bytes.buffer;
 }
 
 export function packJpeg(bytes: ArrayBuffer): ArrayBuffer {
