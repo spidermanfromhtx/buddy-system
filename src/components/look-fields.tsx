@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Btn } from "@/components/btn";
 import { Face } from "@/components/face";
 import { compressPhoto } from "@/lib/photo";
-import { COLORS } from "@/lib/profile";
+import { COLORS, applyColorTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function LookFields({
@@ -28,7 +28,7 @@ export function LookFields({
       <div className="flex items-center gap-4">
         <Face name={name || "you"} color={color} photo={photo} size="lg" />
         <p className="text-base text-muted">
-          Color is the default picture. Add a photo if you want one instead.
+          This color is your default picture and the colors of the app. A photo sits on top. The color stays.
         </p>
       </div>
       <fieldset>
@@ -39,7 +39,10 @@ export function LookFields({
               key={c}
               type="button"
               aria-label={c}
-              onClick={() => onColor(c)}
+              onClick={() => {
+                applyColorTheme(c);
+                onColor(c);
+              }}
               className={cn(
                 "size-11 rounded-full border-2",
                 color === c ? (onDark ? "border-paper" : "border-ink") : "border-transparent",

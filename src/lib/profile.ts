@@ -1,5 +1,8 @@
 import { parseCategories } from "./categories";
+import { COLORS, applyColorTheme, normalizeColor } from "./theme";
 import { ageFromBirthdate, newId } from "./utils";
+
+export { COLORS };
 
 const KEY = "buddy-system-profile";
 
@@ -22,21 +25,6 @@ export type Profile = {
   limitsOn: boolean;
 };
 
-export const COLORS = [
-  "#c45c3e",
-  "#2f6f5e",
-  "#3d6ea8",
-  "#c9a227",
-  "#8b5e3c",
-  "#7a3e5c",
-  "#4a7c8c",
-  "#b85c38",
-  "#5c6b3a",
-  "#3f5f8a",
-  "#a67c52",
-  "#8a4a32",
-];
-
 export function loadProfile(): Profile | null {
   if (typeof window === "undefined") return null;
   try {
@@ -51,7 +39,7 @@ export function loadProfile(): Profile | null {
       name: p.name,
       birthdate,
       photo: p.photo ?? null,
-      color: p.color || COLORS[0],
+      color: normalizeColor(p.color),
       breakEveryMin: p.breakEveryMin || 30,
       email: p.email,
       sessionToken: p.sessionToken,
@@ -77,7 +65,7 @@ export function saveProfile(partial: Omit<Profile, "id"> & { id?: string }): Pro
     id: partial.id ?? existing?.id ?? newId("p"),
     name: partial.name.trim(),
     birthdate: partial.birthdate,
-    color: partial.color,
+    color: normalizeColor(partial.color),
     photo: partial.photo === undefined ? existing?.photo ?? null : partial.photo,
     breakEveryMin: partial.breakEveryMin,
     email: partial.email.trim().toLowerCase(),
@@ -92,6 +80,7 @@ export function saveProfile(partial: Omit<Profile, "id"> & { id?: string }): Pro
     limitsOn: partial.limitsOn ?? existing?.limitsOn ?? false,
   };
   localStorage.setItem(KEY, JSON.stringify(p));
+  applyColorTheme(p.color);
   return p;
 }
 
