@@ -62,9 +62,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   }
 
   return (
-    <main className="relative z-10 min-h-dvh bg-transparent text-ink">
+    <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
+      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <p className="truncate text-base font-semibold tracking-tight md:text-lg">Buddy System</p>

@@ -811,9 +811,9 @@ function Feed() {
   );
 
   return (
-    <main className="relative z-10 flex min-h-dvh flex-col bg-transparent text-ink">
+    <main className="relative isolate z-10 flex min-h-dvh flex-col bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-10 flex items-center justify-between gap-2 border-b-2 border-sage px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] md:px-6">
+      <header className="relative z-20 flex items-center justify-between gap-2 border-b-2 border-sage bg-paper/80 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] backdrop-blur-sm md:px-6">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <div className="min-w-0">

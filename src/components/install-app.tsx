@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Btn } from "@/components/btn";
 import { cn } from "@/lib/utils";
 
@@ -64,39 +65,42 @@ export function InstallApp({ className }: { className?: string }) {
       <Btn
         kind="line"
         className={cn(
-          "h-10 rounded-full border border-ink/15 bg-transparent px-4 text-sm text-ink hover:bg-paper-2",
+          "relative z-20 h-10 rounded-full border border-ink/15 bg-paper px-4 text-sm text-ink hover:bg-paper-2",
           className,
         )}
         onClick={() => void onClick()}
       >
         Download app
       </Btn>
-      {open ? (
-        <div className="fixed inset-0 z-40 flex items-end bg-night/50 md:items-center md:justify-center" onClick={() => setOpen(false)}>
-          <div
-            className="w-full max-w-md rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="font-display text-2xl tracking-tight">Add Buddy System</p>
-            {isIos() ? (
-              <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
-                <li>Tap Share (the square with the arrow).</li>
-                <li>Tap Add to Home Screen.</li>
-                <li>Tap Add. It shows up like an app.</li>
-              </ol>
-            ) : (
-              <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
-                <li>Chrome or Edge: menu → Save and share → Install Buddy System. Or the install icon in the address bar.</li>
-                <li>Safari on a Mac: Share → Add to Dock.</li>
-                <li>It opens in its own window, like an app.</li>
-              </ol>
-            )}
-            <Btn kind="fill" className="mt-6 w-full" onClick={() => setOpen(false)}>
-              Close
-            </Btn>
-          </div>
-        </div>
-      ) : null}
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[80] flex items-end bg-night/50 md:items-center md:justify-center" onClick={() => setOpen(false)}>
+              <div
+                className="relative z-[81] w-full max-w-md rounded-t-3xl bg-paper p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-ink md:rounded-3xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-2xl font-semibold tracking-tight">Add Buddy System</p>
+                {isIos() ? (
+                  <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
+                    <li>Tap Share (the square with the arrow).</li>
+                    <li>Tap Add to Home Screen.</li>
+                    <li>Tap Add. It shows up like an app.</li>
+                  </ol>
+                ) : (
+                  <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
+                    <li>Chrome or Edge: menu → Save and share → Install Buddy System. Or the install icon in the address bar.</li>
+                    <li>Safari on a Mac: Share → Add to Dock.</li>
+                    <li>It opens in its own window, like an app.</li>
+                  </ol>
+                )}
+                <Btn kind="fill" className="mt-6 w-full" onClick={() => setOpen(false)}>
+                  Close
+                </Btn>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
