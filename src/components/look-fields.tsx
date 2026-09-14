@@ -52,7 +52,7 @@ export function LookFields({
       <div className="flex items-center gap-4">
         <Face name={name || "you"} color={color} photo={photo} size="lg" />
         <p className="text-base text-muted">
-          House look is cream and purple. Each color is a three-color set. A photo sits on top.
+          House look is cream and purple. Each color is a three-color set: primary, secondary, tertiary. A photo sits on top.
         </p>
       </div>
       <fieldset>
