@@ -412,6 +412,7 @@ function Feed() {
 
   function closeMe() {
     if (!me) return;
+    stopLocalStream();
     void closeLive({ data: { peerId: me.id } }).then(() => q.refetch());
     setLiveId(null);
   }

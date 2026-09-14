@@ -160,10 +160,16 @@ export async function getLocalStream(wantCamera: boolean, monitor = false): Prom
 }
 
 export function stopLocalStream() {
-  stream?.getTracks().forEach((t) => {
-    t.enabled = false;
-    t.stop();
-  });
+  const extra: MediaStream[] = [];
+  if (stream) extra.push(stream);
+  if (keep?.srcObject instanceof MediaStream) extra.push(keep.srcObject);
+  if (speaker?.srcObject instanceof MediaStream) extra.push(speaker.srcObject);
+  for (const media of extra) {
+    for (const t of media.getTracks()) {
+      t.enabled = false;
+      t.stop();
+    }
+  }
   stream = null;
   if (keep) {
     keep.srcObject = null;
