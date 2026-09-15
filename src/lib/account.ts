@@ -82,10 +82,10 @@ export const startPlusCheckout = createServerFn({ method: "POST" })
   });
 
 export const setRndMode = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ token: TOKEN, on: z.boolean() }).parse(d))
+  .validator((d: unknown) => z.object({ token: TOKEN, mode: z.enum(["on", "off"]) }).parse(d))
   .handler(async ({ data }) => {
     const { setRndMode: set } = await import("./account.server");
-    return set(data.token, data.on);
+    return set(data.token, data.mode === "on");
   });
 
 export const inviteAdmin = createServerFn({ method: "POST" })

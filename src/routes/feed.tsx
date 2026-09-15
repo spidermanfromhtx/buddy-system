@@ -164,12 +164,11 @@ function Feed() {
     if (!me) return;
     let stop = false;
     const tick = () => {
-      if (Date.now() < limitLock.current) return;
       void readFlags({ data: {} }).then((res) => {
         if (stop || !res) return;
-        if (Date.now() < limitLock.current) return;
         setMe((cur) => {
-          if (!cur || cur.limitsOn === res.limitsOn) return cur;
+          if (!cur || cur.admin) return cur;
+          if (cur.limitsOn === res.limitsOn) return cur;
           return saveProfile({ ...cur, limitsOn: res.limitsOn });
         });
       });
@@ -1129,9 +1128,9 @@ function Feed() {
                         }`}
                         onClick={() => {
                           const on = !limits;
-                          limitLock.current = Date.now() + 15000;
+                          limitLock.current = Date.now() + 60000;
                           setMe(saveProfile({ ...me, limitsOn: on }));
-                          void setRndMode({ data: { token: me.sessionToken, on } }).then((res) => {
+                          void setRndMode({ data: { token: me.sessionToken, mode: on ? "on" : "off" } }).then((res) => {
                             if (!res.ok) {
                               limitLock.current = 0;
                               setMe(saveProfile({ ...me, limitsOn: !on }));
