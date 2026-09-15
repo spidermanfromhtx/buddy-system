@@ -1114,19 +1114,27 @@ function Feed() {
                 <p className="font-display text-xl">Plan</p>
                 {me.admin ? (
                   <>
-                    <p className="text-sm font-medium">Limits for everyone</p>
-                    <div className="flex gap-2">
-                      <Btn
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Limits for everyone</p>
+                        <p className="text-sm text-muted">{limits ? "On" : "Off"}</p>
+                      </div>
+                      <button
                         type="button"
-                        kind={!limits ? "ink" : "line"}
-                        className="h-11 flex-1"
+                        role="switch"
+                        aria-checked={limits}
+                        aria-label="Limits for everyone"
+                        className={`relative h-12 w-[4.5rem] shrink-0 rounded-full border transition ${
+                          limits ? "border-transparent bg-ink" : "border-ink/15 bg-paper"
+                        }`}
                         onClick={() => {
-                          limitLock.current = Date.now() + 12000;
-                          setMe(saveProfile({ ...me, limitsOn: false }));
-                          void setRndMode({ data: { token: me.sessionToken, on: false } }).then((res) => {
+                          const on = !limits;
+                          limitLock.current = Date.now() + 15000;
+                          setMe(saveProfile({ ...me, limitsOn: on }));
+                          void setRndMode({ data: { token: me.sessionToken, on } }).then((res) => {
                             if (!res.ok) {
                               limitLock.current = 0;
-                              setMe(saveProfile({ ...me, limitsOn: true }));
+                              setMe(saveProfile({ ...me, limitsOn: !on }));
                               setNote(res.error);
                               return;
                             }
@@ -1134,32 +1142,16 @@ function Feed() {
                           });
                         }}
                       >
-                        Off · R&D
-                      </Btn>
-                      <Btn
-                        type="button"
-                        kind={limits ? "ink" : "line"}
-                        className="h-11 flex-1"
-                        onClick={() => {
-                          limitLock.current = Date.now() + 12000;
-                          setMe(saveProfile({ ...me, limitsOn: true }));
-                          void setRndMode({ data: { token: me.sessionToken, on: true } }).then((res) => {
-                            if (!res.ok) {
-                              limitLock.current = 0;
-                              setMe(saveProfile({ ...me, limitsOn: false }));
-                              setNote(res.error);
-                              return;
-                            }
-                            setMe(saveProfile({ ...me, limitsOn: res.limitsOn }));
-                          });
-                        }}
-                      >
-                        On
-                      </Btn>
+                        <span
+                          className={`absolute top-1 size-10 rounded-full shadow transition-all ${
+                            limits ? "left-7 bg-paper" : "left-1 bg-ink"
+                          }`}
+                        />
+                      </button>
                     </div>
                     <p className="text-sm text-muted">
-                      Off = R&D, no paywall for any user. On = every non-paid account gets {FREE_SESSIONS} free{" "}
-                      {FREE_MAX_MIN}-minute sessions a week. Admins stay on Pro.
+                      Off = R&D, no paywall. On = free accounts get {FREE_SESSIONS} sessions of {FREE_MAX_MIN}{" "}
+                      minutes a week. Admins stay on Pro.
                     </p>
                     <p className="text-sm font-medium">Admins</p>
                     <ul className="text-sm text-muted">
