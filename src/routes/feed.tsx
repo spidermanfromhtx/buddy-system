@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Btn } from "@/components/btn";
 import { CategoryPicker } from "@/components/category-picker";
 import { Face } from "@/components/face";
@@ -131,6 +131,7 @@ function Feed() {
   const [reportBody, setReportBody] = useState("");
   const [adminInvite, setAdminInvite] = useState("");
   const [admins, setAdmins] = useState<string[]>([]);
+  const limitLock = useRef(0);
 
   useEffect(() => {
     const p = loadProfile();
@@ -144,14 +145,18 @@ function Feed() {
     if (!me?.sessionToken) return;
     void readAccount({ data: { token: me.sessionToken } }).then((res) => {
       if (!res.ok) return;
-      setMe(
-        profileFromAccount(res.account, {
-          school: me.school,
-          schoolEmail: me.schoolEmail,
-          schoolVerified: me.schoolVerified,
-          campusToken: me.campusToken,
-        }),
-      );
+      setMe((cur) => {
+        const next = profileFromAccount(res.account, {
+          school: cur?.school,
+          schoolEmail: cur?.schoolEmail,
+          schoolVerified: cur?.schoolVerified,
+          campusToken: cur?.campusToken,
+        });
+        if (cur && Date.now() < limitLock.current) {
+          return saveProfile({ ...next, limitsOn: cur.limitsOn });
+        }
+        return next;
+      });
     });
   }, [me?.sessionToken]);
 
@@ -159,8 +164,10 @@ function Feed() {
     if (!me) return;
     let stop = false;
     const tick = () => {
+      if (Date.now() < limitLock.current) return;
       void readFlags({ data: {} }).then((res) => {
         if (stop || !res) return;
+        if (Date.now() < limitLock.current) return;
         setMe((cur) => {
           if (!cur || cur.limitsOn === res.limitsOn) return cur;
           return saveProfile({ ...cur, limitsOn: res.limitsOn });
@@ -1107,23 +1114,49 @@ function Feed() {
                 <p className="font-display text-xl">Plan</p>
                 {me.admin ? (
                   <>
-                    <label className="flex h-11 items-center gap-2 text-sm font-medium">
-                      <input
-                        type="checkbox"
-                        checked={limits}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setMe(saveProfile({ ...me, limitsOn: on }));
-                          void setRndMode({ data: { token: me.sessionToken, on } }).then((res) => {
+                    <p className="text-sm font-medium">Limits for everyone</p>
+                    <div className="flex gap-2">
+                      <Btn
+                        type="button"
+                        kind={!limits ? "ink" : "line"}
+                        className="h-11 flex-1"
+                        onClick={() => {
+                          limitLock.current = Date.now() + 12000;
+                          setMe(saveProfile({ ...me, limitsOn: false }));
+                          void setRndMode({ data: { token: me.sessionToken, on: false } }).then((res) => {
                             if (!res.ok) {
-                              setMe(saveProfile({ ...me, limitsOn: !on }));
+                              limitLock.current = 0;
+                              setMe(saveProfile({ ...me, limitsOn: true }));
                               setNote(res.error);
+                              return;
                             }
+                            setMe(saveProfile({ ...me, limitsOn: res.limitsOn }));
                           });
                         }}
-                      />
-                      Limits for everyone
-                    </label>
+                      >
+                        Off · R&D
+                      </Btn>
+                      <Btn
+                        type="button"
+                        kind={limits ? "ink" : "line"}
+                        className="h-11 flex-1"
+                        onClick={() => {
+                          limitLock.current = Date.now() + 12000;
+                          setMe(saveProfile({ ...me, limitsOn: true }));
+                          void setRndMode({ data: { token: me.sessionToken, on: true } }).then((res) => {
+                            if (!res.ok) {
+                              limitLock.current = 0;
+                              setMe(saveProfile({ ...me, limitsOn: false }));
+                              setNote(res.error);
+                              return;
+                            }
+                            setMe(saveProfile({ ...me, limitsOn: res.limitsOn }));
+                          });
+                        }}
+                      >
+                        On
+                      </Btn>
+                    </div>
                     <p className="text-sm text-muted">
                       Off = R&D, no paywall for any user. On = every non-paid account gets {FREE_SESSIONS} free{" "}
                       {FREE_MAX_MIN}-minute sessions a week. Admins stay on Pro.

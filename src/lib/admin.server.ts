@@ -44,11 +44,13 @@ export async function rndLimitsOn(sql: Sql) {
 
 export async function setRndLimits(sql: Sql, on: boolean) {
   await ensureAdminTables(sql);
-  await sql.query(
-    `INSERT INTO app_meta (key, value) VALUES ('rnd_limits', $1)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-    [on ? "on" : "off"],
-  );
+  const value = on ? "on" : "off";
+  const updated = await sql.query(`UPDATE app_meta SET value = $1 WHERE key = 'rnd_limits' RETURNING value`, [value]);
+  if (!updated[0]) {
+    await sql.query(`INSERT INTO app_meta (key, value) VALUES ('rnd_limits', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [
+      value,
+    ]);
+  }
 }
 
 export async function listAdmins(sql: Sql) {

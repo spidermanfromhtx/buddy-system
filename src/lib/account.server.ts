@@ -208,7 +208,8 @@ export async function setRndMode(token: string, on: boolean) {
     return { ok: false as const, error: "Admins only." };
   }
   await setRndLimits(sql, on);
-  return { ok: true as const, limitsOn: on };
+  const limitsOn = await rndLimitsOn(sql);
+  return { ok: true as const, limitsOn };
 }
 
 export async function inviteAdminEmail(token: string, email: string) {
