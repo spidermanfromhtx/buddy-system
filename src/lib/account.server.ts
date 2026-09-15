@@ -41,11 +41,14 @@ function mapAccount(r: Record<string, unknown>): Omit<AccountRow, "limitsOn" | "
 
 async function decorate(sql: Sql, account: Omit<AccountRow, "limitsOn" | "admin">): Promise<AccountRow> {
   const [limitsOn, admin] = await Promise.all([rndLimitsOn(sql), isAdmin(sql, account.email)]);
-  if (admin && account.plan !== "pro") {
-    await sql.query(`UPDATE accounts SET plan = 'pro' WHERE id = $1`, [account.id]);
-    account.plan = "pro";
+  if (admin && account.plan !== "free") {
+    const paid = await sql.query(`SELECT stripe_subscription_id FROM accounts WHERE id = $1 LIMIT 1`, [account.id]);
+    if (!paid[0]?.stripe_subscription_id) {
+      await sql.query(`UPDATE accounts SET plan = 'free' WHERE id = $1 AND stripe_subscription_id IS NULL`, [account.id]);
+      account.plan = "free";
+    }
   }
-  return { ...account, limitsOn, admin, plan: admin ? "pro" : account.plan };
+  return { ...account, limitsOn, admin };
 }
 
 export async function sendAccountCode(data: { email: string }) {

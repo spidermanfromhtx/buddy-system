@@ -1150,7 +1150,7 @@ function Feed() {
                     </div>
                     <p className="text-sm text-muted">
                       Off = R&D, no paywall. On = free accounts get {FREE_SESSIONS} sessions of {FREE_MAX_MIN}{" "}
-                      minutes a week. Admins stay on Pro.
+                      minutes a week.
                     </p>
                     <p className="text-sm font-medium">Admins</p>
                     <ul className="text-sm text-muted">
