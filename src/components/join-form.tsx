@@ -228,9 +228,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
             </form>
           )}
         </div>
-        <div className="relative hidden md:flex md:justify-end">
+        <div className="relative hidden -translate-y-16 md:flex md:justify-end">
           <div className="flex w-80 flex-col items-center text-center">
-            <Mark className="h-44 w-[7.7rem]" />
+            <Mark className="h-52 w-36" />
             <p className="mt-8 text-3xl font-semibold tracking-tight">Buddy System</p>
           </div>
         </div>
