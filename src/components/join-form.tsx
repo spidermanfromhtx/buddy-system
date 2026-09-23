@@ -1,4 +1,5 @@
 import { useNavigate, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Btn } from "@/components/btn";
 import { CategoryPicker } from "@/components/category-picker";
@@ -6,7 +7,7 @@ import { EmailCodeForm } from "@/components/email-code-form";
 import { LookFields } from "@/components/look-fields";
 import { PageWash } from "@/components/page-wash";
 import { Mark } from "@/components/mark";
-import { createAccount, requestAccountCode, verifyAccountCode } from "@/lib/account";
+import { createAccount, getSignupStats, requestAccountCode, verifyAccountCode } from "@/lib/account";
 import { profileFromAccount, type Profile } from "@/lib/profile";
 import { ageFromBirthdate } from "@/lib/utils";
 
@@ -21,6 +22,12 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   const [tos, setTos] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const signupStats = useQuery({
+    queryKey: ["signup-stats"],
+    queryFn: () => getSignupStats(),
+    refetchInterval: 10000,
+    staleTime: 5000,
+  });
 
   function signedIn(p: Profile) {
     onJoined?.(p);
@@ -91,7 +98,24 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                   </Btn>
                 </Link>
               </div>
-              <div className="mt-6 max-w-md md:mt-8">
+              <div className="mt-6 max-w-md rounded-3xl bg-paper/70 px-4 py-3 ring-1 ring-ink/5 md:mt-8">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold">
+                    {signupStats.isLoading ? "People are joining" : `${signupStats.data?.total ?? 0} people have signed up`}
+                  </p>
+                  {signupStats.data?.offerFull ? (
+                    <span className="text-xs font-medium text-muted">offer full</span>
+                  ) : (
+                    <span className="text-xs font-medium text-rust">
+                      {signupStats.data?.remaining ?? 100} spots left
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-muted">
+                  The first 100 launch signups get <span className="font-medium text-ink">Plus free for 1 month.</span>
+                </p>
+              </div>
+              <div className="mt-6 max-w-md md:mt-5">
                 <EmailCodeForm
                   hero
                   label="Email"
