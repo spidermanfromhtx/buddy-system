@@ -6,7 +6,7 @@ export const Route = createFileRoute("/terms")({ component: Terms });
 
 function Terms() {
   return (
-    <main className="relative z-10 min-h-dvh bg-transparent px-6 py-10 text-ink">
+    <main className="relative z-10 min-h-dvh bg-transparent px-6 pb-10 pt-12 text-ink">
       <PageWash />
       <article className="relative z-10 mx-auto flex max-w-xl flex-col gap-8">
         <div className="flex items-center gap-3">
