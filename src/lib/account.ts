@@ -58,6 +58,13 @@ export const saveAccount = createServerFn({ method: "POST" })
     return save(data);
   });
 
+export const getSignupStats = createServerFn({ method: "GET" })
+  .validator(() => ({}))
+  .handler(async () => {
+    const { signupStats } = await import("./account.server");
+    return signupStats();
+  });
+
 export const readAccount = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ token: TOKEN }).parse(d))
   .handler(async ({ data }) => {
