@@ -1206,7 +1206,7 @@ function Feed() {
                         >
                           Get Pro · {PRO_PRICE_LABEL}
                         </Btn>
-                        <p className="text-sm text-muted">Pro will add window share. Not on yet.</p>
+                        <p className="text-sm text-muted">Pro adds window share. In R&D, share is on for testing.</p>
                       </>
                     ) : (
                       <p className="text-sm text-muted">Window share for Pro is not on yet.</p>
@@ -1245,7 +1245,7 @@ function Feed() {
                     >
                       Get Pro · {PRO_PRICE_LABEL}
                     </Btn>
-                    <p className="text-sm text-muted">Plus is unlimited time. Pro will add window share.</p>
+                    <p className="text-sm text-muted">Plus is unlimited time. Pro adds window share. R&D turns share on for everyone so we can test it.</p>
                   </>
                 ) : (
                   <p className="text-sm text-muted">R&D. Session limits are off.</p>

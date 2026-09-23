@@ -8,6 +8,7 @@ import { PageWash } from "@/components/page-wash";
 import { parseCallSearch } from "@/lib/call-search";
 import { getCall, setCallStatus } from "@/lib/listings";
 import { stopLocalStream } from "@/lib/media";
+import { canScreenShare } from "@/lib/plan";
 import { loadProfile } from "@/lib/profile";
 import { pingBreak, playHangup } from "@/lib/ring";
 import { formatMmSs } from "@/lib/utils";
@@ -120,6 +121,7 @@ function CallScreen() {
               allowCamera={allowCamera}
               onCamera={setUseCam}
               pingRef={pingRef}
+              canShare={canScreenShare(me.plan, me.limitsOn)}
               onNudge={() => setBreakOn(true)}
               loopback
             />
@@ -132,6 +134,7 @@ function CallScreen() {
               allowCamera={allowCamera}
               onCamera={setUseCam}
               pingRef={pingRef}
+              canShare={canScreenShare(me.plan, me.limitsOn)}
               onNudge={() => setBreakOn(true)}
               onCallConnected={() => void markConnected()}
             />

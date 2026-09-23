@@ -19,8 +19,9 @@ export function isPro(plan: string | null | undefined) {
   return plan === "pro";
 }
 
-export function canScreenShare(_plan?: string | null, _limitsOn = false) {
-  return false;
+export function canScreenShare(plan: string | null | undefined, limitsOn = false) {
+  if (!limitsEnabled(limitsOn)) return true;
+  return isPro(plan);
 }
 
 export function limitsEnabled(on: boolean | null | undefined) {

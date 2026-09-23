@@ -80,7 +80,7 @@ function About() {
             <h2 className="mt-1 text-2xl font-semibold tracking-tight">Show the work</h2>
             <ul className="mt-4 flex flex-col gap-2 text-base text-ink/80">
               <li>Everything in Plus</li>
-              <li>Window share, when we turn it on</li>
+              <li>Share a window so your buddy can see the work</li>
             </ul>
           </section>
         </div>
