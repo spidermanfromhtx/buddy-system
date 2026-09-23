@@ -80,7 +80,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           Reviews
         </a>
       </header>
-      <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 md:grid-cols-2 md:px-10 md:pt-16">
+      <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:px-10 md:pt-16">
         <div>
           {!pending ? (
             <>
@@ -229,13 +229,12 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
             </form>
           )}
         </div>
-        <div className="relative hidden -translate-y-20 md:flex md:justify-end">
-          <div className="flex w-80 flex-col items-center text-center">
-            <Mark className="h-52 w-36" />
-            <div className="mt-8 grid w-full gap-3 text-left">
-              <section className="panel p-5">
+        <div className="relative hidden md:flex md:flex-col md:items-center">
+          <Mark className="h-40 w-28" />
+          <div className="mt-8 grid w-full grid-cols-3 gap-3 text-left">
+              <section className="panel p-4">
                 <p className="text-sm text-muted">Free</p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight">Start here</h2>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight">Start here</h2>
                 <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/80">
                   <li>{FREE_SESSIONS} sessions a week</li>
                   <li>Up to {FREE_MAX_MIN} minutes each</li>
@@ -243,25 +242,24 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                   <li>Camera on or off</li>
                 </ul>
               </section>
-              <section className="panel p-5">
+              <section className="panel p-4">
                 <p className="text-sm text-muted">Plus · {PLUS_PRICE_LABEL}</p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight">Keep going</h2>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight">Keep going</h2>
                 <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/80">
                   <li>Unlimited sessions</li>
                   <li>Calls up to {PLUS_MAX_MIN / 60} hours</li>
                   <li>Same feed, same matching</li>
                 </ul>
               </section>
-              <section className="panel p-5">
+              <section className="panel p-4">
                 <p className="text-sm text-muted">Pro · {PRO_PRICE_LABEL}</p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight">Show the work</h2>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight">Show the work</h2>
                 <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/80">
                   <li>Everything in Plus</li>
                   <li>Share a window so your buddy can see the work</li>
                 </ul>
               </section>
             </div>
-          </div>
         </div>
       </section>
     </main>
