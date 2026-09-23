@@ -13,7 +13,7 @@ import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
 import { inviteAdmin, listAdmins, readAccount, readFlags, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
 import { CATEGORIES, categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
-import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, PRO_PRICE_LABEL, isPlus, maxSessionMin, planLabel, sessionsLeft } from "@/lib/plan";
+import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, PRO_PRICE_LABEL, isPlus, isPro, maxSessionMin, planLabel, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
   claimBooking,
@@ -40,6 +40,21 @@ function minutesLeft(iso: string | null) {
   const ms = new Date(iso).getTime() - Date.now();
   if (Number.isNaN(ms)) return null;
   return Math.max(0, Math.ceil(ms / 60_000));
+}
+
+function clockMinutes(value: string) {
+  const [h, m] = value.split(":").map((n) => Number(n));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 20 * 60;
+  return h * 60 + m;
+}
+
+function clockLabel(total: number) {
+  const mins = ((total % 1440) + 1440) % 1440;
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+}
+
+function snapTen(n: number, max: number) {
+  return Math.min(max, Math.max(10, Math.round(n / 10) * 10));
 }
 
 function Chip({ children, hot = false }: { children: ReactNode; hot?: boolean }) {
@@ -116,6 +131,7 @@ function Feed() {
   const [bookTask, setBookTask] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [lengthMin, setLengthMin] = useState(20);
+  const [bookLength, setBookLength] = useState(120);
   const [camera, setCamera] = useState(false);
   const [windowDate, setWindowDate] = useState(todayIso);
   const [windowStart, setWindowStart] = useState("20:00");
@@ -373,7 +389,7 @@ function Feed() {
           photo: me.photo ?? undefined,
           task: bookTask.trim(),
           urgent,
-          lengthMin: Math.min(lengthMin, capStep),
+          lengthMin: Math.min(bookLength, capStep),
           camera,
           similarPref: similar,
           windowLabel: formatWindow(windowDate, windowStart, windowEnd),
@@ -510,12 +526,29 @@ function Feed() {
 
   const cap = maxSessionMin(me?.plan, me?.limitsOn);
   const capStep = Math.floor(cap / 10) * 10;
+  const proPlan = isPro(me?.plan);
   useEffect(() => {
     setLengthMin((n) => {
       const snapped = Math.round(n / 10) * 10;
       return Math.min(capStep, Math.max(0, snapped));
     });
   }, [capStep]);
+  useEffect(() => {
+    const max = Math.max(10, capStep || 10);
+    const start = clockMinutes(windowStart);
+    if (proPlan) {
+      const len = snapTen(bookLength, max);
+      const endLabel = clockLabel(start + len);
+      if (bookLength !== len) setBookLength(len);
+      if (windowEnd !== endLabel) setWindowEnd(endLabel);
+      return;
+    }
+    const len = snapTen(bookLength, max);
+    if (bookLength !== len) setBookLength(len);
+    const span = clockMinutes(windowEnd) - start;
+    const windowCap = Math.max(10, cap || 10);
+    if (span <= 0 || span > windowCap) setWindowEnd(clockLabel(start + windowCap));
+  }, [capStep, proPlan]);
 
   if (!me) return <JoinForm onJoined={setMe} />;
 
@@ -560,6 +593,45 @@ function Feed() {
     }
   }
 
+  const bookMax = Math.max(10, capStep || 10);
+  const windowCap = proPlan ? bookMax : Math.max(10, cap || 10);
+
+  function applyBookLength(raw: number) {
+    const next = snapTen(raw, bookMax);
+    setBookLength(next);
+    if (proPlan) setWindowEnd(clockLabel(clockMinutes(windowStart) + next));
+  }
+
+  function applyWindowStart(nextStart: string) {
+    const start = clockMinutes(nextStart);
+    setWindowStart(nextStart);
+    if (proPlan) {
+      const len = snapTen(bookLength, bookMax);
+      setBookLength(len);
+      setWindowEnd(clockLabel(start + len));
+      return;
+    }
+    const span = clockMinutes(windowEnd) - start;
+    if (span <= 0 || span > windowCap) setWindowEnd(clockLabel(start + windowCap));
+  }
+
+  function applyWindowEnd(nextEnd: string) {
+    const start = clockMinutes(windowStart);
+    let span = clockMinutes(nextEnd) - start;
+    if (span <= 0) span = 10;
+    if (proPlan) {
+      const len = snapTen(Math.min(span, bookMax), bookMax);
+      setBookLength(len);
+      setWindowEnd(clockLabel(start + len));
+      return;
+    }
+    if (span > windowCap) {
+      setWindowEnd(clockLabel(start + windowCap));
+      return;
+    }
+    setWindowEnd(clockLabel(start + span));
+  }
+
   const bookFields = (prefix: string) => (
     <div id={`book-${prefix}`} className="flex flex-col">
       <p className="font-display text-xl tracking-tight">Book</p>
@@ -581,7 +653,7 @@ function Feed() {
               type="time"
               className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
               value={windowStart}
-              onChange={(e) => setWindowStart(e.target.value)}
+              onChange={(e) => applyWindowStart(e.target.value)}
             />
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium" htmlFor={`${prefix}-end`}>
@@ -591,10 +663,15 @@ function Feed() {
               type="time"
               className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
               value={windowEnd}
-              onChange={(e) => setWindowEnd(e.target.value)}
+              onChange={(e) => applyWindowEnd(e.target.value)}
             />
           </label>
         </div>
+        <p className="text-xs text-muted">
+          {proPlan
+            ? "On Pro the window and the call length are the same."
+            : `This window can’t be longer than ${windowCap} minutes.`}
+        </p>
         <label className="flex flex-col gap-2 text-sm font-medium" htmlFor={`${prefix}-task`}>
           Task description
           <input
@@ -635,16 +712,16 @@ function Feed() {
         </div>
         <label className="text-sm font-medium" htmlFor={`${prefix}-length`}>
           Call length
-          <p className="mt-1 text-xs font-normal text-muted">{lengthMin} minutes</p>
+          <p className="mt-1 text-xs font-normal text-muted">{bookLength} minutes</p>
           <input
             id={`${prefix}-length`}
             type="range"
-            min={0}
-            max={capStep}
+            min={10}
+            max={bookMax}
             step={10}
-            value={Math.min(lengthMin, capStep)}
+            value={Math.min(bookLength, bookMax)}
             className="mt-3 w-full accent-[var(--rust)]"
-            onChange={(e) => setLengthMin(Number(e.target.value))}
+            onChange={(e) => applyBookLength(Number(e.target.value))}
           />
         </label>
         <fieldset>
@@ -671,7 +748,7 @@ function Feed() {
               ? "border border-ink/10 shadow-inner"
               : "shadow-sm"
           }`}
-          disabled={goBook.isPending || lengthMin < 10}
+          disabled={goBook.isPending || bookLength < 10}
           onClick={() => goBook.mutate()}
         >
           {goBook.isPending ? "…" : "Add to queue"}
