@@ -234,17 +234,14 @@ export async function saveAccount(data: {
 export async function signupStats() {
   const sql = await getSql();
   const rows = await sql.query(`
-    SELECT
-      (SELECT count(*) FROM accounts) AS total,
-      (SELECT count(*) FROM launch_plus_slots WHERE account_id IS NOT NULL) AS claimed
+    SELECT count(*) AS total
+    FROM accounts
   `);
   const total = Number(rows[0]?.total ?? 0);
-  const claimed = Number(rows[0]?.claimed ?? 0);
   return {
     total,
-    claimed,
-    remaining: Math.max(0, 100 - claimed),
-    offerFull: claimed >= 100,
+    remaining: Math.max(0, 100 - total),
+    offerFull: total >= 100,
   };
 }
 
