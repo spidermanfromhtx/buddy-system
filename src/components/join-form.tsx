@@ -10,6 +10,7 @@ import { Mark } from "@/components/mark";
 import { createAccount, getSignupStats, requestAccountCode, verifyAccountCode } from "@/lib/account";
 import { profileFromAccount, type Profile } from "@/lib/profile";
 import { ageFromBirthdate } from "@/lib/utils";
+import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_MAX_MIN, PLUS_PRICE_LABEL, PRO_PRICE_LABEL } from "@/lib/plan";
 
 export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   const nav = useNavigate();
@@ -228,10 +229,38 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
             </form>
           )}
         </div>
-        <div className="relative hidden -translate-y-16 md:flex md:justify-end">
+        <div className="relative hidden -translate-y-20 md:flex md:justify-end">
           <div className="flex w-80 flex-col items-center text-center">
             <Mark className="h-52 w-36" />
-            <p className="mt-8 text-3xl font-semibold tracking-tight">Buddy System</p>
+            <div className="mt-8 grid w-full gap-3 text-left">
+              <section className="panel p-5">
+                <p className="text-sm text-muted">Free</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">Start here</h2>
+                <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/80">
+                  <li>{FREE_SESSIONS} sessions a week</li>
+                  <li>Up to {FREE_MAX_MIN} minutes each</li>
+                  <li>Go live, join, or book</li>
+                  <li>Camera on or off</li>
+                </ul>
+              </section>
+              <section className="panel p-5">
+                <p className="text-sm text-muted">Plus · {PLUS_PRICE_LABEL}</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">Keep going</h2>
+                <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/80">
+                  <li>Unlimited sessions</li>
+                  <li>Calls up to {PLUS_MAX_MIN / 60} hours</li>
+                  <li>Same feed, same matching</li>
+                </ul>
+              </section>
+              <section className="panel p-5">
+                <p className="text-sm text-muted">Pro · {PRO_PRICE_LABEL}</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">Show the work</h2>
+                <ul className="mt-3 flex flex-col gap-1.5 text-sm text-ink/80">
+                  <li>Everything in Plus</li>
+                  <li>Share a window so your buddy can see the work</li>
+                </ul>
+              </section>
+            </div>
           </div>
         </div>
       </section>
