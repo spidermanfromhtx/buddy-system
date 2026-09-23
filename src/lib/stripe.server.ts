@@ -34,6 +34,52 @@ async function stripeForm(path: string, body: Record<string, string>) {
   return json;
 }
 
+async function stripeGet(path: string) {
+  const key = stripeKey();
+  if (!key) return null;
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    headers: { authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as {
+    data?: Array<{
+      id?: string;
+      metadata?: Record<string, string>;
+      items?: { data?: Array<{ price?: { unit_amount?: number } }> };
+    }>;
+  };
+}
+
+function planFromSub(sub: {
+  metadata?: Record<string, string>;
+  items?: { data?: Array<{ price?: { unit_amount?: number } }> };
+}) {
+  if (sub.metadata?.plan === "pro") return "pro" as const;
+  if (sub.metadata?.plan === "plus") return "plus" as const;
+  const amount = sub.items?.data?.[0]?.price?.unit_amount ?? 0;
+  return amount >= 800 ? ("pro" as const) : ("plus" as const);
+}
+
+export async function syncPaidPlan(token: string) {
+  const key = stripeKey();
+  if (!key) return;
+  const sql = await getSql();
+  const rows = await sql.query(`SELECT id, email, plan FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);
+  const row = rows[0];
+  if (!row) return;
+  if (String(row.plan) === "pro") return;
+  const email = encodeURIComponent(String(row.email));
+  const customers = await stripeGet(`customers?email=${email}&limit=5`);
+  for (const customer of customers?.data ?? []) {
+    if (!customer.id) continue;
+    const subs = await stripeGet(`subscriptions?customer=${customer.id}&status=active&limit=3`);
+    const sub = subs?.data?.[0];
+    if (!sub?.id) continue;
+    await markPlan(String(row.id), customer.id, sub.id, planFromSub(sub));
+    return;
+  }
+}
+
 export async function startPlusCheckout(token: string, plan: "plus" | "pro" = "plus") {
   const sql = await getSql();
   const rows = await sql.query(`SELECT * FROM accounts WHERE session_token = $1 LIMIT 1`, [token]);

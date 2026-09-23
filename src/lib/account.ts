@@ -68,6 +68,8 @@ export const getSignupStats = createServerFn({ method: "GET" })
 export const readAccount = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ token: TOKEN }).parse(d))
   .handler(async ({ data }) => {
+    const { syncPaidPlan } = await import("./stripe.server");
+    await syncPaidPlan(data.token).catch(() => {});
     const { readAccount: read } = await import("./account.server");
     return read(data.token);
   });

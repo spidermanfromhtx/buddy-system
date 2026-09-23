@@ -143,21 +143,33 @@ function Feed() {
 
   useEffect(() => {
     if (!me?.sessionToken) return;
-    void readAccount({ data: { token: me.sessionToken } }).then((res) => {
-      if (!res.ok) return;
-      setMe((cur) => {
-        const next = profileFromAccount(res.account, {
-          school: cur?.school,
-          schoolEmail: cur?.schoolEmail,
-          schoolVerified: cur?.schoolVerified,
-          campusToken: cur?.campusToken,
+    let stop = false;
+    const pull = () =>
+      readAccount({ data: { token: me.sessionToken } }).then((res) => {
+        if (stop || !res.ok) return res;
+        setMe((cur) => {
+          const next = profileFromAccount(res.account, {
+            school: cur?.school,
+            schoolEmail: cur?.schoolEmail,
+            schoolVerified: cur?.schoolVerified,
+            campusToken: cur?.campusToken,
+          });
+          if (cur && Date.now() < limitLock.current) {
+            return saveProfile({ ...next, limitsOn: cur.limitsOn });
+          }
+          return next;
         });
-        if (cur && Date.now() < limitLock.current) {
-          return saveProfile({ ...next, limitsOn: cur.limitsOn });
-        }
-        return next;
+        return res;
       });
-    });
+    void pull();
+    const waiting = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("plus") === "1";
+    const id = waiting ? window.setInterval(() => void pull(), 3000) : 0;
+    const stopWait = waiting ? window.setTimeout(() => window.clearInterval(id), 20000) : 0;
+    return () => {
+      stop = true;
+      if (id) window.clearInterval(id);
+      if (stopWait) window.clearTimeout(stopWait);
+    };
   }, [me?.sessionToken]);
 
   useEffect(() => {
