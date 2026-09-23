@@ -1209,7 +1209,7 @@ function Feed() {
                         <p className="text-sm text-muted">Pro adds window share. In R&D, share is on for testing.</p>
                       </>
                     ) : (
-                      <p className="text-sm text-muted">Window share for Pro is not on yet.</p>
+                      <p className="text-sm text-muted">Window share is on in R&D and for Pro.</p>
                     )}
                   </div>
                 ) : limits ? (
