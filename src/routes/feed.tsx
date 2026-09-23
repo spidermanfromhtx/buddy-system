@@ -275,10 +275,16 @@ function Feed() {
     () => scheduled.filter((l) => (l.hostPeerId || l.peerId) !== me?.id),
     [scheduled, me],
   );
-  const queue = useMemo(
-    () => scoped.filter((l) => l.mode === "scheduled" && l.peerId !== me?.id && !l.matchId),
-    [scoped, me],
-  );
+  const queue = useMemo(() => {
+    const rows = scoped.filter((l) => l.mode === "scheduled" && l.peerId !== me?.id);
+    const seen = new Set<string>();
+    return rows.filter((l) => {
+      if (!l.matchId) return true;
+      if (seen.has(l.matchId)) return false;
+      seen.add(l.matchId);
+      return true;
+    });
+  }, [scoped, me]);
 
   const mine = (q.data ?? []).find((l) => l.peerId === me?.id && l.mode === "live");
 
@@ -432,7 +438,7 @@ function Feed() {
       },
     });
     if (started && "ok" in started && started.ok === false) {
-      setNote("error" in started ? started.error : "Could not start the call.");
+      setNote(("error" in started && started.error) || "Could not start the call.");
       return;
     }
     if (me && !isPlus(me.plan)) setMe(saveProfile({ ...me, sessionsUsed: me.sessionsUsed + 1 }));
@@ -882,9 +888,9 @@ function Feed() {
                   extra={
                     isYou
                       ? `live${remain !== null ? ` · ${remain}m left` : ""}`
-                      : row.school && tab === "all"
-                        ? row.school
-                        : undefined
+                      : [row.busy ? `in a call${row.partnerName ? ` · ${row.partnerName}` : ""}` : row.school && tab === "all" ? row.school : ""]
+                          .filter(Boolean)
+                          .join("")
                   }
                   ratingAvg={row.ratingAvg}
                   ratingCount={row.ratingCount}
@@ -893,6 +899,8 @@ function Feed() {
                       <Btn className="h-10 px-4 text-sm" onClick={() => refreshLive.mutate()}>
                         still open
                       </Btn>
+                    ) : row.busy ? (
+                      <span className="text-sm text-muted">In a call</span>
                     ) : (
                       <div className="flex flex-col gap-1">
                         <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => void call(row)}>
@@ -985,13 +993,19 @@ function Feed() {
                   lengthMin={row.lengthMin}
                   category={row.category}
                   offerCamera={row.camera}
-                  extra={row.windowLabel ?? "window"}
+                  extra={[row.windowLabel, row.matchId ? (row.busy ? "in a call" : `matched${row.matchPeerName ? ` · ${row.matchPeerName}` : ""}`) : "open"]
+                    .filter(Boolean)
+                    .join(" · ")}
                   ratingAvg={row.ratingAvg}
                   ratingCount={row.ratingCount}
                   action={
-                    <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => takeWindow.mutate(row)}>
-                      Be a buddy
-                    </Btn>
+                    row.matchId || row.busy ? (
+                      <span className="text-sm text-muted">{row.busy ? "In a call" : "Matched"}</span>
+                    ) : (
+                      <Btn kind="fill" className="h-10 px-4 text-sm" onClick={() => takeWindow.mutate(row)}>
+                        Be a buddy
+                      </Btn>
+                    )
                   }
                 />
               ))

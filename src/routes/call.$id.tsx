@@ -77,9 +77,11 @@ function CallScreen() {
   useEffect(() => {
     if (!dummy && q.data?.status === "done") {
       stopLocalStream();
-      void nav({ to: "/rate/$id", params: { id } });
+      const stay = Boolean(me && q.data.openHostIds?.includes(me.id));
+      if (stay) void nav({ to: "/feed" });
+      else void nav({ to: "/rate/$id", params: { id } });
     }
-  }, [dummy, q.data?.status, nav, id]);
+  }, [dummy, q.data?.status, q.data?.openHostIds, me, nav, id]);
 
   async function markConnected() {
     if (!dummy && q.data?.status !== "live") await setCallStatus({ data: { id, status: "live" } });
@@ -96,7 +98,8 @@ function CallScreen() {
         keepalive: true,
       }).catch(() => {});
     if (!dummy) await setCallStatus({ data: { id, status: "done" } });
-    if (dummy) void nav({ to: "/feed" });
+    const stay = Boolean(me && q.data?.openHostIds?.includes(me.id));
+    if (dummy || stay) void nav({ to: "/feed" });
     else void nav({ to: "/rate/$id", params: { id } });
   }
 
