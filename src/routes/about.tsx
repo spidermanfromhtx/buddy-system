@@ -13,7 +13,7 @@ function About() {
   return (
     <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(2.85rem,calc(env(safe-area-inset-top)+1.4rem))] md:px-10 md:pt-5">
+      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(3.85rem,calc(env(safe-area-inset-top)+2.25rem))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <p className="truncate text-base font-semibold tracking-tight">Buddy System</p>

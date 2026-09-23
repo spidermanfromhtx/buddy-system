@@ -106,7 +106,7 @@ function CallScreen() {
   return (
     <main className="relative z-10 flex min-h-dvh flex-col bg-transparent text-paper">
       <PageWash dark />
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-between px-5 pt-[max(2.85rem,calc(env(safe-area-inset-top)+1.4rem))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-between px-5 pt-[max(3.85rem,calc(env(safe-area-inset-top)+2.25rem))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-10">
         <div className="flex w-full flex-col items-center text-center">
           <Face name={name} color={color} photo={photo} size="lg" />
           <p className="mt-5 text-sm uppercase tracking-[0.2em] text-paper/50">{task}</p>

@@ -652,7 +652,7 @@ function Feed() {
             <input
               id={`${prefix}-start`}
               type="time"
-              className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
+              className="h-11 w-full min-w-0 max-w-full rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
               value={windowStart}
               onChange={(e) => applyWindowStart(e.target.value)}
             />
@@ -662,7 +662,7 @@ function Feed() {
             <input
               id={`${prefix}-end`}
               type="time"
-              className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
+              className="h-11 w-full min-w-0 max-w-full rounded-2xl border-0 bg-paper/70 px-3 font-normal text-ink outline-none"
               value={windowEnd}
               onChange={(e) => applyWindowEnd(e.target.value)}
             />
@@ -1008,20 +1008,25 @@ function Feed() {
   );
 
   return (
-    <main className="relative isolate z-10 flex min-h-dvh flex-col bg-transparent text-ink">
+    <main className="relative isolate z-10 flex min-h-dvh max-w-full flex-col overflow-x-clip bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-2 px-3 pb-3 pt-[max(2.85rem,calc(env(safe-area-inset-top)+1.4rem))] md:px-6 md:pt-5">
-        <div className="flex min-w-0 items-center gap-2">
-          <Mark />
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl">Buddy System</h1>
-            <p className="mt-1.5 text-[11px] text-muted">
-              {plus ? planLabel(me.plan) : limits ? `${left} left this week` : "R&D"}
-            </p>
+      <header className="relative z-20 flex w-full max-w-full flex-col gap-3 px-3 pb-3 pt-[max(3.85rem,calc(env(safe-area-inset-top)+2.25rem))] md:flex-row md:items-center md:justify-between md:px-6 md:pt-5">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Mark />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl">Buddy System</h1>
+              <p className="mt-1.5 truncate text-[11px] text-muted">
+                {plus ? planLabel(me.plan) : limits ? `${left} left this week` : "R&D"}
+              </p>
+            </div>
           </div>
+          <button type="button" className="shrink-0 md:hidden" onClick={() => setSheet("settings")} aria-label="Settings">
+            <Face name={me.name} color={me.color} photo={me.photo} size="sm" />
+          </button>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
-          <div className="flex rounded-full bg-paper/50 p-0.5 md:hidden">
+        <div className="flex w-full min-w-0 items-center gap-1.5 md:w-auto md:gap-2">
+          <div className="flex shrink-0 rounded-full bg-paper/50 p-0.5 md:hidden">
             <button
               type="button"
               className={`rounded-full px-3 py-1.5 text-sm ${pane === "live" ? "bg-rust text-on-rust" : "text-muted"}`}
@@ -1040,14 +1045,14 @@ function Feed() {
           <Btn className="hidden h-10 text-sm md:inline-flex" onClick={() => void share()}>
             Share
           </Btn>
-          <InstallApp className="h-9 px-3 text-sm" />
-          <button type="button" className="shrink-0" onClick={() => setSheet("settings")} aria-label="Settings">
+          <InstallApp className="h-9 min-w-0 flex-1 px-3 text-sm md:flex-none" />
+          <button type="button" className="hidden shrink-0 md:block" onClick={() => setSheet("settings")} aria-label="Settings">
             <Face name={me.name} color={me.color} photo={me.photo} size="sm" />
           </button>
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-3 px-4 pb-8 pt-5 md:grid-cols-2 md:gap-5 md:px-6 md:pt-4">
+      <div className="relative z-10 mx-auto grid w-full min-w-0 max-w-6xl grid-cols-1 gap-3 px-4 pb-8 pt-5 md:grid-cols-2 md:gap-5 md:px-6 md:pt-4">
         <section className={pane === "book" ? "hidden md:block" : "block"}>
           {liveBoard}
           <div className="pt-3">{compose}</div>
