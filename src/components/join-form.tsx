@@ -229,14 +229,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           )}
         </div>
         <div className="relative hidden md:flex md:justify-end">
-          <div className="relative w-72">
-            <div className="absolute -right-8 -top-8 size-56 rounded-full bg-sage opacity-70 blur-2xl" />
-            <div className="relative rounded-[2.6rem] bg-ink p-3 shadow-[0_30px_60px_-20px_rgba(140,21,21,0.35)]">
-              <div className="flex flex-col items-center rounded-[2.1rem] bg-paper px-8 pb-12 pt-16 text-center">
-                <Mark className="h-36 w-[6.3rem]" />
-                <p className="mt-8 text-2xl font-semibold tracking-tight">Buddy System</p>
-              </div>
-            </div>
+          <div className="flex w-80 flex-col items-center text-center">
+            <Mark className="h-44 w-[7.7rem]" />
+            <p className="mt-8 text-3xl font-semibold tracking-tight">Buddy System</p>
           </div>
         </div>
       </section>
