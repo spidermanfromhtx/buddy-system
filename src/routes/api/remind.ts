@@ -3,9 +3,9 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/remind")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      GET: async () => {
         const { sendDueReminders } = await import("@/lib/push.server");
-        return sendDueReminders(request);
+        return sendDueReminders();
       },
     },
   },

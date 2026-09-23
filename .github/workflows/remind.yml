@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: send due booking reminders
-        run: curl -fsS -H "Authorization: Bearer ${{ secrets.REMIND_SECRET }}" https://joinbuddysystem.app/api/remind
+        run: curl -fsS https://joinbuddysystem.app/api/remind

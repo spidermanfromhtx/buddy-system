@@ -1,3 +1,4 @@
+import { ensureAdminTables } from "@/lib/admin.server";
 import { getSql } from "@/lib/db";
 
 type PushSub = { endpoint: string; keys: { p256dh: string; auth: string } };
@@ -41,15 +42,17 @@ async function webpush() {
   return wp;
 }
 
-export async function sendDueReminders(request: Request) {
-  const secret = process.env.REMIND_SECRET?.trim() || "";
-  const header = request.headers.get("authorization") || "";
-  if (!secret || header !== `Bearer ${secret}`) {
-    return new Response("no", { status: 401 });
-  }
+export async function sendDueReminders() {
   const wp = await webpush();
   if (!wp) return Response.json({ ok: false, error: "missing vapid" });
   const sql = await getSql();
+  await ensureAdminTables(sql);
+  await sql.query(`INSERT INTO app_meta (key, value) VALUES ('remind_at', '0') ON CONFLICT (key) DO NOTHING`);
+  const gate = await sql.query(
+    `UPDATE app_meta SET value = $1 WHERE key = 'remind_at' AND value::bigint < $2 RETURNING key`,
+    [String(Date.now()), String(Date.now() - 4 * 60 * 1000)],
+  );
+  if (!gate.length) return Response.json({ ok: true, skipped: true });
   const due = await sql.query(
     `SELECT id, peer_id, task, window_label, match_peer_name
      FROM listings
