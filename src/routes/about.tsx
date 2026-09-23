@@ -13,7 +13,7 @@ function About() {
   return (
     <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10">
+      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(1.15rem,env(safe-area-inset-top))] md:px-10">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <p className="truncate text-base font-semibold tracking-tight">Buddy System</p>
@@ -22,7 +22,7 @@ function About() {
           {me ? "Feed" : "Home"}
         </Btn>
       </header>
-      <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 pb-16 pt-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 pb-16 pt-7">
         <div>
           <p className="text-sm text-muted">18+</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight md:text-5xl">What is the Buddy System?</h1>
