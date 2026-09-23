@@ -1045,7 +1045,7 @@ function Feed() {
           <Btn className="hidden h-10 text-sm md:inline-flex" onClick={() => void share()}>
             Share
           </Btn>
-          <InstallApp className="h-9 min-w-0 flex-1 px-3 text-sm md:flex-none" />
+          <InstallApp className="h-9 w-auto shrink-0 px-3 text-sm" />
           <button type="button" className="hidden shrink-0 md:block" onClick={() => setSheet("settings")} aria-label="Settings">
             <Face name={me.name} color={me.color} photo={me.photo} size="sm" />
           </button>
