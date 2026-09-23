@@ -9,6 +9,7 @@ import { PageWash } from "@/components/page-wash";
 import { Mark } from "@/components/mark";
 import { createAccount, getSignupStats, requestAccountCode, verifyAccountCode } from "@/lib/account";
 import { profileFromAccount, type Profile } from "@/lib/profile";
+import { clearPreparedReminders, prepareBookingReminders, savePreparedReminders } from "@/lib/notify";
 import { ageFromBirthdate } from "@/lib/utils";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_MAX_MIN, PLUS_PRICE_LABEL, PRO_PRICE_LABEL } from "@/lib/plan";
 
@@ -21,6 +22,8 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   const [photo, setPhoto] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [tos, setTos] = useState(false);
+  const [reminders, setReminders] = useState(false);
+  const [remindErr, setRemindErr] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const signupStats = useQuery({
@@ -59,6 +62,9 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
       if (!res.ok) {
         setErr(res.error);
         return;
+      }
+      if (reminders) {
+        await savePreparedReminders(res.account.sessionToken).catch(() => {});
       }
       signedIn(profileFromAccount(res.account));
     } catch {
@@ -201,6 +207,37 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                 ) : null}
               </fieldset>
               <LookFields name={name} color={color} photo={photo} onColor={setColor} onPhoto={setPhoto} />
+              <div>
+                <p className="text-base font-medium">Booking reminders</p>
+                <p className="mt-1 text-sm text-muted">
+                  We ping this device when a booking is about to start, even if the site is closed. On iPhone, add the app to your home screen first, then turn this on from the icon.
+                </p>
+                <Btn
+                  type="button"
+                  kind={reminders ? "fill" : "line"}
+                  className="mt-3 h-11"
+                  onClick={() => {
+                    if (reminders) {
+                      setReminders(false);
+                      setRemindErr("");
+                      clearPreparedReminders();
+                      return;
+                    }
+                    void prepareBookingReminders()
+                      .then(() => {
+                        setReminders(true);
+                        setRemindErr("");
+                      })
+                      .catch((err) => {
+                        setReminders(false);
+                        setRemindErr(err instanceof Error ? err.message : "Could not turn on reminders.");
+                      });
+                  }}
+                >
+                  {reminders ? "Reminders on" : "Turn on reminders"}
+                </Btn>
+                {remindErr ? <p className="mt-2 text-sm text-rust">{remindErr}</p> : null}
+              </div>
               <label className="flex items-start gap-3 text-sm">
                 <input
                   type="checkbox"

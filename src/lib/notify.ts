@@ -1,3 +1,5 @@
+const PENDING_KEY = "buddy-push-sub";
+
 function urlBase64ToUint8Array(value: string) {
   const padded = value + "=".repeat((4 - (value.length % 4)) % 4);
   const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
@@ -16,7 +18,7 @@ export function iosNeedsHomeScreen() {
   return ios && !standalone;
 }
 
-export async function enableBookingReminders(token: string) {
+async function subscribeThisDevice() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     throw new Error("This browser cannot send notifications.");
   }
@@ -33,12 +35,34 @@ export async function enableBookingReminders(token: string) {
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(keyBody.publicKey),
   });
+  const json = sub.toJSON();
+  sessionStorage.setItem(PENDING_KEY, JSON.stringify(json));
+  return json;
+}
+
+export async function savePreparedReminders(token: string) {
+  const raw = sessionStorage.getItem(PENDING_KEY);
+  if (!raw || !token) return;
   const saved = await fetch("/api/push", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ token, subscription: sub.toJSON() }),
+    body: JSON.stringify({ token, subscription: JSON.parse(raw) as unknown }),
   });
   const body = (await saved.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
   if (!saved.ok || !body?.ok) throw new Error(body?.error || "Could not save this device.");
+  sessionStorage.removeItem(PENDING_KEY);
   localStorage.setItem("buddy-push", "1");
+}
+
+export function clearPreparedReminders() {
+  sessionStorage.removeItem(PENDING_KEY);
+}
+
+export async function prepareBookingReminders() {
+  await subscribeThisDevice();
+}
+
+export async function enableBookingReminders(token: string) {
+  await subscribeThisDevice();
+  await savePreparedReminders(token);
 }
