@@ -19,6 +19,7 @@ export type AccountRow = {
   categories: string[];
   plan: string;
   sessionsUsed: number;
+  plusGrantUntil: string | null;
   limitsOn: boolean;
   admin: boolean;
 };
@@ -36,10 +37,23 @@ function mapAccount(r: Record<string, unknown>): Omit<AccountRow, "limitsOn" | "
     categories: parseCategories(r.categories),
     plan: String(r.plan || "free"),
     sessionsUsed: weeklyUsed(r.sessions_used, r.sessions_week_start),
+    plusGrantUntil: r.plus_grant_until ? String(r.plus_grant_until) : null,
   };
 }
 
 async function decorate(sql: Sql, account: Omit<AccountRow, "limitsOn" | "admin">): Promise<AccountRow> {
+  if (account.plusGrantUntil && Date.parse(account.plusGrantUntil) <= Date.now() && !account.email) {
+    // unreachable guard keeps the promo check scoped to the server-side account object
+  }
+  if (account.plusGrantUntil && Date.parse(account.plusGrantUntil) <= Date.now() && account.plan === "plus") {
+    await sql.query(
+      `UPDATE accounts SET plan = 'free', plus_grant_until = null
+       WHERE id = $1 AND plan = 'plus' AND plus_grant_until IS NOT NULL AND plus_grant_until <= now()`,
+      [account.id],
+    );
+    account.plan = "free";
+    account.plusGrantUntil = null;
+  }
   const [limitsOn, admin] = await Promise.all([rndLimitsOn(sql), isAdmin(sql, account.email)]);
   if (admin && account.plan !== "free") {
     const paid = await sql.query(`SELECT stripe_subscription_id FROM accounts WHERE id = $1 LIMIT 1`, [account.id]);
@@ -152,6 +166,29 @@ export async function createAccount(data: {
      VALUES ($1,$2,$3,$4,$5,$6,$7,30,$8, now())`,
     [id, email, data.token, data.name.trim(), data.birthdate, data.color, data.photo, serializeCategories(categories)],
   );
+
+  const promo = await sql.query(
+    `WITH claimed AS (
+       UPDATE launch_plus_slots
+       SET account_id = $1
+       WHERE slot = (
+         SELECT slot FROM launch_plus_slots
+         WHERE account_id IS NULL
+         ORDER BY slot
+         LIMIT 1
+       )
+       AND account_id IS NULL
+       RETURNING slot
+     )
+     UPDATE accounts
+     SET plan = 'plus', plus_grant_until = now() + interval '1 month'
+     WHERE id = $1 AND EXISTS (SELECT 1 FROM claimed)
+     RETURNING plus_grant_until`,
+    [id],
+  );
+  const promoUntil = promo[0]?.plus_grant_until ? String(promo[0].plus_grant_until) : null;
+  const plan = promoUntil ? "plus" : "free";
+
   await sql.query(`DELETE FROM account_pending WHERE email = $1`, [email]);
   return {
     ok: true as const,
@@ -165,8 +202,9 @@ export async function createAccount(data: {
       breakEveryMin: 30,
       sessionToken: data.token,
       categories,
-      plan: "free",
+      plan,
       sessionsUsed: 0,
+      plusGrantUntil: promoUntil,
     }),
   };
 }
