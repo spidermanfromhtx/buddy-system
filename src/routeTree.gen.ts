@@ -15,6 +15,8 @@ import { Route as FeedRouteImport } from './routes/feed'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiPushRouteImport } from './routes/api/push'
+import { Route as ApiRemindRouteImport } from './routes/api/remind'
 import { Route as ApiRtcRouteImport } from './routes/api/rtc'
 import { Route as ApiStripeRouteImport } from './routes/api/stripe'
 import { Route as CallIdRouteImport } from './routes/call.$id'
@@ -51,6 +53,16 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPushRoute = ApiPushRouteImport.update({
+  id: '/api/push',
+  path: '/api/push',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemindRoute = ApiRemindRouteImport.update({
+  id: '/api/remind',
+  path: '/api/remind',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRtcRoute = ApiRtcRouteImport.update({
   id: '/api/rtc',
   path: '/api/rtc',
@@ -84,6 +96,8 @@ export interface FileRoutesByFullPath {
   '/join': typeof JoinRoute
   '/reviews': typeof ReviewsRoute
   '/terms': typeof TermsRoute
+  '/api/push': typeof ApiPushRoute
+  '/api/remind': typeof ApiRemindRoute
   '/api/rtc': typeof ApiRtcRoute
   '/api/stripe': typeof ApiStripeRoute
   '/call/$id': typeof CallIdRoute
@@ -97,6 +111,8 @@ export interface FileRoutesByTo {
   '/join': typeof JoinRoute
   '/reviews': typeof ReviewsRoute
   '/terms': typeof TermsRoute
+  '/api/push': typeof ApiPushRoute
+  '/api/remind': typeof ApiRemindRoute
   '/api/rtc': typeof ApiRtcRoute
   '/api/stripe': typeof ApiStripeRoute
   '/call/$id': typeof CallIdRoute
@@ -111,6 +127,8 @@ export interface FileRoutesById {
   '/join': typeof JoinRoute
   '/reviews': typeof ReviewsRoute
   '/terms': typeof TermsRoute
+  '/api/push': typeof ApiPushRoute
+  '/api/remind': typeof ApiRemindRoute
   '/api/rtc': typeof ApiRtcRoute
   '/api/stripe': typeof ApiStripeRoute
   '/call/$id': typeof CallIdRoute
@@ -126,6 +144,8 @@ export interface FileRouteTypes {
     | '/join'
     | '/reviews'
     | '/terms'
+    | '/api/push'
+    | '/api/remind'
     | '/api/rtc'
     | '/api/stripe'
     | '/call/$id'
@@ -139,6 +159,8 @@ export interface FileRouteTypes {
     | '/join'
     | '/reviews'
     | '/terms'
+    | '/api/push'
+    | '/api/remind'
     | '/api/rtc'
     | '/api/stripe'
     | '/call/$id'
@@ -152,6 +174,8 @@ export interface FileRouteTypes {
     | '/join'
     | '/reviews'
     | '/terms'
+    | '/api/push'
+    | '/api/remind'
     | '/api/rtc'
     | '/api/stripe'
     | '/call/$id'
@@ -166,6 +190,8 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   ReviewsRoute: typeof ReviewsRoute
   TermsRoute: typeof TermsRoute
+  ApiPushRoute: typeof ApiPushRoute
+  ApiRemindRoute: typeof ApiRemindRoute
   ApiRtcRoute: typeof ApiRtcRoute
   ApiStripeRoute: typeof ApiStripeRoute
   CallIdRoute: typeof CallIdRoute
@@ -217,6 +243,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/push': {
+      id: '/api/push'
+      path: '/api/push'
+      fullPath: '/api/push'
+      preLoaderRoute: typeof ApiPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/remind': {
+      id: '/api/remind'
+      path: '/api/remind'
+      fullPath: '/api/remind'
+      preLoaderRoute: typeof ApiRemindRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rtc': {
       id: '/api/rtc'
       path: '/api/rtc'
@@ -262,6 +302,8 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   ReviewsRoute: ReviewsRoute,
   TermsRoute: TermsRoute,
+  ApiPushRoute: ApiPushRoute,
+  ApiRemindRoute: ApiRemindRoute,
   ApiRtcRoute: ApiRtcRoute,
   ApiStripeRoute: ApiStripeRoute,
   CallIdRoute: CallIdRoute,

@@ -1,0 +1,11 @@
+name: booking reminders
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: send due booking reminders
+        run: curl -fsS -H "Authorization: Bearer ${{ secrets.REMIND_SECRET }}" https://joinbuddysystem.app/api/remind

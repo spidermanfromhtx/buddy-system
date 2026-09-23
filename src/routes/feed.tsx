@@ -13,6 +13,7 @@ import { InstallApp } from "@/components/install-app";
 import { JoinForm } from "@/components/join-form";
 import { inviteAdmin, listAdmins, readAccount, readFlags, saveAccount, setRndMode, startPlusCheckout } from "@/lib/account";
 import { CATEGORIES, categoryLabel, parseCategories, serializeCategories } from "@/lib/categories";
+import { enableBookingReminders } from "@/lib/notify";
 import { FREE_MAX_MIN, FREE_SESSIONS, PLUS_PRICE_LABEL, PRO_PRICE_LABEL, isPlus, isPro, maxSessionMin, planLabel, sessionsLeft } from "@/lib/plan";
 import {
   bookWindow,
@@ -1209,6 +1210,23 @@ function Feed() {
                 <p className="text-sm text-muted">
                   On iPhone: open this site in Safari, tap the Share button, then Add to Home Screen. It sits next to your other apps. No App Store.
                 </p>
+              </div>
+              <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
+                <p className="font-display text-xl">Booking reminders</p>
+                <p className="text-sm text-muted">
+                  We ping this device when a booking is about to start, even if the site is closed. On iPhone this only works after you add the app to your home screen and open it from the icon.
+                </p>
+                <Btn
+                  className="h-11 w-full"
+                  onClick={() => {
+                    if (!me.sessionToken) return;
+                    void enableBookingReminders(me.sessionToken)
+                      .then(() => setNote("reminders on for this device."))
+                      .catch((err) => setNote(err instanceof Error ? err.message : "could not turn on reminders"));
+                  }}
+                >
+                  Turn on reminders
+                </Btn>
               </div>
               <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
                 <p className="font-display text-xl">Plan</p>
