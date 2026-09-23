@@ -60,7 +60,7 @@ function Rate() {
   }
 
   return (
-    <main className="relative z-10 min-h-dvh bg-transparent px-6 pb-10 pt-12 text-ink">
+    <main className="relative z-10 min-h-dvh bg-transparent px-6 pb-10 pt-[max(2.85rem,calc(env(safe-area-inset-top)+1.4rem))] text-ink md:pt-12">
       <PageWash />
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6">
         <h1 className="text-3xl font-semibold tracking-tight">How was that call?</h1>

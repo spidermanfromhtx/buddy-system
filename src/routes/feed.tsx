@@ -1010,7 +1010,7 @@ function Feed() {
   return (
     <main className="relative isolate z-10 flex min-h-dvh flex-col bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-2 px-3 pb-3 pt-[max(1.15rem,env(safe-area-inset-top))] md:px-6">
+      <header className="relative z-20 flex items-center justify-between gap-2 px-3 pb-3 pt-[max(2.85rem,calc(env(safe-area-inset-top)+1.4rem))] md:px-6 md:pt-5">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <div className="min-w-0">
