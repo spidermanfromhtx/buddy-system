@@ -42,9 +42,6 @@ function mapAccount(r: Record<string, unknown>): Omit<AccountRow, "limitsOn" | "
 }
 
 async function decorate(sql: Sql, account: Omit<AccountRow, "limitsOn" | "admin">): Promise<AccountRow> {
-  if (account.plusGrantUntil && Date.parse(account.plusGrantUntil) <= Date.now() && !account.email) {
-    // unreachable guard keeps the promo check scoped to the server-side account object
-  }
   if (account.plusGrantUntil && Date.parse(account.plusGrantUntil) <= Date.now() && account.plan === "plus") {
     await sql.query(
       `UPDATE accounts SET plan = 'free', plus_grant_until = null
@@ -232,6 +229,23 @@ export async function saveAccount(data: {
     [data.token, name, color, photo, breakEveryMin, serializeCategories(categories)],
   );
   return { ok: true as const };
+}
+
+export async function signupStats() {
+  const sql = await getSql();
+  const rows = await sql.query(`
+    SELECT
+      (SELECT count(*) FROM accounts) AS total,
+      (SELECT count(*) FROM launch_plus_slots WHERE account_id IS NOT NULL) AS claimed
+  `);
+  const total = Number(rows[0]?.total ?? 0);
+  const claimed = Number(rows[0]?.claimed ?? 0);
+  return {
+    total,
+    claimed,
+    remaining: Math.max(0, 100 - claimed),
+    offerFull: claimed >= 100,
+  };
 }
 
 export async function readAccount(token: string) {
