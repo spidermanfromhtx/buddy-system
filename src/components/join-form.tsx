@@ -187,12 +187,11 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
                   }}
                 />
                 <span>
-                  I am 18 or older. I agree to the{" "}
+                  I am 18 or older. I have read and agree to the{" "}
                   <Link to="/terms" className="underline">
-                    terms
+                    terms of use
                   </Link>
-                  : ratings are anonymous to the other person and public to users. Reports can warn or close an account
-                  based on the language used.
+                  .
                 </span>
               </label>
               {err === "tos" ? <p className="text-sm text-rust">Agree to the terms to continue.</p> : null}
