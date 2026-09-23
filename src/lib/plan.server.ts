@@ -8,7 +8,7 @@ export type SessionGate =
 
 export async function planForPeer(sql: Sql, peerId: string) {
   const rows = await sql.query(
-    `SELECT plan, sessions_used, sessions_week_start, limits_on FROM accounts WHERE id = $1 LIMIT 1`,
+    `SELECT plan, sessions_used, sessions_week_start, limits_on, plus_grant_until FROM accounts WHERE id = $1 LIMIT 1`,
     [peerId],
   );
   const row = rows[0];
@@ -24,6 +24,18 @@ export async function planForPeer(sql: Sql, peerId: string) {
 export async function takeSession(sql: Sql, peerId: string, lengthMin: number): Promise<SessionGate> {
   const found = await planForPeer(sql, peerId);
   if (!found) return { ok: false, error: "Sign in again.", code: "signin" };
+  if (
+    found.plan === "plus" &&
+    found.plusGrantUntil &&
+    Date.parse(found.plusGrantUntil) <= Date.now()
+  ) {
+    await sql.query(
+      `UPDATE accounts SET plan = 'free', plus_grant_until = null
+       WHERE id = $1 AND plan = 'plus' AND plus_grant_until IS NOT NULL AND plus_grant_until <= now()`,
+      [peerId],
+    );
+    found.plan = "free";
+  }
   const plus = isPlus(found.plan);
   const limitsOn = await rndLimitsOn(sql);
   const maxMin = plus || !limitsOn ? PLUS_MAX_MIN : FREE_MAX_MIN;
