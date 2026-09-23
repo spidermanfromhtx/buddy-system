@@ -63,7 +63,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
   return (
     <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
+      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(1.15rem,env(safe-area-inset-top))] md:px-10 md:pt-5">
         <div className="flex min-w-0 items-center gap-2.5">
           <Mark className="h-12 w-8 shrink-0" />
           <p className="min-w-0 text-xl font-semibold tracking-tight md:text-2xl">Buddy System</p>
@@ -72,7 +72,7 @@ export function JoinForm({ onJoined }: { onJoined?: (p: Profile) => void }) {
           Reviews
         </a>
       </header>
-      <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 md:grid-cols-2 md:px-10 md:pt-16">
+      <section className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-10 px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 md:grid-cols-2 md:px-10 md:pt-16">
         <div>
           {!pending ? (
             <>
