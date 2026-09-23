@@ -113,6 +113,7 @@ function Feed() {
   const [me, setMe] = useState<Profile | null>(null);
   const [sheet, setSheet] = useState<"none" | "open" | "book" | "settings">("none");
   const [task, setTask] = useState("");
+  const [bookTask, setBookTask] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [lengthMin, setLengthMin] = useState(20);
   const [camera, setCamera] = useState(false);
@@ -358,7 +359,7 @@ function Feed() {
 
   const goBook = useMutation({
     mutationFn: async () => {
-      if (!me || !task.trim()) return;
+      if (!me || !bookTask.trim()) return;
       if (!category.length) throw new Error("Pick at least one category.");
       const range = windowRange(windowDate, windowStart, windowEnd);
       const id = newId("book");
@@ -370,7 +371,7 @@ function Feed() {
           name: me.name,
           color: me.color,
           photo: me.photo ?? undefined,
-          task: task.trim(),
+          task: bookTask.trim(),
           urgent,
           lengthMin: Math.min(lengthMin, capStep),
           camera,
@@ -600,8 +601,8 @@ function Feed() {
             id={`${prefix}-task`}
             placeholder="finish the email"
             className="h-11 rounded-2xl border-0 bg-paper/70 px-3 font-normal outline-none"
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
+            value={bookTask}
+            onChange={(e) => setBookTask(e.target.value)}
           />
           <span className="text-xs font-normal text-muted">A task description, big or small.</span>
         </label>
