@@ -18,6 +18,7 @@ export async function planForPeer(sql: Sql, peerId: string) {
     sessionsUsed: weeklyUsed(row.sessions_used, row.sessions_week_start),
     weekStart: row.sessions_week_start ? String(row.sessions_week_start) : null,
     limitsOn: Boolean(row.limits_on),
+    plusGrantUntil: row.plus_grant_until ? String(row.plus_grant_until) : null,
   };
 }
 
