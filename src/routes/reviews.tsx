@@ -45,7 +45,7 @@ function Reviews() {
   return (
     <main className="relative isolate z-10 min-h-dvh bg-transparent text-ink">
       <PageWash />
-      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-10">
+      <header className="relative z-20 flex items-center justify-between gap-3 px-4 pb-3 pt-[max(1.15rem,env(safe-area-inset-top))] md:px-10">
         <div className="flex min-w-0 items-center gap-2">
           <Mark />
           <p className="truncate text-base font-semibold tracking-tight">Buddy System</p>
@@ -54,7 +54,7 @@ function Reviews() {
           {me ? "Feed" : "Home"}
         </Btn>
       </header>
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-col gap-6 px-5 pb-12 pt-4">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-col gap-6 px-5 pb-12 pt-5">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Reviews of the app</h1>
           <p className="mt-2 text-sm text-muted">
