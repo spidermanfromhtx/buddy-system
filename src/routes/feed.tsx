@@ -938,9 +938,6 @@ function Feed() {
               Book
             </button>
           </div>
-          <Btn className="h-9 px-3 text-sm" onClick={() => void nav({ to: "/reviews" })}>
-            Reviews
-          </Btn>
           <Btn className="hidden h-10 text-sm md:inline-flex" onClick={() => void share()}>
             Share
           </Btn>
@@ -1055,6 +1052,9 @@ function Feed() {
                 }}
               />
               <p className="text-base text-muted">Account email: {me.email}</p>
+              <Btn className="h-11 w-full" onClick={() => void nav({ to: "/reviews" })}>
+                Reviews
+              </Btn>
               <fieldset>
                 <legend className="text-base font-medium">Your categories</legend>
                 <p className="mt-1 text-sm text-muted">What you use this for. Matching uses this.</p>
@@ -1098,9 +1098,6 @@ function Feed() {
                 <InstallApp className="h-11 w-full" />
                 <Btn className="h-11 w-full" onClick={() => void share()}>
                   Share
-                </Btn>
-                <Btn className="h-11 w-full" onClick={() => void nav({ to: "/reviews" })}>
-                  Reviews
                 </Btn>
               </div>
               <div className="flex flex-col gap-3 border-t border-ink/10 pt-6">
